@@ -77,5 +77,4 @@ class TemporaryContainer(Container):
         options.setdefault('detach', False)
         options.setdefault('rm', True)
         options.setdefault('tty', True)
-        options.setdefault('interactive', True)
         super(TemporaryContainer, self).__init__(*image_and_cmd, **options)
