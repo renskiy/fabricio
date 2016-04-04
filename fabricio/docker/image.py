@@ -1,0 +1,3 @@
+class Image(object):
+
+    pass
