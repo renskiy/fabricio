@@ -37,6 +37,16 @@ class BaseContainer(object):
 
         RUN = NotImplemented
 
+        START = NotImplemented
+
+        STOP = NotImplemented
+
+        DELETE = NotImplemented
+
+        SIGNAL = NotImplemented
+
+        RENAME = NotImplemented
+
     def __init__(self, *image_and_cmd, **options):
         assert len(image_and_cmd) <= 2
         image_and_cmd = image_and_cmd or (self.image, self.cmd)
@@ -76,6 +86,35 @@ class BaseContainer(object):
             cmd=self.cmd,
             options=' '.join(self.options),
         ))
+
+    def start(self):
+        fab.sudo(self.Command.START.format(
+            name=self.name,
+        ))
+
+    def stop(self, timeout=10):
+        fab.sudo(self.Command.STOP.format(
+            name=self.name,
+            timeout=timeout,
+        ))
+
+    def delete(self):
+        fab.sudo(self.Command.DELETE.format(
+            name=self.name,
+        ))
+
+    def signal(self, signal):
+        fab.sudo(self.Command.SIGNAL.format(
+            name=self.name,
+            signal=signal,
+        ))
+
+    def rename(self, new_name):
+        fab.sudo(self.Command.RENAME.format(
+            name=self.name,
+            new_name=new_name,
+        ))
+        self.name = new_name
 
 
 class BaseTemporaryContainer(BaseContainer):

@@ -7,6 +7,16 @@ class Container(BaseContainer):
 
         RUN = 'docker run {options} {image} {cmd}'
 
+        START = 'docker start {name}'
+
+        STOP = 'docker stop --time {timeout} {name}'
+
+        DELETE = 'docker rm {name}'
+
+        SIGNAL = 'docker kill --signal {signal} {name}'
+
+        RENAME = 'docker rename {name} {new_name}'
+
     def __init__(self, *image_and_cmd, **options):
         options.setdefault('detach', self.detach)
         options.setdefault('name', self.name)
