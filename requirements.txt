@@ -1,2 +1,2 @@
-enum34
+enum-compat
 fabric
