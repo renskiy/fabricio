@@ -74,7 +74,7 @@ class BaseContainer(object):
             image=self.image,
             name=self.name,
             cmd=self.cmd,
-            options=self.options,
+            options=' '.join(self.options),
         ))
 
 
