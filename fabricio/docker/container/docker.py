@@ -17,6 +17,8 @@ class Container(BaseContainer):
 
         RENAME = 'docker rename {name} {new_name}'
 
+        INFO = 'docker inspect --type container --format {template} {name}'
+
     def __init__(self, *image_and_cmd, **options):
         options.setdefault('detach', self.detach)
         options.setdefault('name', self.name)

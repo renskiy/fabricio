@@ -47,6 +47,8 @@ class BaseContainer(object):
 
         RENAME = NotImplemented
 
+        INFO = NotImplemented
+
     def __init__(self, *image_and_cmd, **options):
         assert len(image_and_cmd) <= 2
         image_and_cmd = image_and_cmd or (self.image, self.cmd)
@@ -115,6 +117,13 @@ class BaseContainer(object):
             new_name=new_name,
         ))
         self.name = new_name
+
+    def info(self, template='""'):
+        # TODO template should be empty string by default
+        return fab.sudo(self.Command.INFO.format(
+            name=self.name,
+            template=template,
+        ))
 
 
 class BaseTemporaryContainer(BaseContainer):
