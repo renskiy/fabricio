@@ -3,7 +3,7 @@ from . import BaseContainer, BaseTemporaryContainer
 
 class Container(BaseContainer):
 
-    class Command(BaseContainer.Commands):
+    class Command(BaseContainer.Command):
 
         RUN = 'docker run {options} {image} {cmd}'
 

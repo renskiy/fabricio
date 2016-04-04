@@ -33,7 +33,7 @@ class BaseContainer(object):
 
     stop_signal = None
 
-    class Commands(Enum):
+    class Command(Enum):
 
         RUN = NotImplemented
 
@@ -70,7 +70,7 @@ class BaseContainer(object):
                     yield self.make_option(option, single_value)
 
     def run(self):
-        fab.sudo(self.Commands.RUN.format(
+        fab.sudo(self.Command.RUN.format(
             image=self.image,
             name=self.name,
             cmd=self.cmd,
