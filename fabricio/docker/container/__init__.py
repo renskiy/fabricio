@@ -1,21 +1,15 @@
-from enum import Enum
+import six
+
 from fabric import api as fab
 
-try:
-    str = unicode
-except NameError:
-    pass
 
-
-class BaseContainer(object):
+class Container(object):
 
     image = NotImplemented
 
     cmd = ''
 
-    name = None
-
-    detach = True
+    user = None
 
     ports = []
 
@@ -33,31 +27,45 @@ class BaseContainer(object):
 
     stop_signal = None
 
-    class Command(Enum):
+    COMMAND_RUN = NotImplemented
 
-        RUN = NotImplemented
+    COMMAND_EXECUTE = NotImplemented
 
-        START = NotImplemented
+    COMMAND_START = NotImplemented
 
-        STOP = NotImplemented
+    COMMAND_STOP = NotImplemented
 
-        DELETE = NotImplemented
+    COMMAND_DELETE = NotImplemented
 
-        SIGNAL = NotImplemented
+    COMMAND_RENAME = NotImplemented
 
-        RENAME = NotImplemented
+    COMMAND_INFO = NotImplemented
 
-        INFO = NotImplemented
+    COMMAND_SIGNAL = NotImplemented
 
-    def __init__(self, *image_and_cmd, **options):
-        assert len(image_and_cmd) <= 2
-        image_and_cmd = image_and_cmd or (self.image, self.cmd)
-        self.image = image_and_cmd[0]
-        self.cmd = ''.join(image_and_cmd[1:])
-        self._options = {
-            option.replace('_', '-'): value
-            for option, value in options.items()
-        }
+    FALLBACK_CONTAINER_NAME_SUFFIX = '_fallback'
+
+    def __init__(self, name=None, temporary=False, options=None):
+        self.name = name
+        self.temporary = temporary
+        if temporary:
+            self.ports = []
+            self.restart_policy = None
+        self.options = options or {}
+
+    @property
+    def _options(self):
+        for option, value in self.options.items():
+            if value is None:
+                continue
+            if isinstance(value, bool):
+                if value is True:
+                    yield self.make_option(option)
+            elif isinstance(value, six.string_types):
+                yield self.make_option(option, value)
+            else:
+                for single_value in value:
+                    yield self.make_option(option, single_value)
 
     @staticmethod
     def make_option(option, value=None):
@@ -67,52 +75,52 @@ class BaseContainer(object):
             option += ' ' + value
         return option
 
-    @property
-    def options(self):
-        for option, value in self._options.items():
-            if value is None:
-                continue
-            if isinstance(value, bool):
-                if value is True:
-                    yield self.make_option(option)
-            elif isinstance(value, (str, bytes)):
-                yield self.make_option(option, value)
-            else:
-                for single_value in value:
-                    yield self.make_option(option, single_value)
+    def make_options(self):
+        return ' '.join(self._options)
 
-    def run(self):
-        fab.sudo(self.Command.RUN.format(
+    def fork(self, name=None, temporary=False, options=None):
+        forked = type(self)(name=name, temporary=temporary, options=options)
+        for option, value in self.options.items():
+            forked.options.setdefault(option, value)
+        return forked
+
+    def _run(self, cmd=None):
+        return fab.sudo(self.COMMAND_RUN.format(
             image=self.image,
             name=self.name,
-            cmd=self.cmd,
-            options=' '.join(self.options),
+            cmd=self.cmd if cmd is None else cmd,
+            options=self.make_options(),
+        ))
+
+    def run(self):
+        self._run()
+
+    def execute(self, cmd):
+        if self.temporary:
+            return self._run(cmd)
+        return fab.sudo(self.COMMAND_EXECUTE.format(
+            name=self.name,
+            cmd=cmd,
         ))
 
     def start(self):
-        fab.sudo(self.Command.START.format(
+        fab.sudo(self.COMMAND_START.format(
             name=self.name,
         ))
 
     def stop(self, timeout=10):
-        fab.sudo(self.Command.STOP.format(
+        fab.sudo(self.COMMAND_STOP.format(
             name=self.name,
             timeout=timeout,
         ))
 
     def delete(self):
-        fab.sudo(self.Command.DELETE.format(
+        fab.sudo(self.COMMAND_DELETE.format(
             name=self.name,
-        ))
-
-    def signal(self, signal):
-        fab.sudo(self.Command.SIGNAL.format(
-            name=self.name,
-            signal=signal,
         ))
 
     def rename(self, new_name):
-        fab.sudo(self.Command.RENAME.format(
+        fab.sudo(self.COMMAND_RENAME.format(
             name=self.name,
             new_name=new_name,
         ))
@@ -120,12 +128,32 @@ class BaseContainer(object):
 
     def info(self, template='""'):
         # TODO template should be empty string by default
-        return fab.sudo(self.Command.INFO.format(
+        return fab.sudo(self.COMMAND_INFO.format(
             name=self.name,
             template=template,
         ))
 
+    def signal(self, signal):
+        fab.sudo(self.COMMAND_SIGNAL.format(
+            name=self.name,
+            signal=signal,
+        ))
 
-class BaseTemporaryContainer(BaseContainer):
+    def upgrade(self):
+        new_container = self.fork(
+            name=self.name,
+        )
+        self.rename(self.name + self.FALLBACK_CONTAINER_NAME_SUFFIX)
+        self.stop()
+        new_container.run()
 
-    detach = False
+    def fallback(self):
+        fallback_container = self.fork(
+            name=self.name + self.FALLBACK_CONTAINER_NAME_SUFFIX,
+        )
+        self.stop()
+        self.delete()
+        fallback_container.rename(self.name)
+        fallback_container.start()
+
+from .docker import *
