@@ -26,22 +26,24 @@ class Container(object):
     restart_policy = None
 
     stop_signal = None
+    
+    class Commands:
 
-    COMMAND_RUN = NotImplemented
-
-    COMMAND_EXECUTE = NotImplemented
-
-    COMMAND_START = NotImplemented
-
-    COMMAND_STOP = NotImplemented
-
-    COMMAND_DELETE = NotImplemented
-
-    COMMAND_RENAME = NotImplemented
-
-    COMMAND_INFO = NotImplemented
-
-    COMMAND_SIGNAL = NotImplemented
+        RUN = NotImplemented
+    
+        EXECUTE = NotImplemented
+    
+        START = NotImplemented
+    
+        STOP = NotImplemented
+    
+        DELETE = NotImplemented
+    
+        RENAME = NotImplemented
+    
+        INFO = NotImplemented
+    
+        SIGNAL = NotImplemented
 
     FALLBACK_CONTAINER_NAME_SUFFIX = '_fallback'
 
@@ -85,7 +87,7 @@ class Container(object):
         return forked
 
     def _run(self, cmd=None):
-        return fab.sudo(self.COMMAND_RUN.format(
+        return fab.sudo(self.Commands.RUN.format(
             image=self.image,
             name=self.name,
             cmd=self.cmd if cmd is None else cmd,
@@ -98,29 +100,29 @@ class Container(object):
     def execute(self, cmd):
         if self.temporary:
             return self._run(cmd)
-        return fab.sudo(self.COMMAND_EXECUTE.format(
+        return fab.sudo(self.Commands.EXECUTE.format(
             name=self.name,
             cmd=cmd,
         ))
 
     def start(self):
-        fab.sudo(self.COMMAND_START.format(
+        fab.sudo(self.Commands.START.format(
             name=self.name,
         ))
 
     def stop(self, timeout=10):
-        fab.sudo(self.COMMAND_STOP.format(
+        fab.sudo(self.Commands.STOP.format(
             name=self.name,
             timeout=timeout,
         ))
 
     def delete(self):
-        fab.sudo(self.COMMAND_DELETE.format(
+        fab.sudo(self.Commands.DELETE.format(
             name=self.name,
         ))
 
     def rename(self, new_name):
-        fab.sudo(self.COMMAND_RENAME.format(
+        fab.sudo(self.Commands.RENAME.format(
             name=self.name,
             new_name=new_name,
         ))
@@ -128,13 +130,13 @@ class Container(object):
 
     def info(self, template='""'):
         # TODO template should be empty string by default
-        return fab.sudo(self.COMMAND_INFO.format(
+        return fab.sudo(self.Commands.INFO.format(
             name=self.name,
             template=template,
         ))
 
     def signal(self, signal):
-        fab.sudo(self.COMMAND_SIGNAL.format(
+        fab.sudo(self.Commands.SIGNAL.format(
             name=self.name,
             signal=signal,
         ))

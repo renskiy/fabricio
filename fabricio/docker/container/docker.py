@@ -7,21 +7,23 @@ __all__ = [
 
 class DockerContainer(Container):
 
-    COMMAND_RUN = 'docker run {options} {image} {cmd}'
+    class Commands(Container.Commands):
 
-    COMMAND_EXECUTE = 'docker exec --tty {name} {cmd}'
+        RUN = 'docker run {options} {image} {cmd}'
 
-    COMMAND_START = 'docker start {name}'
+        EXECUTE = 'docker exec --tty {name} {cmd}'
 
-    COMMAND_STOP = 'docker stop --time {timeout} {name}'
+        START = 'docker start {name}'
 
-    COMMAND_DELETE = 'docker rm {name}'
+        STOP = 'docker stop --time {timeout} {name}'
 
-    COMMAND_RENAME = 'docker rename {name} {new_name}'
+        DELETE = 'docker rm {name}'
 
-    COMMAND_INFO = 'docker inspect --type container --format {template} {name}'
+        RENAME = 'docker rename {name} {new_name}'
 
-    COMMAND_SIGNAL = 'docker kill --signal {signal} {name}'
+        INFO = 'docker inspect --type container --format {template} {name}'
+
+        SIGNAL = 'docker kill --signal {signal} {name}'
 
     def __init__(self, *args, **kwargs):
         super(DockerContainer, self).__init__(*args, **kwargs)
