@@ -1,4 +1,4 @@
-from fabricio.docker.container import Container
+from fabricio.docker.containers import Container
 
 __all__ = [
     'DockerContainer',

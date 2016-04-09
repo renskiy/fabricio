@@ -1,7 +1,7 @@
 import unittest
 
-from fabricio.docker.app.django import Django
-from fabricio.docker.container import DockerContainer
+from fabricio.docker.apps.python.django import Django
+from fabricio.docker.containers import DockerContainer
 
 
 class Api(Django, DockerContainer):

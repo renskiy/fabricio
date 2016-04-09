@@ -1,6 +1,6 @@
 from fabric import api as fab
 
-from fabricio.docker.container import Container
+from fabricio.docker.containers import Container
 
 
 class Django(Container):
