@@ -36,6 +36,8 @@ class Container(object):
         START = NotImplemented
     
         STOP = NotImplemented
+
+        RESTART = NotImplemented
     
         DELETE = NotImplemented
     
@@ -112,6 +114,12 @@ class Container(object):
 
     def stop(self, timeout=10):
         fab.sudo(self.Commands.STOP.format(
+            name=self.name,
+            timeout=timeout,
+        ))
+
+    def restart(self, timeout=10):
+        fab.sudo(self.Commands.RESTART.format(
             name=self.name,
             timeout=timeout,
         ))

@@ -17,6 +17,8 @@ class DockerContainer(Container):
 
         STOP = 'docker stop --time {timeout} {name}'
 
+        RESTART = 'docker restart --time {timeout} {name}'
+
         DELETE = 'docker rm {name}'
 
         RENAME = 'docker rename {name} {new_name}'
