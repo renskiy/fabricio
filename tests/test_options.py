@@ -9,7 +9,7 @@ class OptionsTestCase(unittest2.TestCase):
 
     def test_str_version(self):
         cases = dict(
-            # TODO all values must be escaped
+            # TODO all values must be quoted
             empty_options_list=dict(
                 options=OrderedDict(),
                 expected_str_version='',
