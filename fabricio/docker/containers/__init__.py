@@ -1,99 +1,101 @@
-import six
+import warnings
 
 from fabric import api as fab
+
+from fabricio import Options
 
 
 class Container(object):
 
-    image = NotImplemented
+    image = None
 
     cmd = ''
 
-    user = None
-
-    ports = []
-
-    env = []
-
-    volumes = []
-
-    links = []
-
-    hosts = []
-
-    network = None
-
-    restart_policy = None
-
-    stop_signal = None
-    
     class Commands:
-
         RUN = NotImplemented
-    
         EXECUTE = NotImplemented
-    
         START = NotImplemented
-    
         STOP = NotImplemented
-
         RESTART = NotImplemented
-    
         DELETE = NotImplemented
-    
+        FORCE_DELETE = NotImplemented
         RENAME = NotImplemented
-    
         INFO = NotImplemented
-    
         SIGNAL = NotImplemented
 
-    FALLBACK_CONTAINER_NAME_SUFFIX = '_fallback'
-
-    def __init__(self, name=None, temporary=False, options=None):
-        self.name = name
-        self.temporary = temporary
+    def __init__(
+        self,
+        image=None,
+        name=None,
+        cmd=None,
+        temporary=False,
+        user=None,
+        ports=None,
+        env=None,
+        volumes=None,
+        links=None,
+        hosts=None,
+        network=None,
+        restart_policy=None,
+        stop_signal=None,
+        options=None,
+    ):
         if temporary:
+            if ports or restart_policy:
+                warnings.warn('Provided ports and/or restart_policy were '
+                              'ignored because of temporary flag was set')
             self.ports = []
             self.restart_policy = None
-        self.options = options or {}
+        else:
+            self.restart_policy = restart_policy
+            self.ports = ports or []
+        self.image = image or self.image
+        self.name = name or self.random_name
+        self.cmd = self.cmd if cmd is None else cmd
+        self.temporary = temporary
+        self.user = user
+        self.env = env or []
+        self.volumes = volumes or []
+        self.links = links or []
+        self.hosts = hosts or []
+        self.network = network
+        self.stop_signal = stop_signal
+        self.additional_options = options or {}
 
     @property
-    def _options(self):
-        for option, value in self.options.items():
-            if value is None:
-                continue
-            if isinstance(value, bool):
-                if value is True:
-                    yield self.make_option(option)
-            elif isinstance(value, six.string_types):
-                yield self.make_option(option, value)
-            else:
-                for single_value in value:
-                    yield self.make_option(option, single_value)
+    def options(self):
+        return Options(self.additional_options)
 
-    @staticmethod
-    def make_option(option, value=None):
-        option = '--' + option
-        if value is not None:
-            # TODO escape value
-            option += ' ' + value
-        return option
+    @property
+    def image_id(self):
+        raise NotImplementedError
 
-    def make_options(self):
-        return ' '.join(self._options)
+    @property
+    def random_name(self):
+        raise NotImplementedError
 
-    def fork(self, name=None, temporary=False, options=None):
-        forked = type(self)(name=name, temporary=temporary, options=options)
-        for option, value in self.options.items():
-            forked.options.setdefault(option, value)
-        return forked
+    def fork(
+        self,
+        image=None,
+        name=None,
+        cmd=None,
+        temporary=False,
+        options=None,
+    ):
+        return type(self)(
+            image=image or self.image,
+            name=name,
+            cmd=self.cmd if cmd is None else cmd,
+            temporary=temporary,
+            options=dict(self.options, **options or {}),
+        )
 
     def _run(self, cmd=None):
         return fab.sudo(self.Commands.RUN.format(
             image=self.image,
             name=self.name,
             cmd=self.cmd if cmd is None else cmd,
-            options=self.make_options(),
+            options=self.options,
         ))
 
     def run(self):
@@ -124,8 +126,9 @@ class Container(object):
             timeout=timeout,
         ))
 
-    def delete(self):
-        fab.sudo(self.Commands.DELETE.format(
+    def delete(self, force=False):
+        command = self.Commands.FORCE_DELETE if force else self.Commands.DELETE
+        fab.sudo(command.format(
             name=self.name,
         ))
 
@@ -149,21 +152,31 @@ class Container(object):
             signal=signal,
         ))
 
-    def upgrade(self):
-        new_container = self.fork(
-            name=self.name,
-        )
-        self.rename(self.name + self.FALLBACK_CONTAINER_NAME_SUFFIX)
+    def upgrade(self, force=False):
+        # TODO upgrade only if necessary
+        # TODO delete obsolete image
+        # TODO implement force=True
+        new_container = self.fork(name=self.name)
+        self.rename(self.fallback_container_name)
         self.stop()
         new_container.run()
 
     def fallback(self):
-        fallback_container = self.fork(
-            name=self.name + self.FALLBACK_CONTAINER_NAME_SUFFIX,
-        )
-        self.stop()
-        self.delete()
-        fallback_container.rename(self.name)
+        # TODO delete failed image
+        fallback_container = self.fallback_container
+        self.delete(force=True)
         fallback_container.start()
+        fallback_container.rename(self.name)
 
-from .docker import *
+    @property
+    def fallback_container_name(self):
+        if not self.name:
+            raise ValueError  # TODO error message
+        return self.name + '_fallback'
+
+    @property
+    def fallback_container(self):
+        return self.fork(name=self.fallback_container_name)
+
+from .docker import DockerContainer
+from .kubernetes import KubernetesContainer
