@@ -1,4 +1,4 @@
-from fabricio.docker.containers import Container
+from fabricio.docker.container import Container
 
 
 class Cron(Container):

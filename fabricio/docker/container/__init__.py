@@ -11,21 +11,20 @@ class Container(object):
 
     cmd = ''
 
-    class Commands:
-        RUN = NotImplemented
-        EXECUTE = NotImplemented
-        START = NotImplemented
-        STOP = NotImplemented
-        RESTART = NotImplemented
-        DELETE = NotImplemented
-        FORCE_DELETE = NotImplemented
-        RENAME = NotImplemented
-        INFO = NotImplemented
-        SIGNAL = NotImplemented
+    COMMAND_INFO = NotImplemented
+    COMMAND_DELETE = NotImplemented
+    COMMAND_FORCE_DELETE = NotImplemented
+    COMMAND_DELETE_IMAGE = 'docker rmi {image}'
+    COMMAND_RUN = NotImplemented
+    COMMAND_EXECUTE = NotImplemented
+    COMMAND_START = NotImplemented
+    COMMAND_STOP = NotImplemented
+    COMMAND_RESTART = NotImplemented
+    COMMAND_RENAME = NotImplemented
+    COMMAND_SIGNAL = NotImplemented
 
     def __init__(
         self,
-        image=None,
         name=None,
         cmd=None,
         temporary=False,
@@ -40,6 +39,7 @@ class Container(object):
         stop_signal=None,
         options=None,
     ):
+        self.name = name
         if temporary:
             if ports or restart_policy:
                 warnings.warn('Provided ports and/or restart_policy were '
@@ -49,8 +49,6 @@ class Container(object):
         else:
             self.restart_policy = restart_policy
             self.ports = ports or []
-        self.image = image or self.image
-        self.name = name or self.random_name
         self.cmd = self.cmd if cmd is None else cmd
         self.temporary = temporary
         self.user = user
@@ -71,8 +69,8 @@ class Container(object):
         raise NotImplementedError
 
     @property
-    def random_name(self):
-        raise NotImplementedError
+    def id(self):
+        return self.info('{{.Id}}').stdout
 
     def fork(
         self,
@@ -90,8 +88,26 @@ class Container(object):
             options=dict(self.options, **options or {}),
         )
 
+    def info(self, template='""'):
+        # TODO template should be empty string by default
+        return fab.sudo(self.COMMAND_INFO.format(
+            name=self.name,
+            template=template,
+        ))
+
+    def delete(self, force=False, delete_image=False):
+        image_id = delete_image and self.image_id
+        command = self.COMMAND_FORCE_DELETE if force else self.COMMAND_DELETE
+        fab.sudo(command.format(
+            name=self.name,
+        ))
+        if delete_image:
+            fab.sudo(self.COMMAND_DELETE_IMAGE.format(
+                image=image_id,
+            ))
+
     def _run(self, cmd=None):
-        return fab.sudo(self.Commands.RUN.format(
+        return fab.sudo(self.COMMAND_RUN.format(
             image=self.image,
             name=self.name,
             cmd=self.cmd if cmd is None else cmd,
@@ -104,66 +120,55 @@ class Container(object):
     def execute(self, cmd):
         if self.temporary:
             return self._run(cmd)
-        return fab.sudo(self.Commands.EXECUTE.format(
+        return fab.sudo(self.COMMAND_EXECUTE.format(
             name=self.name,
             cmd=cmd,
         ))
 
     def start(self):
-        fab.sudo(self.Commands.START.format(
+        fab.sudo(self.COMMAND_START.format(
             name=self.name,
         ))
 
     def stop(self, timeout=10):
-        fab.sudo(self.Commands.STOP.format(
+        fab.sudo(self.COMMAND_STOP.format(
             name=self.name,
             timeout=timeout,
         ))
 
     def restart(self, timeout=10):
-        fab.sudo(self.Commands.RESTART.format(
+        fab.sudo(self.COMMAND_RESTART.format(
             name=self.name,
             timeout=timeout,
         ))
 
-    def delete(self, force=False):
-        command = self.Commands.FORCE_DELETE if force else self.Commands.DELETE
-        fab.sudo(command.format(
-            name=self.name,
-        ))
-
     def rename(self, new_name):
-        fab.sudo(self.Commands.RENAME.format(
+        fab.sudo(self.COMMAND_RENAME.format(
             name=self.name,
             new_name=new_name,
         ))
         self.name = new_name
 
-    def info(self, template='""'):
-        # TODO template should be empty string by default
-        return fab.sudo(self.Commands.INFO.format(
-            name=self.name,
-            template=template,
-        ))
-
     def signal(self, signal):
-        fab.sudo(self.Commands.SIGNAL.format(
+        fab.sudo(self.COMMAND_SIGNAL.format(
             name=self.name,
             signal=signal,
         ))
 
     def upgrade(self, force=False):
-        # TODO upgrade only if necessary
-        # TODO delete obsolete image
-        # TODO implement force=True
         new_container = self.fork(name=self.name)
-        self.rename(self.fallback_container_name)
+        if not force and new_container.image.id == self.image_id:
+            fab.puts('No image change detected. Upgrade skipped.')
+            return
+        obsolete_container = self.get_fallback_container()
+        obsolete_container.delete(delete_image=True)
+        self.rename(obsolete_container.name)
         self.stop()
         new_container.run()
 
     def fallback(self):
         # TODO delete failed image
-        fallback_container = self.fallback_container
+        fallback_container = self.get_fallback_container()
         self.delete(force=True)
         fallback_container.start()
         fallback_container.rename(self.name)
@@ -174,9 +179,9 @@ class Container(object):
             raise ValueError  # TODO error message
         return self.name + '_fallback'
 
-    @property
-    def fallback_container(self):
+    def get_fallback_container(self):
         return self.fork(name=self.fallback_container_name)
 
+###############
+
 from .docker import DockerContainer
-from .kubernetes import KubernetesContainer

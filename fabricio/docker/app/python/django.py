@@ -1,6 +1,6 @@
 from fabric import api as fab
 
-from fabricio.docker.containers import Container
+from fabricio.docker.container import Container
 
 
 class Django(Container):
@@ -22,9 +22,10 @@ class Django(Container):
         ).execute(migrations_list).stdout
 
         fallback_migrations = self.fork(
-            image=self.fallback_container.image_id,
+            image=self.get_fallback_container().image_id,
             temporary=True,
         ).execute(migrations_list).stdout
+        # TODO finish implementation
 
     def fallback(self):
         self.squash_migrations()

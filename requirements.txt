@@ -2,3 +2,4 @@ docker-py
 fabric
 six
 unittest2
+cached-property

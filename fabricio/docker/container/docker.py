@@ -1,20 +1,19 @@
 from fabricio import Options
-from fabricio.docker.containers import Container
+from fabricio.docker.container import Container
 
 
 class DockerContainer(Container):
 
-    class Commands(Container.Commands):
-        RUN = 'docker run {options} {image} {cmd}'
-        EXECUTE = 'docker exec --tty {name} {cmd}'
-        START = 'docker start {name}'
-        STOP = 'docker stop --time {timeout} {name}'
-        RESTART = 'docker restart --time {timeout} {name}'
-        DELETE = 'docker rm {name}'
-        FORCE_DELETE = 'docker rm --force {name}'
-        RENAME = 'docker rename {name} {new_name}'
-        INFO = 'docker inspect --type container --format {template} {name}'
-        SIGNAL = 'docker kill --signal {signal} {name}'
+    COMMAND_INFO = 'docker inspect --type container --format {template} {name}'
+    COMMAND_DELETE = 'docker rm {name}'
+    COMMAND_FORCE_DELETE = 'docker rm --force {name}'
+    COMMAND_RUN = 'docker run {options} {image} {cmd}'
+    COMMAND_EXECUTE = 'docker exec --tty {name} {cmd}'
+    COMMAND_START = 'docker start {name}'
+    COMMAND_STOP = 'docker stop --time {timeout} {name}'
+    COMMAND_RESTART = 'docker restart --time {timeout} {name}'
+    COMMAND_RENAME = 'docker rename {name} {new_name}'
+    COMMAND_SIGNAL = 'docker kill --signal {signal} {name}'
 
     @property
     def options(self):
@@ -38,7 +37,3 @@ class DockerContainer(Container):
     @property
     def image_id(self):
         return self.info('{{.Image}}').stdout
-
-    @property
-    def random_name(self):
-        return None

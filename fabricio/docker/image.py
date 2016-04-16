@@ -1,3 +1,0 @@
-class Image(object):
-
-    pass
