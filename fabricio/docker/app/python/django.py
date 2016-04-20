@@ -1,17 +1,17 @@
 from fabric import api as fab
 
-from fabricio.docker.container import Container
+from fabricio import docker
 
 
-class Django(Container):
+class Django(docker.Container):
 
     @fab.runs_once
     def apply_migrations(self):
         self.fork(temporary=True).execute('manage.py migrate --noinput')
 
-    def upgrade(self, force=False):
+    def update(self, force=False, tag=None):
         self.apply_migrations()
-        super(Django, self).upgrade(force=force)
+        super(Django, self).update(force=force, tag=tag)
 
     @fab.runs_once
     def squash_migrations(self):
@@ -22,11 +22,11 @@ class Django(Container):
         ).execute(migrations_list).stdout
 
         fallback_migrations = self.fork(
-            image=self.get_fallback_container().image_id,
+            image=self.get_backup_container().image.id,
             temporary=True,
         ).execute(migrations_list).stdout
         # TODO finish implementation
 
-    def fallback(self):
+    def revert(self):
         self.squash_migrations()
-        super(Django, self).fallback()
+        super(Django, self).revert()

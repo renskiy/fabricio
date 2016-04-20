@@ -1,7 +1,7 @@
-from fabricio.docker.container import Container
+from fabricio import docker
 
 
-class Cron(Container):
+class Cron(docker.Container):
 
     cmd = 'cron && tail -f /var/log/cron.log'
 
