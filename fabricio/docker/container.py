@@ -182,22 +182,18 @@ class Container(object):
                 return
         new_container = self.fork(name=self.name)
         with fab.settings(warn_only=True):
-            self.backup_container.delete(delete_image=True)
-            self.rename(self.backup_container_name)
+            backup_container = self.backup_container
+            backup_container.delete(delete_image=True)
+            self.rename(backup_container.name)
             self.stop()
         new_container.run()
 
-    def revert(self):
-        # TODO delete failed image
+    def revert(self, delete_image=True):
         backup_container = self.backup_container
-        self.delete(force=True)
+        self.delete(force=True, delete_image=delete_image)
         backup_container.start()
         backup_container.rename(self.name)
 
     @property
-    def backup_container_name(self):
-        return '{container}_backup'.format(container=self)
-
-    @property
     def backup_container(self):
-        return self.fork(name=self.backup_container_name)
+        return self.fork(name='{container}_backup'.format(container=self))

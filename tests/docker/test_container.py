@@ -449,3 +449,61 @@ class ContainerTestCase(unittest.TestCase):
                     container.update(**update_kwargs)
                     sudo.assert_has_calls(expected_commands)
                     self.assertEqual(commands_count, sudo.call_count)
+
+    def test_revert(self):
+        def side_effect(command):
+            result = next(sudo_results)
+            if callable(result):
+                result = result() or _AttributeString(succeeded=False)
+            return result
+        cases = dict(
+            regular=dict(
+                sudo_results=(
+                    _AttributeString('[{"Image": "failed_image_id"}]'),  # failed container info
+                    _AttributeString('[{"Id": "failed_image_id"}]'),  # failed container image info
+                    _AttributeString(''),  # delete failed container
+                    _AttributeString(''),  # delete failed container image
+                    _AttributeString(''),  # start backup container
+                    _AttributeString(''),  # rename backup container
+                ),
+                expected_commands=[
+                    mock.call(docker.Container.COMMAND_INFO.format(container='name')),
+                    mock.call(docker.Image.COMMAND_INFO.format(image='failed_image_id')),
+                    mock.call(docker.Container.COMMAND_FORCE_DELETE.format(container='name')),
+                    mock.call(docker.Image.COMMAND_DELETE.format(image='failed_image_id')),
+                    mock.call(docker.Container.COMMAND_START.format(container='name_backup')),
+                    mock.call(docker.Container.COMMAND_RENAME.format(container='name_backup', new_name='name')),
+                ],
+                revert_kwargs=dict(),
+            ),
+            can_not_delete_failed_image=dict(
+                sudo_results=(
+                    _AttributeString('[{"Image": "failed_image_id"}]'),  # failed container info
+                    _AttributeString('[{"Id": "failed_image_id"}]'),  # failed container image info
+                    _AttributeString(''),  # delete failed container
+                    functools.partial(error, 'can not delete image'),  # delete failed container image
+                    _AttributeString(''),  # start backup container
+                    _AttributeString(''),  # rename backup container
+                ),
+                expected_commands=[
+                    mock.call(docker.Container.COMMAND_INFO.format(container='name')),
+                    mock.call(docker.Image.COMMAND_INFO.format(image='failed_image_id')),
+                    mock.call(docker.Container.COMMAND_FORCE_DELETE.format(container='name')),
+                    mock.call(docker.Image.COMMAND_DELETE.format(image='failed_image_id')),
+                    mock.call(docker.Container.COMMAND_START.format(container='name_backup')),
+                    mock.call(docker.Container.COMMAND_RENAME.format(container='name_backup', new_name='name')),
+                ],
+                revert_kwargs=dict(),
+            ),
+        )
+        for case, params in cases.items():
+            with self.subTest(case=case):
+                container = docker.Container(image='image', name='name')
+                sudo_results = iter(params['sudo_results'])
+                expected_commands = params['expected_commands']
+                revert_kwargs = params['revert_kwargs']
+                commands_count = len(expected_commands)
+                with mock.patch.object(fabric.api, 'sudo', side_effect=side_effect) as sudo:
+                    container.revert(**revert_kwargs)
+                    sudo.assert_has_calls(expected_commands)
+                    self.assertEqual(commands_count, sudo.call_count)
