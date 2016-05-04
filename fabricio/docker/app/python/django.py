@@ -22,7 +22,7 @@ class Django(docker.Container):
         ).execute(migrations_list).stdout
 
         fallback_migrations = self.fork(
-            image=self.get_backup_container().image.id,
+            image=self.backup_container.image.id,
             temporary=True,
         ).execute(migrations_list).stdout
         # TODO finish implementation

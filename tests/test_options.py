@@ -1,11 +1,11 @@
 from collections import OrderedDict
 
-import unittest2
+import unittest2 as unittest
 
 from fabricio import Options
 
 
-class OptionsTestCase(unittest2.TestCase):
+class OptionsTestCase(unittest.TestCase):
 
     def test_str_version(self):
         cases = dict(
@@ -45,8 +45,8 @@ class OptionsTestCase(unittest2.TestCase):
             # TODO empty value
             # TODO escaped value
         )
-        for case, data in cases.items():
+        for case, params in cases.items():
             with self.subTest(case=case):
-                options = Options(data['options'])
-                expected_str_version = data['expected_str_version']
+                options = Options(params['options'])
+                expected_str_version = params['expected_str_version']
                 self.assertEqual(expected_str_version, str(options))
