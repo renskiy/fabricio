@@ -1,6 +1,7 @@
+import functools
+
 import fabric.api
 import fabric.state
-import functools
 import mock
 import unittest2 as unittest
 
@@ -8,16 +9,7 @@ from fabric.utils import error
 
 from fabricio import docker, Options
 
-
-class _AttributeString(str):
-
-    def __new__(cls, *args, **kwargs):
-        kwargs.pop('succeeded', None)
-        return super(_AttributeString, cls).__new__(cls, *args, **kwargs)
-
-    def __init__(self, *args, **kwargs):
-        self.succeeded = kwargs.pop('succeeded', True)
-        super(_AttributeString, self).__init__(*args, **kwargs)
+from tests import AttributeString
 
 
 class ContainerTestCase(unittest.TestCase):
@@ -31,7 +23,7 @@ class ContainerTestCase(unittest.TestCase):
         self.disable_warnings.stop()
 
     def test_info(self):
-        return_value = _AttributeString('[{"Id": "123", "Image": "abc"}]')
+        return_value = AttributeString('[{"Id": "123", "Image": "abc"}]')
         container = docker.Container(name='name')
         expected_command = container.COMMAND_INFO.format(container='name')
         with mock.patch.object(fabric.api, 'sudo', return_value=return_value) as sudo:
@@ -39,7 +31,7 @@ class ContainerTestCase(unittest.TestCase):
             sudo.assert_called_once_with(expected_command)
 
     def test_delete(self):
-        return_value = _AttributeString('[{"Id": "123", "Image": "image"}]')
+        return_value = AttributeString('[{"Id": "123", "Image": "image"}]')
         cases = dict(
             delete=dict(
                 delete_kwargs=dict(),
@@ -260,14 +252,14 @@ class ContainerTestCase(unittest.TestCase):
         def side_effect(command):
             result = next(sudo_results)
             if callable(result):
-                result = result() or _AttributeString(succeeded=False)
+                result = result() or AttributeString(succeeded=False)
             return result
         cases = dict(
             no_change=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),  # current container info
-                    _AttributeString('[{"Id": "image_id"}]'),  # current container image info
-                    _AttributeString('[{"Id": "image_id"}]'),  # new image info
+                    AttributeString('[{"Image": "image_id"}]'),  # current container info
+                    AttributeString('[{"Id": "image_id"}]'),  # current container image info
+                    AttributeString('[{"Id": "image_id"}]'),  # new image info
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -278,9 +270,9 @@ class ContainerTestCase(unittest.TestCase):
             ),
             no_change_with_tag=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),  # current container info
-                    _AttributeString('[{"Id": "image_id"}]'),  # current container image info
-                    _AttributeString('[{"Id": "image_id"}]'),  # new image info
+                    AttributeString('[{"Image": "image_id"}]'),  # current container info
+                    AttributeString('[{"Id": "image_id"}]'),  # current container image info
+                    AttributeString('[{"Id": "image_id"}]'),  # new image info
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -291,13 +283,13 @@ class ContainerTestCase(unittest.TestCase):
             ),
             no_change_forced=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),  # obsolete container info
-                    _AttributeString('[{"Id": "image_id"}]'),  # obsolete container image info
-                    _AttributeString(''),  # delete obsolete container
+                    AttributeString('[{"Image": "image_id"}]'),  # obsolete container info
+                    AttributeString('[{"Id": "image_id"}]'),  # obsolete container image info
+                    AttributeString(''),  # delete obsolete container
                     functools.partial(error, 'can not delete image'),  # delete obsolete container image
-                    _AttributeString(''),  # rename current container
-                    _AttributeString(''),  # stop current container
-                    _AttributeString('new_container_id'),  # run new container
+                    AttributeString(''),  # rename current container
+                    AttributeString(''),  # stop current container
+                    AttributeString('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name_backup')),
@@ -319,16 +311,16 @@ class ContainerTestCase(unittest.TestCase):
             ),
             regular=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),  # current container info
-                    _AttributeString('[{"Id": "image_id"}]'),  # current container image info
-                    _AttributeString('[{"Id": "new_image_id"}]'),  # new image info
-                    _AttributeString('[{"Image": "old_image_id"}]'),  # obsolete container info
-                    _AttributeString('[{"Id": "old_image_id"}]'),  # obsolete container image info
-                    _AttributeString(''),  # delete obsolete container
-                    _AttributeString(''),  # delete obsolete container image
-                    _AttributeString(''),  # rename current container
-                    _AttributeString(''),  # stop current container
-                    _AttributeString('new_container_id'),  # run new container
+                    AttributeString('[{"Image": "image_id"}]'),  # current container info
+                    AttributeString('[{"Id": "image_id"}]'),  # current container image info
+                    AttributeString('[{"Id": "new_image_id"}]'),  # new image info
+                    AttributeString('[{"Image": "old_image_id"}]'),  # obsolete container info
+                    AttributeString('[{"Id": "old_image_id"}]'),  # obsolete container image info
+                    AttributeString(''),  # delete obsolete container
+                    AttributeString(''),  # delete obsolete container image
+                    AttributeString(''),  # rename current container
+                    AttributeString(''),  # stop current container
+                    AttributeString('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -353,16 +345,16 @@ class ContainerTestCase(unittest.TestCase):
             ),
             regular_with_tag=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),  # current container info
-                    _AttributeString('[{"Id": "image_id"}]'),  # current container image info
-                    _AttributeString('[{"Id": "new_image_id"}]'),  # new image info
-                    _AttributeString('[{"Image": "old_image_id"}]'),  # obsolete container info
-                    _AttributeString('[{"Id": "old_image_id"}]'),  # obsolete container image info
-                    _AttributeString(''),  # delete obsolete container
-                    _AttributeString(''),  # delete obsolete container image
-                    _AttributeString(''),  # rename current container
-                    _AttributeString(''),  # stop current container
-                    _AttributeString('new_container_id'),  # run new container
+                    AttributeString('[{"Image": "image_id"}]'),  # current container info
+                    AttributeString('[{"Id": "image_id"}]'),  # current container image info
+                    AttributeString('[{"Id": "new_image_id"}]'),  # new image info
+                    AttributeString('[{"Image": "old_image_id"}]'),  # obsolete container info
+                    AttributeString('[{"Id": "old_image_id"}]'),  # obsolete container image info
+                    AttributeString(''),  # delete obsolete container
+                    AttributeString(''),  # delete obsolete container image
+                    AttributeString(''),  # rename current container
+                    AttributeString(''),  # stop current container
+                    AttributeString('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -387,13 +379,13 @@ class ContainerTestCase(unittest.TestCase):
             ),
             regular_without_backup=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),  # current container info
-                    _AttributeString('[{"Id": "image_id"}]'),  # current container image info
-                    _AttributeString('[{"Id": "new_image_id"}]'),  # new image info
+                    AttributeString('[{"Image": "image_id"}]'),  # current container info
+                    AttributeString('[{"Id": "image_id"}]'),  # current container image info
+                    AttributeString('[{"Id": "new_image_id"}]'),  # new image info
                     functools.partial(error, 'backup container not found'),  # obsolete container info
-                    _AttributeString(''),  # rename current container
-                    _AttributeString(''),  # stop current container
-                    _AttributeString('new_container_id'),  # run new container
+                    AttributeString(''),  # rename current container
+                    AttributeString(''),  # stop current container
+                    AttributeString('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -419,7 +411,7 @@ class ContainerTestCase(unittest.TestCase):
                     functools.partial(error, 'backup container not found'),  # obsolete container info
                     functools.partial(error, 'current container not found'),  # rename current container
                     functools.partial(error, 'current container not found'),  # stop current container
-                    _AttributeString('new_container_id'),  # run new container
+                    AttributeString('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -454,17 +446,17 @@ class ContainerTestCase(unittest.TestCase):
         def side_effect(command):
             result = next(sudo_results)
             if callable(result):
-                result = result() or _AttributeString(succeeded=False)
+                result = result() or AttributeString(succeeded=False)
             return result
         cases = dict(
             regular=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "failed_image_id"}]'),  # failed container info
-                    _AttributeString('[{"Id": "failed_image_id"}]'),  # failed container image info
-                    _AttributeString(''),  # delete failed container
-                    _AttributeString(''),  # delete failed container image
-                    _AttributeString(''),  # start backup container
-                    _AttributeString(''),  # rename backup container
+                    AttributeString('[{"Image": "failed_image_id"}]'),  # failed container info
+                    AttributeString('[{"Id": "failed_image_id"}]'),  # failed container image info
+                    AttributeString(''),  # delete failed container
+                    AttributeString(''),  # delete failed container image
+                    AttributeString(''),  # start backup container
+                    AttributeString(''),  # rename backup container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -478,12 +470,12 @@ class ContainerTestCase(unittest.TestCase):
             ),
             can_not_delete_failed_image=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "failed_image_id"}]'),  # failed container info
-                    _AttributeString('[{"Id": "failed_image_id"}]'),  # failed container image info
-                    _AttributeString(''),  # delete failed container
+                    AttributeString('[{"Image": "failed_image_id"}]'),  # failed container info
+                    AttributeString('[{"Id": "failed_image_id"}]'),  # failed container image info
+                    AttributeString(''),  # delete failed container
                     functools.partial(error, 'can not delete image'),  # delete failed container image
-                    _AttributeString(''),  # start backup container
-                    _AttributeString(''),  # rename backup container
+                    AttributeString(''),  # start backup container
+                    AttributeString(''),  # rename backup container
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),

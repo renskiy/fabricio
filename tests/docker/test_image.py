@@ -1,23 +1,15 @@
+import functools
+
 import fabric.api
 import fabric.state
-import functools
 import mock
 import unittest2 as unittest
 
 from fabric.utils import error
 
-from fabricio import docker, Options
+from fabricio import docker
 
-
-class _AttributeString(str):
-
-    def __new__(cls, *args, **kwargs):
-        kwargs.pop('succeeded', None)
-        return super(_AttributeString, cls).__new__(cls, *args, **kwargs)
-
-    def __init__(self, *args, **kwargs):
-        self.succeeded = kwargs.pop('succeeded', True)
-        super(_AttributeString, self).__init__(*args, **kwargs)
+from tests import AttributeString
 
 
 class ImageTestCase(unittest.TestCase):
@@ -31,15 +23,10 @@ class ImageTestCase(unittest.TestCase):
         self.disable_warnings.stop()
 
     def test_info(self):
-        def side_effect(command):
-            result = next(sudo_results)
-            if callable(result):
-                result = result() or _AttributeString(succeeded=False)
-            return result
         cases = dict(
             without_container=dict(
                 sudo_results=(
-                    _AttributeString('[{"Id": "image_id"}]'),
+                    AttributeString('[{"Id": "image_id"}]'),
                 ),
                 expected_commands=[
                     mock.call(docker.Image.COMMAND_INFO.format(image='image:latest')),
@@ -48,7 +35,7 @@ class ImageTestCase(unittest.TestCase):
             ),
             without_container_but_with_tag=dict(
                 sudo_results=(
-                    _AttributeString('[{"Id": "image_id"}]'),
+                    AttributeString('[{"Id": "image_id"}]'),
                 ),
                 expected_commands=[
                     mock.call(docker.Image.COMMAND_INFO.format(image='image:tag')),
@@ -57,8 +44,19 @@ class ImageTestCase(unittest.TestCase):
             ),
             with_container=dict(
                 sudo_results=(
-                    _AttributeString('[{"Image": "image_id"}]'),
-                    _AttributeString('[{"Id": "image_id"}]'),
+                    AttributeString('[{"Image": "image_id"}]'),
+                    AttributeString('[{"Id": "image_id"}]'),
+                ),
+                expected_commands=[
+                    mock.call(docker.Container.COMMAND_INFO.format(container='name')),
+                    mock.call(docker.Image.COMMAND_INFO.format(image='image_id')),
+                ],
+                init_kwargs=dict(name='image', container=docker.Container(name='name')),
+            ),
+            with_container_and_tag=dict(
+                sudo_results=(
+                    AttributeString('[{"Image": "image_id"}]'),
+                    AttributeString('[{"Id": "image_id"}]'),
                 ),
                 expected_commands=[
                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
@@ -73,7 +71,59 @@ class ImageTestCase(unittest.TestCase):
                 expected_commands = params['expected_commands']
                 init_kwargs = params['init_kwargs']
                 image = docker.Image(**init_kwargs)
-                with mock.patch.object(fabric.api, 'sudo', side_effect=side_effect) as sudo:
+                with mock.patch.object(fabric.api, 'sudo', side_effect=sudo_results) as sudo:
                     self.assertEqual({'Id': 'image_id'}, image.info)
+                    sudo.assert_has_calls(expected_commands)
+                    self.assertEqual(len(expected_commands), sudo.call_count)
+
+    def test_delete(self):
+        def side_effect(command):
+            result = next(sudo_results)
+            if callable(result):
+                result = result() or AttributeString(succeeded=False)
+            return result
+        cases = dict(
+            regular=dict(
+                sudo_results=(
+                    AttributeString('[{"Id": "image_id"}]'),
+                    '',
+                ),
+                expected_commands=[
+                    mock.call(docker.Image.COMMAND_INFO.format(image='image:latest')),
+                    mock.call(docker.Image.COMMAND_DELETE.format(image='image_id')),
+                ],
+                delete_kwargs=dict(),
+            ),
+            failed_deletion=dict(
+                sudo_results=(
+                    AttributeString('[{"Id": "image_id"}]'),
+                    functools.partial(error, 'can not delete image'),
+                ),
+                expected_commands=[
+                    mock.call(docker.Image.COMMAND_INFO.format(image='image:latest')),
+                    mock.call(docker.Image.COMMAND_DELETE.format(image='image_id')),
+                ],
+                delete_kwargs=dict(ignore_delete_error=True),
+            ),
+            forced=dict(
+                sudo_results=(
+                    AttributeString('[{"Id": "image_id"}]'),
+                    '',
+                ),
+                expected_commands=[
+                    mock.call(docker.Image.COMMAND_INFO.format(image='image:latest')),
+                    mock.call(docker.Image.COMMAND_FORCE_DELETE.format(image='image_id')),
+                ],
+                delete_kwargs=dict(force=True),
+            ),
+        )
+        for case, params in cases.items():
+            with self.subTest(case=case):
+                sudo_results = iter(params['sudo_results'])
+                expected_commands = params['expected_commands']
+                delete_kwargs = params['delete_kwargs']
+                image = docker.Image(name='image')
+                with mock.patch.object(fabric.api, 'sudo', side_effect=side_effect) as sudo:
+                    image.delete(**delete_kwargs)
                     sudo.assert_has_calls(expected_commands)
                     self.assertEqual(len(expected_commands), sudo.call_count)
