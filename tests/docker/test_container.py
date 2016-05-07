@@ -502,8 +502,7 @@ class ContainerTestCase(unittest.TestCase):
                 sudo_results = iter(params['sudo_results'])
                 expected_commands = params['expected_commands']
                 revert_kwargs = params['revert_kwargs']
-                commands_count = len(expected_commands)
                 with mock.patch.object(fabric.api, 'sudo', side_effect=side_effect) as sudo:
                     container.revert(**revert_kwargs)
                     sudo.assert_has_calls(expected_commands)
-                    self.assertEqual(commands_count, sudo.call_count)
+                    self.assertEqual(len(expected_commands), sudo.call_count)
