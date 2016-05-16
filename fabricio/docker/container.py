@@ -71,6 +71,7 @@ class Container(object):
         self.get_image().run(
             cmd=self.cmd,
             temporary=False,
+            name=self.name,
             user=self.user,
             ports=self.ports,
             env=self.env,

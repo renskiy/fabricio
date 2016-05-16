@@ -8,7 +8,7 @@ from fabricio import docker
 
 class TestContainer(docker.Container):
 
-    image = 'image'
+    image = 'image:tag'
 
 
 class ContainerTestCase(unittest.TestCase):
@@ -101,92 +101,85 @@ class ContainerTestCase(unittest.TestCase):
             container.signal('SIGTERM')
             exec_command.assert_called_once_with(expected_command)
 
-#     def test_run(self):
-#         cases = dict(
-#             regular=dict(
-#                 init_kwargs=dict(
-#                     image='image',
-#                     name='name',
-#                 ),
-#                 expected_command=docker.Container.COMMAND_RUN.format(
-#                     image='image:latest',
-#                     cmd='',
-#                     options=Options([
-#                         ('name', 'name'),
-#                         ('detach', True),
-#                     ]),
-#                 ),
-#                 expected_vars=dict(id='id'),
-#             ),
-#             complex=dict(
-#                 init_kwargs=dict(
-#                     image='image',
-#                     name='name',
-#                     cmd='cmd',
-#                     user='user',
-#                     ports=['80:80', '443:443'],
-#                     env=['VAR1=val1', 'VAR2=val2'],
-#                     volumes=['/tmp:/tmp', '/root:/root:ro'],
-#                     links=['db:db', 'queue:queue'],
-#                     hosts=['host1:127.0.0.1', 'host2:127.0.0.1'],
-#                     network='network',
-#                     restart_policy='always',
-#                     stop_signal='SIGINT',
-#                     options=Options([
-#                         ('option1', 'value1'),
-#                         ('option2', 'value2'),
-#                     ])
-#                 ),
-#                 expected_command=docker.Container.COMMAND_RUN.format(
-#                     image='image:latest',
-#                     cmd='cmd',
-#                     options=Options([
-#                         ('option1', 'value1'),
-#                         ('option2', 'value2'),
-#                         ('name', 'name'),
-#                         ('detach', True),
-#                         ('publish', ['80:80', '443:443']),
-#                         ('restart', 'always'),
-#                         ('user', 'user'),
-#                         ('env', ['VAR1=val1', 'VAR2=val2']),
-#                         ('volume', ['/tmp:/tmp', '/root:/root:ro']),
-#                         ('link', ['db:db', 'queue:queue']),
-#                         ('add-host', ['host1:127.0.0.1', 'host2:127.0.0.1']),
-#                         ('net', 'network'),
-#                         ('stop-signal', 'SIGINT'),
-#                     ]),
-#                 ),
-#                 expected_vars=dict(id='id'),
-#             ),
-#             temporary=dict(
-#                 init_kwargs=dict(
-#                     image='image',
-#                     name='name',
-#                     temporary=True,
-#                 ),
-#                 expected_command=docker.Container.COMMAND_RUN.format(
-#                     image='image:latest',
-#                     cmd='',
-#                     options=Options([
-#                         ('name', 'name'),
-#                         ('rm', True),
-#                         ('tty', True),
-#                     ]),
-#                 ),
-#                 expected_vars=dict(),
-#             ),
-#         )
-#         for case, params in cases.items():
-#             with self.subTest(case=case):
-#                 init_kwargs = params['init_kwargs']
-#                 expected_command = params['expected_command']
-#                 expected_vars = params['expected_vars']
-#                 container = docker.Container(**init_kwargs)
-#                 with mock.patch.object(fabric.api, 'sudo', return_value='id') as sudo:
-#                     container.run()
-#                     sudo.assert_called_once_with(expected_command)
-#                     self.assertDictContainsSubset(expected_vars, vars(container))
-#
+    def test_run(self):
+        cases = dict(
+            basic=dict(
+                init_kwargs=dict(
+                    name='name',
+                ),
+                class_kwargs=dict(image='image:tag'),
+                expected_commands=[
+                    mock.call('docker inspect --type image image:tag'),
+                    mock.call('docker run --name name --detach image_id'),
+                ],
+                side_effect=(
+                    '[{"Id": "image_id"}]',
+                    'container_id',
+                ),
+            ),
+            complex=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(foo='bar'),
+                ),
+                class_kwargs=dict(
+                    image='image:tag',
+                    cmd='cmd',
+                    user='user',
+                    ports=['80:80', '443:443'],
+                    env=['FOO=foo', 'BAR=bar'],
+                    volumes=['/tmp:/tmp', '/root:/root:ro'],
+                    links=['db:db'],
+                    hosts=['host:192.168.0.1'],
+                    network='network',
+                    restart_policy='restart_policy',
+                    stop_signal='stop_signal',
+                ),
+                expected_commands=[
+                    mock.call('docker inspect --type image image:tag'),
+                    mock.call(
+                        'docker run '
+                        '--foo bar '
+                        '--name name '
+                        '--user user '
+                        '--publish 80:80 --publish 443:443 '
+                        '--env FOO=foo --env BAR=bar '
+                        '--volume /tmp:/tmp --volume /root:/root:ro '
+                        '--link db:db '
+                        '--add-host host:192.168.0.1 '
+                        '--net network '
+                        '--restart restart_policy '
+                        '--stop-signal stop_signal '
+                        '--detach '
+                        'image_id cmd'
+                    ),
+                ],
+                side_effect=(
+                    '[{"Id": "image_id"}]',
+                    'container_id',
+                ),
+            ),
+        )
+        for case, params in cases.items():
+            with self.subTest(case=case):
+                init_kwargs = params['init_kwargs']
+                class_kwargs = params['class_kwargs']
+                expected_commands = params['expected_commands']
+                side_effect = params['side_effect']
+                Container = type(docker.Container)(
+                    'Container',
+                    (docker.Container, ),
+                    class_kwargs,
+                )
+                container = Container(**init_kwargs)
+                with mock.patch.object(
+                    fabricio,
+                    'exec_command',
+                    side_effect=side_effect,
+                ) as exec_command:
+                    container.run()
+                    exec_command.assert_has_calls(expected_commands)
+
 #     @mock.patch.object(fabric.api, 'puts')
 #     def test_update(self, *args):
 #         def side_effect(command):

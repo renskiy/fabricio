@@ -42,6 +42,7 @@ class Image(object):
     @staticmethod
     def make_container_options(
         temporary=None,
+        name=None,
         user=None,
         ports=None,
         env=None,
@@ -55,6 +56,7 @@ class Image(object):
     ):
         options = fabricio.Options(options or ())
         options.update((
+            ('name', name),
             ('user', user),
             ('publish', ports),
             ('env', env),
@@ -90,6 +92,7 @@ class Image(object):
         self,
         cmd=None,
         temporary=True,
+        name=None,
         user=None,
         ports=None,
         env=None,
@@ -101,12 +104,12 @@ class Image(object):
         stop_signal=None,
         options=None,
     ):
-        command = 'docker run {options} {image} {cmd}'
-        return fabricio.exec_command(command.format(
+        command = 'docker run {options} {image} {cmd}'.format(
             image=self.id,
             cmd=cmd or '',
             options=self.make_container_options(
                 temporary=temporary,
+                name=name,
                 user=user,
                 ports=ports,
                 env=env,
@@ -118,4 +121,5 @@ class Image(object):
                 stop_signal=stop_signal,
                 options=options,
             ),
-        ))
+        )
+        return fabricio.exec_command(command.strip())
