@@ -1,118 +1,106 @@
-# import functools
-#
-# import fabric.api
-# import fabric.state
-# import mock
-# import unittest2 as unittest
-#
-# from fabric.utils import error
-#
-# from fabricio import docker, Options
-#
-# from tests import AttributeString
-#
-#
-# class ContainerTestCase(unittest.TestCase):
-#
-#     disable_warnings = mock.patch.dict(fabric.state.output, {'warnings': False})
-#
-#     def setUp(self):
-#         self.disable_warnings.start()
-#
-#     def tearDown(self):
-#         self.disable_warnings.stop()
-#
-#     def test_info(self):
-#         return_value = AttributeString('[{"Id": "123", "Image": "abc"}]')
-#         container = docker.Container(name='name')
-#         expected_command = container.COMMAND_INFO.format(container='name')
-#         with mock.patch.object(fabric.api, 'sudo', return_value=return_value) as sudo:
-#             self.assertEqual(dict(Id='123', Image='abc'), container.info)
-#             sudo.assert_called_once_with(expected_command)
-#
-#     def test_delete(self):
-#         return_value = AttributeString('[{"Id": "123", "Image": "image"}]')
-#         cases = dict(
-#             delete=dict(
-#                 delete_kwargs=dict(),
-#                 expected_commands=[
-#                     mock.call(docker.Container.COMMAND_DELETE.format(container='name')),
-#                 ],
-#             ),
-#             force_delete=dict(
-#                 delete_kwargs=dict(force=True),
-#                 expected_commands=[
-#                     mock.call(docker.Container.COMMAND_FORCE_DELETE.format(container='name')),
-#                 ],
-#             ),
-#             delete_with_image=dict(
-#                 delete_kwargs=dict(delete_image=True),
-#                 expected_commands=[
-#                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
-#                     mock.call(docker.Image.COMMAND_INFO.format(image='image')),
-#                     mock.call(docker.Container.COMMAND_DELETE.format(container='name')),
-#                     mock.call(docker.Image.COMMAND_DELETE.format(image='123')),
-#                 ],
-#             ),
-#             force_delete_with_image=dict(
-#                 delete_kwargs=dict(force=True, delete_image=True),
-#                 expected_commands=[
-#                     mock.call(docker.Container.COMMAND_INFO.format(container='name')),
-#                     mock.call(docker.Image.COMMAND_INFO.format(image='image')),
-#                     mock.call(docker.Container.COMMAND_FORCE_DELETE.format(container='name')),
-#                     mock.call(docker.Image.COMMAND_DELETE.format(image='123')),
-#                 ],
-#             ),
-#         )
-#         for case, params in cases.items():
-#             with self.subTest(case=case):
-#                 container = docker.Container(image='image', name='name')
-#                 with mock.patch.object(fabric.api, 'sudo', return_value=return_value) as sudo:
-#                     expected_commands = params['expected_commands']
-#                     commands_count = len(expected_commands)
-#                     delete_kwargs = params['delete_kwargs']
-#                     container.delete(**delete_kwargs)
-#                     sudo.assert_has_calls(expected_commands)
-#                     self.assertEqual(commands_count, sudo.call_count)
-#
-#     def test_execute(self):
-#         cases = dict(
-#             regular=dict(
-#                 container_kwargs=dict(
-#                     image='image',
-#                     name='name',
-#                 ),
-#                 expected_command=docker.Container.COMMAND_EXECUTE.format(
-#                     container='name',
-#                     cmd='cmd',
-#                 ),
-#             ),
-#             temporary=dict(
-#                 container_kwargs=dict(
-#                     image='image',
-#                     name='name',
-#                     temporary=True,
-#                 ),
-#                 expected_command=docker.Container.COMMAND_RUN.format(
-#                     image='image:latest',
-#                     cmd='cmd',
-#                     options=Options([
-#                         ('name', 'name'),
-#                         ('rm', True),
-#                         ('tty', True),
-#                     ]),
-#                 ),
-#             ),
-#         )
-#         for case, params in cases.items():
-#             with self.subTest(case=case):
-#                 container_kwargs = params['container_kwargs']
-#                 expected_command = params['expected_command']
-#                 container = docker.Container(**container_kwargs)
-#                 with mock.patch.object(fabric.api, 'sudo') as sudo:
-#                     container.execute('cmd')
-#                     sudo.assert_called_once_with(expected_command)
-#
+import mock
+import unittest2 as unittest
+
+import fabricio
+
+from fabricio import docker
+
+
+class TestContainer(docker.Container):
+
+    image = 'image'
+
+
+class ContainerTestCase(unittest.TestCase):
+
+    def test_info(self):
+        return_value = '[{"Id": "123", "Image": "abc"}]'
+        container = TestContainer(name='name')
+        expected_command = 'docker inspect --type container name'
+        with mock.patch.object(
+            fabricio,
+            'exec_command',
+            return_value=return_value,
+        ) as exec_command:
+            self.assertEqual(dict(Id='123', Image='abc'), container.info)
+            exec_command.assert_called_once_with(expected_command)
+
+    def test_delete(self):
+        cases = dict(
+            regular=dict(
+                delete_kwargs=dict(),
+                expected_command='docker rm name',
+            ),
+            forced=dict(
+                delete_kwargs=dict(force=True),
+                expected_command='docker rm --force name',
+            ),
+        )
+        for case, params in cases.items():
+            with self.subTest(case=case):
+                container = TestContainer(name='name')
+                with mock.patch.object(
+                    fabricio,
+                    'exec_command',
+                ) as exec_command:
+                    expected_command = params['expected_command']
+                    delete_kwargs = params['delete_kwargs']
+
+                    container.delete(**delete_kwargs)
+
+                    exec_command.assert_called_once_with(
+                        expected_command,
+                        ignore_errors=False,
+                    )
+
+    def test_execute(self):
+        container = TestContainer(name='name')
+        expected_command = 'docker exec --tty name cmd'
+        with mock.patch.object(
+            fabricio,
+            'exec_command',
+            return_value='result'
+        ) as exec_command:
+            result = container.execute('cmd')
+            exec_command.assert_called_once_with(expected_command)
+            self.assertEqual('result', result)
+
+    def test_start(self):
+        container = TestContainer(name='name')
+        expected_command = 'docker start name'
+        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+            container.start()
+            exec_command.assert_called_once_with(expected_command)
+
+    def test_stop(self):
+        container = TestContainer(name='name')
+        expected_command = 'docker stop --time 10 name'
+        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+            container.stop()
+            exec_command.assert_called_once_with(expected_command)
+
+    def test_restart(self):
+        container = TestContainer(name='name')
+        expected_command = 'docker restart --time 10 name'
+        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+            container.restart()
+            exec_command.assert_called_once_with(expected_command)
+
+    def test_rename(self):
+        container = TestContainer(name='name')
+        expected_command = 'docker rename name new_name'
+        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+            container.rename('new_name')
+            exec_command.assert_called_once_with(expected_command)
+            self.assertEqual('new_name', container.name)
+
+    def test_signal(self):
+        container = TestContainer(name='name')
+        expected_command = 'docker kill --signal SIGTERM name'
+        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+            container.signal('SIGTERM')
+            exec_command.assert_called_once_with(expected_command)
+
 #     def test_run(self):
 #         cases = dict(
 #             regular=dict(
@@ -198,54 +186,6 @@
 #                     container.run()
 #                     sudo.assert_called_once_with(expected_command)
 #                     self.assertDictContainsSubset(expected_vars, vars(container))
-#
-#     @mock.patch.object(fabric.api, 'sudo')
-#     def test_start(self, sudo):
-#         expected_command = docker.Container.COMMAND_START.format(container='name')
-#         container = docker.Container(name='name')
-#         container.start()
-#         sudo.assert_called_once_with(expected_command)
-#
-#     @mock.patch.object(fabric.api, 'sudo')
-#     def test_stop(self, sudo):
-#         expected_command = docker.Container.COMMAND_STOP.format(
-#             container='name',
-#             timeout=10,
-#         )
-#         container = docker.Container(name='name')
-#         container.stop(timeout=10)
-#         sudo.assert_called_once_with(expected_command)
-#
-#     @mock.patch.object(fabric.api, 'sudo')
-#     def test_restart(self, sudo):
-#         expected_command = docker.Container.COMMAND_RESTART.format(
-#             container='name',
-#             timeout=10,
-#         )
-#         container = docker.Container(name='name')
-#         container.restart(timeout=10)
-#         sudo.assert_called_once_with(expected_command)
-#
-#     @mock.patch.object(fabric.api, 'sudo')
-#     def test_signal(self, sudo):
-#         expected_command = docker.Container.COMMAND_SIGNAL.format(
-#             container='name',
-#             signal='SIGINT',
-#         )
-#         container = docker.Container(name='name')
-#         container.signal('SIGINT')
-#         sudo.assert_called_once_with(expected_command)
-#
-#     @mock.patch.object(fabric.api, 'sudo')
-#     def test_rename(self, sudo):
-#         expected_command = docker.Container.COMMAND_RENAME.format(
-#             container='name',
-#             new_name='new_name',
-#         )
-#         container = docker.Container(name='name')
-#         container.rename('new_name')
-#         sudo.assert_called_once_with(expected_command)
-#         self.assertEqual('new_name', container.name)
 #
 #     @mock.patch.object(fabric.api, 'puts')
 #     def test_update(self, *args):

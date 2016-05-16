@@ -116,8 +116,10 @@ class ContainerTestCase(unittest.TestCase):
                     side_effect=side_effect,
                 ) as exec_command:
                     container = TestContainer(name='name')
+
                     container.revert_migrations()
                     del container.revert_migrations.__func__.return_value
+
                     exec_command.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),
