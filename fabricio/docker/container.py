@@ -1,199 +1,146 @@
 import json
-import warnings
 
-from cached_property import cached_property
-from fabric import api as fab
+import six
 
-from fabricio import Options
-from fabricio.docker import Image
+import fabricio
+
+from . import Image
 
 
+def with_image(image_attr):
+    class _WithImage(type):
+        def __init__(cls, *args):
+            image = getattr(cls, image_attr, None)
+            if image is not None and not isinstance(image, Image):
+                setattr(cls, image_attr, Image(image))
+            super(_WithImage, cls).__init__(cls)
+    return _WithImage
+
+
+@six.add_metaclass(with_image('image'))
 class Container(object):
 
-    image = None
+    image = None  # type: Image
 
-    cmd = ''
+    cmd = None
 
-    COMMAND_INFO = 'docker inspect --type container {container}'
-    COMMAND_DELETE = 'docker rm {container}'
-    COMMAND_FORCE_DELETE = 'docker rm --force {container}'
-    COMMAND_RUN = 'docker run {options} {image} {cmd}'
-    COMMAND_EXECUTE = 'docker exec --tty {container} {cmd}'
-    COMMAND_START = 'docker start {container}'
-    COMMAND_STOP = 'docker stop --time {timeout} {container}'
-    COMMAND_RESTART = 'docker restart --time {timeout} {container}'
-    COMMAND_RENAME = 'docker rename {container} {new_name}'
-    COMMAND_SIGNAL = 'docker kill --signal {signal} {container}'
+    user = None
 
-    def __init__(
-        self,
-        image=None,
-        name=None,
-        cmd=None,
-        temporary=False,
-        user=None,
-        ports=None,
-        env=None,
-        volumes=None,
-        links=None,
-        hosts=None,
-        network=None,
-        restart_policy=None,
-        stop_signal=None,
-        options=None,
-    ):
-        image = image or self.image
-        self.image = image and Image(image, container=self)
-        if name:
-            self.name = name
-        if temporary:
-            if ports or restart_policy:
-                warnings.warn('Provided ports and/or restart_policy were '
-                              'ignored because of temporary flag was set')
-            self.ports = []
-            self.restart_policy = None
-        else:
-            self.restart_policy = restart_policy
-            self.ports = ports or []
-        self.cmd = self.cmd if cmd is None else cmd
-        self.temporary = temporary
-        self.user = user
-        self.env = env or []
-        self.volumes = volumes or []
-        self.links = links or []
-        self.hosts = hosts or []
-        self.network = network
-        self.stop_signal = stop_signal
-        self.additional_options = options or {}
+    ports = None
+
+    env = None
+
+    volumes = None
+
+    links = None
+
+    hosts = None
+
+    network = None
+
+    restart_policy = None
+
+    stop_signal = None
+
+    def __init__(self, name, options=None):
+        self.name = name
+        self.options = options
 
     def __str__(self):
-        return self.name
+        return str(self.name)
 
-    def __repr__(self):
-        return '<Container {__str__}>'.format(__str__=self.__str__())
-
-    @property
-    def options(self):
-        options = Options(self.additional_options)
-        options.update([
-            ('name', self.name),
-            ('detach', not self.temporary),
-            ('rm', self.temporary),
-            ('tty', self.temporary),
-            ('publish', self.ports),
-            ('restart', self.restart_policy),
-            ('user', self.user),
-            ('env', self.env),
-            ('volume', self.volumes),
-            ('link', self.links),
-            ('add-host', self.hosts),
-            ('net', self.network),
-            ('stop-signal', self.stop_signal),
-        ])
-        return options
-
-    def fork(
-        self,
-        image=None,
-        name=None,
-        cmd=None,
-        temporary=False,
-        options=None,
-    ):
-        return type(self)(
-            image=image or self.image,
-            name=name,
-            cmd=self.cmd if cmd is None else cmd,
-            temporary=temporary,
-            options=dict(self.options, **options or {}),
-        )
-
-    @cached_property
-    def name(self):
-        name = self.info.get('Name')
-        return name and name.lstrip('/')
-
-    @cached_property
-    def id(self):
-        return self.info.get('Id')
+    @classmethod
+    def fork(cls, name, options=None):
+        return cls(name=name, options=options)
 
     @property
     def info(self):
-        if 'id' in vars(self):
-            container = self.id
-        elif 'name' in vars(self):
-            container = self.name
-        else:
-            raise RuntimeError('Can\'t get container info')
-        info = fab.sudo(self.COMMAND_INFO.format(container=container))
-        return info.succeeded and json.loads(str(info))[0] or {}
+        command = 'docker inspect --type container {container}'
+        info = fabricio.exec_command(command.format(container=self))
+        return json.loads(info)[0]
 
-    def delete(self, force=False, delete_image=False):
-        if delete_image:
-            self.image.delete(
-                force_container_delete=force,
-                ignore_delete_error=True,
-            )
-        else:
-            command = force and self.COMMAND_FORCE_DELETE or self.COMMAND_DELETE
-            fab.sudo(command.format(container=self))
-
-    def _run(self, cmd=None):
-        return fab.sudo(self.COMMAND_RUN.format(
-            image=self.image,
-            cmd=self.cmd if cmd is None else cmd,
-            options=self.options,
-        ))
+    def delete(self, force=False, ignore_errors=False):
+        command = 'docker rm {force}{container}'
+        force = force and '--force ' or ''
+        fabricio.exec_command(
+            command.format(container=self, force=force),
+            ignore_errors=ignore_errors,
+        )
 
     def run(self):
-        result = self._run()
-        if not self.temporary:
-            self.id = str(result)
+        self.get_image().run(
+            cmd=self.cmd,
+            temporary=False,
+            user=self.user,
+            ports=self.ports,
+            env=self.env,
+            volumes=self.volumes,
+            links=self.links,
+            hosts=self.hosts,
+            network=self.network,
+            restart_policy=self.restart_policy,
+            stop_signal=self.stop_signal,
+            options=self.options,
+        )
 
     def execute(self, cmd):
-        if self.temporary:
-            return self._run(cmd)
-        return fab.sudo(self.COMMAND_EXECUTE.format(container=self, cmd=cmd))
+        command = 'docker exec --tty {container} {cmd}'
+        return fabricio.exec_command(command.format(container=self, cmd=cmd))
 
     def start(self):
-        fab.sudo(self.COMMAND_START.format(container=self))
+        command = 'docker start {container}'
+        fabricio.exec_command(command.format(container=self))
 
     def stop(self, timeout=10):
-        fab.sudo(self.COMMAND_STOP.format(container=self, timeout=timeout))
+        command = 'docker stop --time {timeout} {container}'
+        fabricio.exec_command(command.format(container=self, timeout=timeout))
 
     def restart(self, timeout=10):
-        fab.sudo(self.COMMAND_RESTART.format(container=self, timeout=timeout))
+        command = 'docker restart --time {timeout} {container}'
+        fabricio.exec_command(command.format(container=self, timeout=timeout))
 
     def rename(self, new_name):
-        fab.sudo(self.COMMAND_RENAME.format(container=self, new_name=new_name))
+        command = 'docker rename {container} {new_name}'
+        fabricio.exec_command(command.format(container=self, new_name=new_name))
         self.name = new_name
 
     def signal(self, signal):
-        fab.sudo(self.COMMAND_SIGNAL.format(container=self, signal=signal))
+        command = 'docker kill --signal {signal} {container}'
+        fabricio.exec_command(command.format(container=self, signal=signal))
 
     def update(self, force=False, tag=None):
-        tag = tag or self.image.tag
         if not force:
-            with fab.settings(warn_only=True):
+            try:
                 current_image_id = self.image.id
-            if current_image_id and current_image_id == self.image[tag].id:
-                # TODO make special log method
-                fab.puts('No image change detected. Upgrade skipped.')
-                return
+            except RuntimeError:  # current container not found
+                pass
+            else:
+                if current_image_id == self.get_image(tag=tag).id:
+                    fabricio.log('No change detected, update skipped.')
+                    return
         new_container = self.fork(name=self.name)
-        with fab.settings(warn_only=True):
-            backup_container = self.backup_container
-            backup_container.delete(delete_image=True)
-            self.rename(backup_container.name)
+        obsolete_container = self.get_backup_container()
+        obsolete_image = obsolete_container.image
+        obsolete_container.delete(ignore_errors=True)
+        obsolete_image.delete(ignore_errors=True)
+        try:
+            self.rename(obsolete_container.name)
             self.stop()
+        except RuntimeError:
+            pass
         new_container.run()
 
-    def revert(self, delete_image=True):
-        backup_container = self.backup_container
-        self.delete(force=True, delete_image=delete_image)
+    def revert(self):
+        failed_image = self.image
+        self.delete(force=True)
+        failed_image.delete(ignore_errors=True)
+        backup_container = self.get_backup_container()
         backup_container.start()
         backup_container.rename(self.name)
 
-    @property
-    def backup_container(self):
+    def get_backup_container(self):
         return self.fork(name='{container}_backup'.format(container=self))
+
+    @classmethod
+    def get_image(cls, tag=None):
+        return cls.image[tag]
