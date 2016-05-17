@@ -27,7 +27,8 @@ class Migration(str):
 class DjangoContainer(docker.Container):
     """
     Be sure you use proper Dockerfile's WORKDIR directive
-    which points to directory where manage.py placed
+    (or another alternative) which points to the directory where
+    manage.py placed
     """
 
     @classmethod
