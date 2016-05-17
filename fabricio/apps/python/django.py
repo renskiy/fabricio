@@ -25,6 +25,10 @@ class Migration(str):
 
 
 class DjangoContainer(docker.Container):
+    """
+    Be sure you use proper Dockerfile's WORKDIR directive
+    which points to directory where manage.py placed
+    """
 
     @classmethod
     @fab.runs_once

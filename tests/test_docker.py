@@ -62,7 +62,10 @@ class ContainerTestCase(unittest.TestCase):
             return_value='result'
         ) as exec_command:
             result = container.execute('cmd')
-            exec_command.assert_called_once_with(expected_command)
+            exec_command.assert_called_once_with(
+                expected_command,
+                ignore_errors=False,
+            )
             self.assertEqual('result', result)
 
     def test_start(self):

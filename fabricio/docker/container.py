@@ -84,9 +84,12 @@ class Container(object):
             options=self.options,
         )
 
-    def execute(self, cmd):
+    def execute(self, cmd, ignore_errors=False):
         command = 'docker exec --tty {container} {cmd}'
-        return fabricio.exec_command(command.format(container=self, cmd=cmd))
+        return fabricio.exec_command(
+            command.format(container=self, cmd=cmd),
+            ignore_errors=ignore_errors,
+        )
 
     def start(self):
         command = 'docker start {container}'
