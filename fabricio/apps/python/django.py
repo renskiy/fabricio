@@ -26,12 +26,13 @@ class Migration(str):
 
 class DjangoContainer(docker.Container):
 
+    @classmethod
     @fab.runs_once
-    def apply_migrations(self, tag=None):
-        self.get_image(tag=tag).run('manage.py migrate --noinput')
+    def apply_migrations(cls, tag=None):
+        cls.image[tag].run('manage.py migrate --noinput')
 
     def update(self, force=False, tag=None):
-        self.apply_migrations(tag)
+        self.apply_migrations(tag=tag)
         super(DjangoContainer, self).update(force=force, tag=tag)
 
     @staticmethod

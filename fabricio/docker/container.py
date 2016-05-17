@@ -49,9 +49,9 @@ class Container(object):
     def __str__(self):
         return str(self.name)
 
-    @classmethod
-    def fork(cls, name, options=None):
-        return cls(name=name, options=options)
+    def fork(self, name, options=None):
+        options = options or self.options
+        return self.__class__(name=name, options=options)
 
     @property
     def info(self):
@@ -67,8 +67,8 @@ class Container(object):
             ignore_errors=ignore_errors,
         )
 
-    def run(self):
-        self.get_image().run(
+    def run(self, tag=None):
+        self.__class__.image[tag].run(
             cmd=self.cmd,
             temporary=False,
             name=self.name,
@@ -116,24 +116,31 @@ class Container(object):
             except RuntimeError:  # current container not found
                 pass
             else:
-                if current_image_id == self.get_image(tag=tag).id:
+                new_image = self.__class__.image[tag]
+                if current_image_id == new_image.id:
                     fabricio.log('No change detected, update skipped.')
                     return
         new_container = self.fork(name=self.name)
         obsolete_container = self.get_backup_container()
-        obsolete_image = obsolete_container.image
-        obsolete_container.delete(ignore_errors=True)
-        obsolete_image.delete(ignore_errors=True)
         try:
-            self.rename(obsolete_container.name)
-            self.stop()
+            obsolete_image = obsolete_container.image
         except RuntimeError:
             pass
-        new_container.run()
+        else:
+            obsolete_container.delete()
+            obsolete_image.delete(ignore_errors=True)
+        try:
+            self.rename(obsolete_container.name)
+        except RuntimeError:
+            pass
+        else:
+            self.stop()
+        new_container.run(tag=tag)
 
     def revert(self):
         failed_image = self.image
-        self.delete(force=True)
+        self.stop()
+        self.delete()
         failed_image.delete(ignore_errors=True)
         backup_container = self.get_backup_container()
         backup_container.start()
@@ -141,7 +148,3 @@ class Container(object):
 
     def get_backup_container(self):
         return self.fork(name='{container}_backup'.format(container=self))
-
-    @classmethod
-    def get_image(cls, tag=None):
-        return cls.image[tag]

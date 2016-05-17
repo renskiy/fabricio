@@ -1,7 +1,5 @@
 import json
 
-from cached_property import cached_property
-
 import fabricio
 
 
@@ -11,9 +9,13 @@ class Image(object):
         forced_tag = tag
         self.name, _, tag = name and str(name).partition(':') or [None] * 3
         self.tag = forced_tag or tag or 'latest'
+        self.container_image_id = None
 
     def __str__(self):
-        return '{name}:{tag}'.format(name=self.name, tag=self.tag)
+        return self.container_image_id or '{name}:{tag}'.format(
+            name=self.name,
+            tag=self.tag,
+        )
 
     def __get__(self, container, container_cls):
         if container is None:
@@ -23,7 +25,7 @@ class Image(object):
             name=self.name,
             tag=self.tag,
         )
-        image.id = container.info['Image']
+        image.container_image_id = container.info['Image']
         return image
 
     def __getitem__(self, tag):
@@ -76,9 +78,9 @@ class Image(object):
     def info(self):
         return self._get_image_info(self)
 
-    @cached_property
+    @property
     def id(self):
-        return self.info.get('Id')
+        return self.container_image_id or self.info.get('Id')
 
     def delete(self, force=False, ignore_errors=False):
         command = 'docker rmi {force}{image}'
@@ -104,8 +106,9 @@ class Image(object):
         stop_signal=None,
         options=None,
     ):
-        command = 'docker run {options} {image} {cmd}'.format(
-            image=self.id,
+        command = 'docker run {options} {image} {cmd}'
+        return fabricio.exec_command(command.format(
+            image=self,
             cmd=cmd or '',
             options=self.make_container_options(
                 temporary=temporary,
@@ -121,5 +124,4 @@ class Image(object):
                 stop_signal=stop_signal,
                 options=options,
             ),
-        )
-        return fabricio.exec_command(command.strip())
+        ))

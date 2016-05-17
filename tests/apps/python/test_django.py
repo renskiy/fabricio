@@ -8,7 +8,7 @@ from fabricio.apps.python.django import DjangoContainer
 
 class TestContainer(DjangoContainer):
 
-    image = 'image'
+    image = 'image:tag'
 
 
 class ContainerTestCase(unittest.TestCase):
