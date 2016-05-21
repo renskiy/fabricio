@@ -2,7 +2,7 @@ import json
 
 import fabricio
 
-from fabricio.utils import writeable_property
+from fabricio.utils import writeable_property, Options
 
 
 class Image(object):
@@ -51,7 +51,7 @@ class Image(object):
         stop_signal=None,
         options=None,
     ):
-        options = fabricio.Options(options or ())
+        options = Options(options or ())
         options.update((
             ('name', name),
             ('user', user),
