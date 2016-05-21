@@ -8,7 +8,7 @@ from fabricio import docker
 
 class TestContainer(docker.Container):
 
-    image = 'image:tag'
+    image = docker.Image('image:tag')
 
 
 class ContainerTestCase(unittest.TestCase):
@@ -110,7 +110,7 @@ class ContainerTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='name',
                 ),
-                class_kwargs=dict(image='image:tag'),
+                class_kwargs=dict(image=docker.Image('image:tag')),
                 expected_command='docker run --name name --detach image:tag ',
             ),
             complex=dict(
@@ -119,7 +119,7 @@ class ContainerTestCase(unittest.TestCase):
                     options=dict(foo='bar'),
                 ),
                 class_kwargs=dict(
-                    image='image:tag',
+                    image=docker.Image('image:tag'),
                     cmd='cmd',
                     user='user',
                     ports=['80:80', '443:443'],

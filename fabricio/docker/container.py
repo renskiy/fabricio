@@ -1,23 +1,10 @@
 import json
 
-import six
-
 import fabricio
 
 from . import Image
 
 
-def with_image(image_attr):
-    class _WithImage(type):
-        def __init__(cls, *args):
-            image = getattr(cls, image_attr, None)
-            if image is not None and not isinstance(image, Image):
-                setattr(cls, image_attr, Image(image))
-            super(_WithImage, cls).__init__(cls)
-    return _WithImage
-
-
-@six.add_metaclass(with_image('image'))
 class Container(object):
 
     image = None  # type: Image

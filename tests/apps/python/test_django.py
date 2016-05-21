@@ -4,11 +4,12 @@ import unittest2 as unittest
 import fabricio
 
 from fabricio.apps.python.django import DjangoContainer
+from fabricio import docker
 
 
 class TestContainer(DjangoContainer):
 
-    image = 'image:tag'
+    image = docker.Image('image:tag')
 
 
 class ContainerTestCase(unittest.TestCase):
