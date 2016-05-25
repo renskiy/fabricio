@@ -1,6 +1,6 @@
 import time
 
-import six
+from StringIO import StringIO
 
 from fabric import api as fab
 from fabric.contrib import files
@@ -25,14 +25,14 @@ class PostgresqlContainer(docker.Container):
 
     @staticmethod
     def update_config(content, path):
-        old_file = six.StringIO()
+        old_file = StringIO()
         fab.get(remote_path=path, local_path=old_file, use_sudo=True)
         old_content = old_file.getvalue()
         fabricio.exec_command('mv {path_from} {path_to}'.format(
             path_from=path,
             path_to=path + '.backup',
         ))
-        fab.put(six.StringIO(content), path, use_sudo=True, mode='0644')
+        fab.put(StringIO(content), path, use_sudo=True, mode='0644')
         return content != old_content
 
     @property

@@ -1,5 +1,4 @@
 cached-property
 fabric
 mock
-six
 unittest2

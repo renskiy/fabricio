@@ -1,7 +1,5 @@
 import collections
 
-import six
-
 
 class WriteableProperty(object):
 
@@ -34,7 +32,7 @@ class Options(collections.OrderedDict):
             if isinstance(value, bool):
                 if value is True:
                     yield self.make_option(option)
-            elif isinstance(value, six.string_types):
+            elif isinstance(value, basestring):
                 yield self.make_option(option, value)
             else:
                 for single_value in value:
