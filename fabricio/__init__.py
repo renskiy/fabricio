@@ -2,7 +2,8 @@ from fabric import api as fab
 
 
 def exec_command(command, ignore_errors=False, quiet=True):
-    with fab.settings(warn_only=True, quiet=quiet):
+    hide = quiet and ('output', 'warnings') or ()
+    with fab.settings(fab.hide(*hide), warn_only=True):
         result = fab.sudo(command.strip())
         if result.failed and not ignore_errors:
             raise RuntimeError(result)

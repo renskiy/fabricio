@@ -76,18 +76,48 @@ class ContainerTestCase(unittest.TestCase):
             exec_command.assert_called_once_with(expected_command)
 
     def test_stop(self):
-        container = docker.Container(name='name')
-        expected_command = 'docker stop --time 10 name'
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
-            container.stop()
-            exec_command.assert_called_once_with(expected_command)
+        cases = dict(
+            default=dict(
+                timeout=None,
+                expected_command='docker stop --time 10 name',
+            ),
+            positive_timeout=dict(
+                timeout=30,
+                expected_command='docker stop --time 30 name',
+            ),
+            zero_timeout=dict(
+                timeout=0,
+                expected_command='docker stop --time 0 name',
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                container = docker.Container(name='name')
+                with mock.patch.object(fabricio, 'exec_command') as exec_command:
+                    container.stop(timeout=data['timeout'])
+                    exec_command.assert_called_once_with(data['expected_command'])
 
     def test_restart(self):
-        container = docker.Container(name='name')
-        expected_command = 'docker restart --time 10 name'
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
-            container.restart()
-            exec_command.assert_called_once_with(expected_command)
+        cases = dict(
+            default=dict(
+                timeout=None,
+                expected_command='docker restart --time 10 name',
+            ),
+            positive_timeout=dict(
+                timeout=30,
+                expected_command='docker restart --time 30 name',
+            ),
+            zero_timeout=dict(
+                timeout=0,
+                expected_command='docker restart --time 0 name',
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                container = docker.Container(name='name')
+                with mock.patch.object(fabricio, 'exec_command') as exec_command:
+                    container.restart(timeout=data['timeout'])
+                    exec_command.assert_called_once_with(data['expected_command'])
 
     def test_rename(self):
         container = docker.Container(name='name')
@@ -180,6 +210,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type image image:tag'),
                 ],
                 update_kwargs=dict(),
+                excpected_result=False,
             ),
             no_change_with_tag=dict(
                 side_effect=(
@@ -191,6 +222,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type image image:foo'),
                 ],
                 update_kwargs=dict(tag='foo'),
+                excpected_result=False,
             ),
             forced=dict(
                 side_effect=(
@@ -210,6 +242,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker run --name name --detach image:tag '),
                 ],
                 update_kwargs=dict(force=True),
+                excpected_result=True,
             ),
             regular=dict(
                 side_effect=(
@@ -232,7 +265,8 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker stop --time 10 name_backup'),
                     mock.call('docker run --name name --detach image:tag '),
                 ],
-                update_kwargs=dict()
+                update_kwargs=dict(),
+                excpected_result=True,
             ),
             regular_with_tag=dict(
                 side_effect=(
@@ -256,6 +290,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker run --name name --detach image:foo '),
                 ],
                 update_kwargs=dict(tag='foo'),
+                excpected_result=True,
             ),
             without_backup=dict(
                 side_effect=(
@@ -274,7 +309,8 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker stop --time 10 name_backup'),
                     mock.call('docker run --name name --detach image:tag '),
                 ],
-                update_kwargs=dict()
+                update_kwargs=dict(),
+                excpected_result=True,
             ),
             from_scratch=dict(
                 side_effect=(
@@ -291,7 +327,8 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rename name name_backup'),
                     mock.call('docker run --name name --detach image:tag '),
                 ],
-                update_kwargs=dict()
+                update_kwargs=dict(),
+                excpected_result=True,
             ),
         )
         for case, params in cases.items():
@@ -300,17 +337,19 @@ class ContainerTestCase(unittest.TestCase):
                 side_effect = params['side_effect']
                 expected_commands = params['expected_commands']
                 update_kwargs = params['update_kwargs']
+                excpected_result = params['excpected_result']
                 with mock.patch.object(
                     fabricio,
                     'exec_command',
                     side_effect=side_effect,
                 ) as exec_command:
-                    container.update(**update_kwargs)
+                    result = container.update(**update_kwargs)
                     exec_command.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),
                         exec_command.call_count,
                     )
+                    self.assertEqual(excpected_result, result)
 
     def test_revert(self):
         side_effect = (

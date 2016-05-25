@@ -38,7 +38,7 @@ class DjangoContainer(docker.Container):
 
     def update(self, force=False, tag=None):
         self.apply_migrations(tag=tag)
-        super(DjangoContainer, self).update(force=force, tag=tag)
+        return super(DjangoContainer, self).update(force=force, tag=tag)
 
     @staticmethod
     def _get_parent_migration(migration, migrations):

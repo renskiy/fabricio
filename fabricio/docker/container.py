@@ -29,6 +29,8 @@ class Container(object):
 
     stop_signal = None
 
+    stop_timeout = 10
+
     def __init__(self, name, options=None):
         self.name = name
         self.options = options
@@ -82,11 +84,15 @@ class Container(object):
         command = 'docker start {container}'
         fabricio.exec_command(command.format(container=self))
 
-    def stop(self, timeout=10):
+    def stop(self, timeout=None):
+        if timeout is None:
+            timeout = self.stop_timeout
         command = 'docker stop --time {timeout} {container}'
         fabricio.exec_command(command.format(container=self, timeout=timeout))
 
-    def restart(self, timeout=10):
+    def restart(self, timeout=None):
+        if timeout is None:
+            timeout = self.stop_timeout
         command = 'docker restart --time {timeout} {container}'
         fabricio.exec_command(command.format(container=self, timeout=timeout))
 
@@ -109,7 +115,7 @@ class Container(object):
                 new_image = self.__class__.image[tag]
                 if current_image_id == new_image.id:
                     fabricio.log('No change detected, update skipped.')
-                    return
+                    return False
         new_container = self.fork(name=self.name)
         obsolete_container = self.get_backup_container()
         try:
@@ -126,6 +132,7 @@ class Container(object):
         else:
             self.stop()
         new_container.run(tag=tag)
+        return True
 
     def revert(self):
         failed_image = self.image

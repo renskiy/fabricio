@@ -12,7 +12,7 @@ class TestContainer(DjangoContainer):
     image = docker.Image('image:tag')
 
 
-class ContainerTestCase(unittest.TestCase):
+class DjangoContainerTestCase(unittest.TestCase):
 
     def test_revert_migrations(self):
         cases = dict(
