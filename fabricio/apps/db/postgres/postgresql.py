@@ -21,6 +21,8 @@ class PostgresqlContainer(docker.Container):
 
     stop_signal = 'INT'
 
+    stop_timeout = 30
+
     @staticmethod
     def update_config(content, path):
         old_file = six.StringIO()
