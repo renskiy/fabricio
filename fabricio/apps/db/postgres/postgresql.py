@@ -81,19 +81,17 @@ class PostgresqlContainer(docker.Container):
         )
         super(PostgresqlContainer, self).revert()
 
-    def backup(self, dst, username='postgres'):
+    def backup(self, dst, username='postgres', gzip=True):
         self.execute('psql --username {username} --command "{command};"'.format(
             username=username,
             command="SELECT pg_start_backup('backup')",
         ))
         try:
-            fabricio.sudo(
-                'rsync --archive {exclude} {src} {dst}'.format(
-                    exclude=Options(exclude='postmaster.pid'),
-                    src=self.pg_data,
-                    dst=dst,
-                ),
-            )
+            if gzip:
+                command = 'tar --create --exclude postmaster.pid {src} | gzip > {dst}.tar.gz'
+            else:
+                command = 'tar --create --exclude postmaster.pid {src} > {dst}.tar'
+            fabricio.sudo(command.format(src=self.pg_data, dst=dst))
         finally:
             self.execute('psql --username {username} --command "{command};"'.format(
                 username=username,

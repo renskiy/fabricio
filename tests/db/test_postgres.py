@@ -213,7 +213,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         'docker exec --tty name psql --username postgres --command "SELECT pg_start_backup(\'backup\');"',
                         ignore_errors=False,
                     ),
-                    mock.call('rsync --archive --exclude postmaster.pid /data /backup'),
+                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz'),
                     mock.call(
                         'docker exec --tty name psql --username postgres --command "SELECT pg_stop_backup();"',
                         ignore_errors=False,
@@ -221,13 +221,27 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 backup_kwargs=dict(),
             ),
+            gzip_disabled=dict(
+                expected_commands=[
+                    mock.call(
+                        'docker exec --tty name psql --username postgres --command "SELECT pg_start_backup(\'backup\');"',
+                        ignore_errors=False,
+                    ),
+                    mock.call('tar --create --exclude postmaster.pid /data > backup.tar'),
+                    mock.call(
+                        'docker exec --tty name psql --username postgres --command "SELECT pg_stop_backup();"',
+                        ignore_errors=False,
+                    )
+                ],
+                backup_kwargs=dict(gzip=False),
+            ),
             username_overridden=dict(
                 expected_commands=[
                     mock.call(
                         'docker exec --tty name psql --username user --command "SELECT pg_start_backup(\'backup\');"',
                         ignore_errors=False,
                     ),
-                    mock.call('rsync --archive --exclude postmaster.pid /data /backup'),
+                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz'),
                     mock.call(
                         'docker exec --tty name psql --username user --command "SELECT pg_stop_backup();"',
                         ignore_errors=False,
@@ -240,6 +254,6 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 container = TestContainer(name='name')
                 with mock.patch.object(fabricio, 'sudo') as sudo:
-                    container.backup('/backup', **data['backup_kwargs'])
+                    container.backup('backup', **data['backup_kwargs'])
                     sudo.assert_has_calls(data['expected_commands'])
                     self.assertEqual(len(data['expected_commands']), sudo.call_count)
