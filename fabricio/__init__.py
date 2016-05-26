@@ -1,7 +1,7 @@
 from fabric import api as fab
 
 
-def exec_command(command, ignore_errors=False, quiet=True):
+def sudo(command, ignore_errors=False, quiet=True):
     hide = quiet and ('output', 'warnings') or ()
     with fab.settings(fab.hide(*hide), warn_only=True):
         result = fab.sudo(command.strip())

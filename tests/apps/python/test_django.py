@@ -113,16 +113,16 @@ class DjangoContainerTestCase(unittest.TestCase):
                 expected_commands = data['expected_commands']
                 with mock.patch.object(
                     fabricio,
-                    'exec_command',
+                    'sudo',
                     side_effect=side_effect,
-                ) as exec_command:
+                ) as sudo:
                     container = TestContainer(name='name')
 
                     container.revert_migrations()
                     del container.revert_migrations.__func__.return_value
 
-                    exec_command.assert_has_calls(expected_commands)
+                    sudo.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),
-                        exec_command.call_count,
+                        sudo.call_count,
                     )

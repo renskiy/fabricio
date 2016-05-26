@@ -161,8 +161,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 container = TestContainer(name='name')
                 with mock.patch.object(
                     fabricio,
-                    'exec_command',
-                ) as exec_command:
+                    'sudo',
+                ) as sudo:
                     with mock.patch.object(
                         files,
                         'exists',
@@ -179,10 +179,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                                 side_effect=data['old_configs'],
                             ):
                                 container.update(**data['update_kwargs'])
-                                exec_command.assert_has_calls(data['expected_commands'])
+                                sudo.assert_has_calls(data['expected_commands'])
                                 self.assertEqual(
                                     len(data['expected_commands']),
-                                    exec_command.call_count,
+                                    sudo.call_count,
                                 )
                                 update.assert_called_once_with(**data['expected_update_kwargs'])
 
@@ -197,12 +197,12 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ignore_errors=True,
             ),
         ]
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+        with mock.patch.object(fabricio, 'sudo') as sudo:
             with mock.patch.object(docker.Container, 'revert') as revert:
                 container = TestContainer(name='name')
                 container.revert()
-                exec_command.assert_has_calls(expected_commands)
-                self.assertEqual(len(expected_commands), exec_command.call_count)
+                sudo.assert_has_calls(expected_commands)
+                self.assertEqual(len(expected_commands), sudo.call_count)
                 revert.assert_called_once()
 
     def test_backup(self):
@@ -218,7 +218,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             )
         ]
         container = TestContainer(name='name')
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+        with mock.patch.object(fabricio, 'sudo') as sudo:
             container.backup('/backup')
-            exec_command.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), exec_command.call_count)
+            sudo.assert_has_calls(expected_commands)
+            self.assertEqual(len(expected_commands), sudo.call_count)

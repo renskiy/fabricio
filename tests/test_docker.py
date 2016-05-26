@@ -19,11 +19,11 @@ class ContainerTestCase(unittest.TestCase):
         expected_command = 'docker inspect --type container name'
         with mock.patch.object(
             fabricio,
-            'exec_command',
+            'sudo',
             return_value=return_value,
-        ) as exec_command:
+        ) as sudo:
             self.assertEqual(dict(Id='123', Image='abc'), container.info)
-            exec_command.assert_called_once_with(expected_command)
+            sudo.assert_called_once_with(expected_command)
 
     def test_delete(self):
         cases = dict(
@@ -41,14 +41,14 @@ class ContainerTestCase(unittest.TestCase):
                 container = docker.Container(name='name')
                 with mock.patch.object(
                     fabricio,
-                    'exec_command',
-                ) as exec_command:
+                    'sudo',
+                ) as sudo:
                     expected_command = params['expected_command']
                     delete_kwargs = params['delete_kwargs']
 
                     container.delete(**delete_kwargs)
 
-                    exec_command.assert_called_once_with(
+                    sudo.assert_called_once_with(
                         expected_command,
                         ignore_errors=False,
                     )
@@ -58,11 +58,11 @@ class ContainerTestCase(unittest.TestCase):
         expected_command = 'docker exec --tty name cmd'
         with mock.patch.object(
             fabricio,
-            'exec_command',
+            'sudo',
             return_value='result'
-        ) as exec_command:
+        ) as sudo:
             result = container.execute('cmd')
-            exec_command.assert_called_once_with(
+            sudo.assert_called_once_with(
                 expected_command,
                 ignore_errors=False,
             )
@@ -71,9 +71,9 @@ class ContainerTestCase(unittest.TestCase):
     def test_start(self):
         container = docker.Container(name='name')
         expected_command = 'docker start name'
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+        with mock.patch.object(fabricio, 'sudo') as sudo:
             container.start()
-            exec_command.assert_called_once_with(expected_command)
+            sudo.assert_called_once_with(expected_command)
 
     def test_stop(self):
         cases = dict(
@@ -93,9 +93,9 @@ class ContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 container = docker.Container(name='name')
-                with mock.patch.object(fabricio, 'exec_command') as exec_command:
+                with mock.patch.object(fabricio, 'sudo') as sudo:
                     container.stop(timeout=data['timeout'])
-                    exec_command.assert_called_once_with(data['expected_command'])
+                    sudo.assert_called_once_with(data['expected_command'])
 
     def test_restart(self):
         cases = dict(
@@ -115,24 +115,24 @@ class ContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 container = docker.Container(name='name')
-                with mock.patch.object(fabricio, 'exec_command') as exec_command:
+                with mock.patch.object(fabricio, 'sudo') as sudo:
                     container.restart(timeout=data['timeout'])
-                    exec_command.assert_called_once_with(data['expected_command'])
+                    sudo.assert_called_once_with(data['expected_command'])
 
     def test_rename(self):
         container = docker.Container(name='name')
         expected_command = 'docker rename name new_name'
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+        with mock.patch.object(fabricio, 'sudo') as sudo:
             container.rename('new_name')
-            exec_command.assert_called_once_with(expected_command)
+            sudo.assert_called_once_with(expected_command)
             self.assertEqual('new_name', container.name)
 
     def test_signal(self):
         container = docker.Container(name='name')
         expected_command = 'docker kill --signal SIGTERM name'
-        with mock.patch.object(fabricio, 'exec_command') as exec_command:
+        with mock.patch.object(fabricio, 'sudo') as sudo:
             container.signal('SIGTERM')
-            exec_command.assert_called_once_with(expected_command)
+            sudo.assert_called_once_with(expected_command)
 
     def test_run(self):
         cases = dict(
@@ -192,10 +192,10 @@ class ContainerTestCase(unittest.TestCase):
                 container = Container(**init_kwargs)
                 with mock.patch.object(
                     fabricio,
-                    'exec_command',
-                ) as exec_command:
+                    'sudo',
+                ) as sudo:
                     container.run()
-                    exec_command.assert_called_once_with(expected_command)
+                    sudo.assert_called_once_with(expected_command)
 
     @mock.patch.object(fabricio, 'log')
     def test_update(self, *args):
@@ -340,14 +340,14 @@ class ContainerTestCase(unittest.TestCase):
                 excpected_result = params['excpected_result']
                 with mock.patch.object(
                     fabricio,
-                    'exec_command',
+                    'sudo',
                     side_effect=side_effect,
-                ) as exec_command:
+                ) as sudo:
                     result = container.update(**update_kwargs)
-                    exec_command.assert_has_calls(expected_commands)
+                    sudo.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),
-                        exec_command.call_count,
+                        sudo.call_count,
                     )
                     self.assertEqual(excpected_result, result)
 
@@ -371,9 +371,9 @@ class ContainerTestCase(unittest.TestCase):
         container = TestContainer(name='name')
         with mock.patch.object(
             fabricio,
-            'exec_command',
+            'sudo',
             side_effect=side_effect,
-        ) as exec_command:
+        ) as sudo:
             container.revert()
-            exec_command.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), exec_command.call_count)
+            sudo.assert_has_calls(expected_commands)
+            self.assertEqual(len(expected_commands), sudo.call_count)

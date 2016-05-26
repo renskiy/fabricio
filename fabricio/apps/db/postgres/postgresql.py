@@ -28,7 +28,7 @@ class PostgresqlContainer(docker.Container):
         old_file = StringIO()
         fab.get(remote_path=path, local_path=old_file, use_sudo=True)
         old_content = old_file.getvalue()
-        fabricio.exec_command('mv {path_from} {path_to}'.format(
+        fabricio.sudo('mv {path_from} {path_to}'.format(
             path_from=path,
             path_to=path + '.backup',
         ))
@@ -65,14 +65,14 @@ class PostgresqlContainer(docker.Container):
     def revert(self):
         main_conf = self.pg_data + '/postgresql.conf'
         hba_conf = self.pg_data + '/pg_hba.conf'
-        fabricio.exec_command(
+        fabricio.sudo(
             'mv {path_from} {path_to}'.format(
                 path_from=main_conf + '.backup',
                 path_to=main_conf,
             ),
             ignore_errors=True,
         )
-        fabricio.exec_command(
+        fabricio.sudo(
             'mv {path_from} {path_to}'.format(
                 path_from=hba_conf + '.backup',
                 path_to=hba_conf,
@@ -84,7 +84,7 @@ class PostgresqlContainer(docker.Container):
     def backup(self, dst, exclude='postmaster.pid'):
         self.execute('psql -c "SELECT pg_start_backup(\'backup\');"')
         try:
-            fabricio.exec_command(
+            fabricio.sudo(
                 'rsync --archive {exclude} {src} {dst}'.format(
                     exclude=Options(exclude=exclude),
                     src=self.pg_data,

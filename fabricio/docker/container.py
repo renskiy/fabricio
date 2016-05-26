@@ -45,13 +45,13 @@ class Container(object):
     @property
     def info(self):
         command = 'docker inspect --type container {container}'
-        info = fabricio.exec_command(command.format(container=self))
+        info = fabricio.sudo(command.format(container=self))
         return json.loads(info)[0]
 
     def delete(self, force=False, ignore_errors=False):
         command = 'docker rm {force}{container}'
         force = force and '--force ' or ''
-        fabricio.exec_command(
+        fabricio.sudo(
             command.format(container=self, force=force),
             ignore_errors=ignore_errors,
         )
@@ -75,35 +75,35 @@ class Container(object):
 
     def execute(self, cmd, ignore_errors=False):
         command = 'docker exec --tty {container} {cmd}'
-        return fabricio.exec_command(
+        return fabricio.sudo(
             command.format(container=self, cmd=cmd),
             ignore_errors=ignore_errors,
         )
 
     def start(self):
         command = 'docker start {container}'
-        fabricio.exec_command(command.format(container=self))
+        fabricio.sudo(command.format(container=self))
 
     def stop(self, timeout=None):
         if timeout is None:
             timeout = self.stop_timeout
         command = 'docker stop --time {timeout} {container}'
-        fabricio.exec_command(command.format(container=self, timeout=timeout))
+        fabricio.sudo(command.format(container=self, timeout=timeout))
 
     def restart(self, timeout=None):
         if timeout is None:
             timeout = self.stop_timeout
         command = 'docker restart --time {timeout} {container}'
-        fabricio.exec_command(command.format(container=self, timeout=timeout))
+        fabricio.sudo(command.format(container=self, timeout=timeout))
 
     def rename(self, new_name):
         command = 'docker rename {container} {new_name}'
-        fabricio.exec_command(command.format(container=self, new_name=new_name))
+        fabricio.sudo(command.format(container=self, new_name=new_name))
         self.name = new_name
 
     def signal(self, signal):
         command = 'docker kill --signal {signal} {container}'
-        fabricio.exec_command(command.format(container=self, signal=signal))
+        fabricio.sudo(command.format(container=self, signal=signal))
 
     def update(self, force=False, tag=None):
         if not force:
