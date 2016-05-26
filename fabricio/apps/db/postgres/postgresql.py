@@ -81,15 +81,21 @@ class PostgresqlContainer(docker.Container):
         )
         super(PostgresqlContainer, self).revert()
 
-    def backup(self, dst, exclude='postmaster.pid'):
-        self.execute('psql -c "SELECT pg_start_backup(\'backup\');"')
+    def backup(self, dst, username='postgres'):
+        self.execute('psql --username {username} --command "{command};"'.format(
+            username=username,
+            command="SELECT pg_start_backup('backup')",
+        ))
         try:
             fabricio.sudo(
                 'rsync --archive {exclude} {src} {dst}'.format(
-                    exclude=Options(exclude=exclude),
+                    exclude=Options(exclude='postmaster.pid'),
                     src=self.pg_data,
                     dst=dst,
                 ),
             )
         finally:
-            self.execute('psql -c "SELECT pg_stop_backup();"')
+            self.execute('psql --username {username} --command "{command};"'.format(
+                username=username,
+                command="SELECT pg_stop_backup()",
+            ))

@@ -206,19 +206,40 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 revert.assert_called_once()
 
     def test_backup(self):
-        expected_commands = [
-            mock.call(
-                'docker exec --tty name psql -c "SELECT pg_start_backup(\'backup\');"',
-                ignore_errors=False,
+        cases = dict(
+            default=dict(
+                expected_commands=[
+                    mock.call(
+                        'docker exec --tty name psql --username postgres --command "SELECT pg_start_backup(\'backup\');"',
+                        ignore_errors=False,
+                    ),
+                    mock.call('rsync --archive --exclude postmaster.pid /data /backup'),
+                    mock.call(
+                        'docker exec --tty name psql --username postgres --command "SELECT pg_stop_backup();"',
+                        ignore_errors=False,
+                    )
+                ],
+                backup_kwargs=dict(),
             ),
-            mock.call('rsync --archive --exclude postmaster.pid /data /backup'),
-            mock.call(
-                'docker exec --tty name psql -c "SELECT pg_stop_backup();"',
-                ignore_errors=False,
-            )
-        ]
-        container = TestContainer(name='name')
-        with mock.patch.object(fabricio, 'sudo') as sudo:
-            container.backup('/backup')
-            sudo.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), sudo.call_count)
+            username_overridden=dict(
+                expected_commands=[
+                    mock.call(
+                        'docker exec --tty name psql --username user --command "SELECT pg_start_backup(\'backup\');"',
+                        ignore_errors=False,
+                    ),
+                    mock.call('rsync --archive --exclude postmaster.pid /data /backup'),
+                    mock.call(
+                        'docker exec --tty name psql --username user --command "SELECT pg_stop_backup();"',
+                        ignore_errors=False,
+                    )
+                ],
+                backup_kwargs=dict(username='user'),
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                container = TestContainer(name='name')
+                with mock.patch.object(fabricio, 'sudo') as sudo:
+                    container.backup('/backup', **data['backup_kwargs'])
+                    sudo.assert_has_calls(data['expected_commands'])
+                    self.assertEqual(len(data['expected_commands']), sudo.call_count)
