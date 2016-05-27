@@ -34,7 +34,7 @@ class DjangoContainer(docker.Container):
     @classmethod
     @fab.runs_once
     def apply_migrations(cls, tag=None):
-        cls.image[tag].run('manage.py migrate --noinput')
+        cls.image[tag].run('python manage.py migrate --noinput')
 
     def update(self, force=False, tag=None):
         self.apply_migrations(tag=tag)
@@ -78,7 +78,7 @@ class DjangoContainer(docker.Container):
 
     @fab.runs_once
     def revert_migrations(self):
-        migrations_cmd = 'manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
+        migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
 
         try:
             current_migrations = self.image.run(cmd=migrations_cmd)
@@ -92,7 +92,7 @@ class DjangoContainer(docker.Container):
             backup_migrations,
         )
         for migration in revert_migrations:
-            cmd = 'manage.py migrate --no-input {app} {migration}'.format(
+            cmd = 'python manage.py migrate --no-input {app} {migration}'.format(
                 app=migration.app,
                 migration=migration.name,
             )
