@@ -8,7 +8,6 @@ from fabric.contrib import files
 import fabricio
 
 from fabricio import docker
-from fabricio.utils import Options
 
 
 class PostgresqlContainer(docker.Container):
