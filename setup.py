@@ -6,7 +6,7 @@ with open('README.md') as description:
 
 setup(
     name='fabricio',
-    version='0.1.12',
+    version='0.1.13',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],
