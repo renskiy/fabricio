@@ -16,7 +16,7 @@ class PostgresqlContainer(docker.Container):
 
     pg_hba_conf = NotImplemented  # type: str
 
-    pg_data = NotImplemented  # type: str
+    data = NotImplemented  # type: str
 
     stop_signal = 'INT'
 
@@ -36,7 +36,7 @@ class PostgresqlContainer(docker.Container):
 
     @property
     def initialized(self):
-        return files.exists(self.pg_data + '/PG_VERSION', use_sudo=True)
+        return files.exists(self.data + '/PG_VERSION', use_sudo=True)
 
     def init_db(self):
         self.run()
@@ -49,11 +49,11 @@ class PostgresqlContainer(docker.Container):
 
         main_config_changed = self.update_config(
             content=open(self.postgresql_conf).read(),
-            path=self.pg_data + '/postgresql.conf',
+            path=self.data + '/postgresql.conf',
         )
         hba_config_changed = self.update_config(
             content=open(self.pg_hba_conf).read(),
-            path=self.pg_data + '/pg_hba.conf',
+            path=self.data + '/pg_hba.conf',
         )
         force = force or main_config_changed
         updated = super(PostgresqlContainer, self).update(force=force, tag=tag)
@@ -62,8 +62,8 @@ class PostgresqlContainer(docker.Container):
         return updated
 
     def revert(self):
-        main_conf = self.pg_data + '/postgresql.conf'
-        hba_conf = self.pg_data + '/pg_hba.conf'
+        main_conf = self.data + '/postgresql.conf'
+        hba_conf = self.data + '/pg_hba.conf'
         fabricio.sudo(
             'mv {path_from} {path_to}'.format(
                 path_from=main_conf + '.backup',
@@ -87,7 +87,7 @@ class PostgresqlContainer(docker.Container):
         ))
         try:
             command = 'tar --create --exclude postmaster.pid {src} | gzip > {dst}'
-            fabricio.sudo(command.format(src=self.pg_data, dst=dst))
+            fabricio.sudo(command.format(src=self.data, dst=dst))
         finally:
             self.execute('psql --username {username} --command "{command};"'.format(
                 username=username,
@@ -98,6 +98,6 @@ class PostgresqlContainer(docker.Container):
         self.stop()
         try:
             command = 'gzip --decompress < {src} | tar --extract --directory {dst}'
-            fabricio.sudo(command.format(src=src, dst=self.pg_data))
+            fabricio.sudo(command.format(src=src, dst=self.data))
         finally:
             self.start()

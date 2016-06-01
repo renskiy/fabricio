@@ -21,7 +21,7 @@ class TestContainer(postgresql.PostgresqlContainer):
 
     pg_hba_conf = 'pg_hba.conf'
 
-    pg_data = '/data'
+    data = '/data'
 
 
 class PostgresqlContainerTestCase(unittest.TestCase):
