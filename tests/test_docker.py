@@ -377,3 +377,169 @@ class ContainerTestCase(unittest.TestCase):
             container.revert()
             sudo.assert_has_calls(expected_commands)
             self.assertEqual(len(expected_commands), sudo.call_count)
+
+
+class ImageTestCase(unittest.TestCase):
+
+    def test_name_tag_registry(self):
+        cases = dict(
+            single=dict(
+                init_kwargs=dict(
+                    name='image',
+                ),
+                expected_name='image',
+                expected_tag='latest',
+                expected_registry='',
+                expected_str='image:latest',
+            ),
+            with_tag=dict(
+                init_kwargs=dict(
+                    name='image',
+                    tag='tag',
+                ),
+                expected_name='image',
+                expected_tag='tag',
+                expected_registry='',
+                expected_str='image:tag',
+            ),
+            with_registry=dict(
+                init_kwargs=dict(
+                    name='image',
+                    registry='registry',
+                ),
+                expected_name='image',
+                expected_tag='latest',
+                expected_registry='registry',
+                expected_str='registry/image:latest',
+            ),
+            with_tag_and_registry=dict(
+                init_kwargs=dict(
+                    name='image',
+                    tag='tag',
+                    registry='registry',
+                ),
+                expected_name='image',
+                expected_tag='tag',
+                expected_registry='registry',
+                expected_str='registry/image:tag',
+            ),
+            single_arg_with_tag=dict(
+                init_kwargs=dict(
+                    name='image:tag',
+                ),
+                expected_name='image',
+                expected_tag='tag',
+                expected_registry='',
+                expected_str='image:tag',
+            ),
+            single_arg_with_registry=dict(
+                init_kwargs=dict(
+                    name='registry/image',
+                ),
+                expected_name='image',
+                expected_tag='latest',
+                expected_registry='registry',
+                expected_str='registry/image:latest',
+            ),
+            single_arg_with_tag_and_registry=dict(
+                init_kwargs=dict(
+                    name='registry/image:tag',
+                ),
+                expected_name='image',
+                expected_tag='tag',
+                expected_registry='registry',
+                expected_str='registry/image:tag',
+            ),
+            forced_with_tag=dict(
+                init_kwargs=dict(
+                    name='image:tag',
+                    tag='foo',
+                ),
+                expected_name='image',
+                expected_tag='foo',
+                expected_registry='',
+                expected_str='image:foo',
+            ),
+            forced_with_registry=dict(
+                init_kwargs=dict(
+                    name='registry/image',
+                    registry='foo',
+                ),
+                expected_name='image',
+                expected_tag='latest',
+                expected_registry='foo',
+                expected_str='foo/image:latest',
+            ),
+            forced_with_tag_and_registry=dict(
+                init_kwargs=dict(
+                    name='registry/image:tag',
+                    tag='foo',
+                    registry='bar',
+                ),
+                expected_name='image',
+                expected_tag='foo',
+                expected_registry='bar',
+                expected_str='bar/image:foo',
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                image = docker.Image(**data['init_kwargs'])
+                self.assertEqual(data['expected_name'], image.name)
+                self.assertEqual(data['expected_tag'], image.tag)
+                self.assertEqual(data['expected_registry'], image.registry)
+                self.assertEqual(data['expected_str'], str(image))
+
+    def test_getitem(self):
+        cases = dict(
+            none=dict(
+                item=None,
+                expected_tag='tag',
+                expected_registry='registry',
+            ),
+            tag=dict(
+                item='custom_tag',
+                expected_tag='custom_tag',
+                expected_registry='registry',
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                image = docker.Image(name='name', tag='tag', registry='registry')
+                new_image = image[data['item']]
+                self.assertEqual(data['expected_tag'], new_image.tag)
+                self.assertEqual(data['expected_registry'], new_image.registry)
+
+    def test_getitem_slice(self):
+        cases = dict(
+            none=dict(
+                start=None,
+                stop=None,
+                expected_tag='tag',
+                expected_registry='registry',
+            ),
+            tag=dict(
+                start=None,
+                stop='custom_tag',
+                expected_tag='custom_tag',
+                expected_registry='registry',
+            ),
+            registry=dict(
+                start='custom_registry',
+                stop=None,
+                expected_tag='tag',
+                expected_registry='custom_registry',
+            ),
+            tag_and_registry=dict(
+                start='custom_registry',
+                stop='custom_tag',
+                expected_tag='custom_tag',
+                expected_registry='custom_registry',
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                image = docker.Image(name='name', tag='tag', registry='registry')
+                new_image = image[data['start']:data['stop']]
+                self.assertEqual(data['expected_tag'], new_image.tag)
+                self.assertEqual(data['expected_registry'], new_image.registry)
