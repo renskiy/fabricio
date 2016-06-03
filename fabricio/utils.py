@@ -1,7 +1,7 @@
 import collections
 
 
-class WriteableProperty(object):
+class default_property(object):
 
     def __init__(self, func):
         self.__doc__ = getattr(func, '__doc__')
@@ -11,8 +11,6 @@ class WriteableProperty(object):
         if obj is None:
             return self
         return self.func(obj)
-
-writeable_property = WriteableProperty
 
 
 class Options(collections.OrderedDict):

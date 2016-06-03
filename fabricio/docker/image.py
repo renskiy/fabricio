@@ -2,7 +2,7 @@ import json
 
 import fabricio
 
-from fabricio.utils import writeable_property, Options
+from fabricio.utils import default_property, Options
 
 
 class Image(object):
@@ -75,7 +75,7 @@ class Image(object):
         info = fabricio.sudo(command.format(image=self))
         return json.loads(str(info))[0]
 
-    @writeable_property
+    @default_property
     def id(self):
         return self.info.get('Id')
 
