@@ -52,8 +52,8 @@ class Image(object):
 
     @staticmethod
     def _parse_image_name(image):
-        image, _, tag = image.partition(':')
-        registry, _, name = image.rpartition('/')
+        registry, _, name_with_tag = image.rpartition('/')
+        name, _, tag = name_with_tag.partition(':')
         return registry, name, tag
 
     @staticmethod

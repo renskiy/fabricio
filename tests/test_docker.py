@@ -405,23 +405,23 @@ class ImageTestCase(unittest.TestCase):
             with_registry=dict(
                 init_kwargs=dict(
                     name='image',
-                    registry='registry',
+                    registry='registry:5000',
                 ),
                 expected_name='image',
                 expected_tag='latest',
-                expected_registry='registry',
-                expected_str='registry/image:latest',
+                expected_registry='registry:5000',
+                expected_str='registry:5000/image:latest',
             ),
             with_tag_and_registry=dict(
                 init_kwargs=dict(
                     name='image',
                     tag='tag',
-                    registry='registry',
+                    registry='127.0.0.1:5000',
                 ),
                 expected_name='image',
                 expected_tag='tag',
-                expected_registry='registry',
-                expected_str='registry/image:tag',
+                expected_registry='127.0.0.1:5000',
+                expected_str='127.0.0.1:5000/image:tag',
             ),
             single_arg_with_tag=dict(
                 init_kwargs=dict(
@@ -525,16 +525,16 @@ class ImageTestCase(unittest.TestCase):
                 expected_registry='registry',
             ),
             registry=dict(
-                start='custom_registry',
+                start='registry:5000',
                 stop=None,
                 expected_tag='tag',
-                expected_registry='custom_registry',
+                expected_registry='registry:5000',
             ),
             tag_and_registry=dict(
-                start='custom_registry',
+                start='127.0.0.1:5000',
                 stop='custom_tag',
                 expected_tag='custom_tag',
-                expected_registry='custom_registry',
+                expected_registry='127.0.0.1:5000',
             ),
         )
         for case, data in cases.items():
