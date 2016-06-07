@@ -31,14 +31,27 @@ class DjangoContainer(docker.Container):
     manage.py placed
     """
 
-    @classmethod
+    @property
+    def migration_options(self):
+        return dict(
+            user=self.user,
+            env=self.env,
+            volumes=self.volumes,
+            links=self.links,
+            hosts=self.hosts,
+            network=self.network,
+        )
+
     @fab.runs_once
-    def apply_migrations(cls, tag=None):
-        cls.image[tag].run('manage.py migrate --noinput')
+    def apply_migrations(self, tag=None):
+        self.__class__.image[tag].run(
+            'python manage.py migrate --noinput',
+            **self.migration_options
+        )
 
     def update(self, force=False, tag=None):
         self.apply_migrations(tag=tag)
-        super(DjangoContainer, self).update(force=force, tag=tag)
+        return super(DjangoContainer, self).update(force=force, tag=tag)
 
     @staticmethod
     def _get_parent_migration(migration, migrations):
@@ -78,12 +91,17 @@ class DjangoContainer(docker.Container):
 
     @fab.runs_once
     def revert_migrations(self):
-        migrations_cmd = 'manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
+        migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
 
         try:
-            current_migrations = self.image.run(cmd=migrations_cmd)
+            current_migrations = self.image.run(
+                cmd=migrations_cmd,
+                **self.migration_options
+            )
             backup_migrations = self.get_backup_container().image.run(
-                cmd=migrations_cmd)
+                cmd=migrations_cmd,
+                **self.migration_options
+            )
         except RuntimeError:  # either current or backup container not found
             return
 
@@ -92,11 +110,11 @@ class DjangoContainer(docker.Container):
             backup_migrations,
         )
         for migration in revert_migrations:
-            cmd = 'manage.py migrate --no-input {app} {migration}'.format(
+            cmd = 'python manage.py migrate --no-input {app} {migration}'.format(
                 app=migration.app,
                 migration=migration.name,
             )
-            self.image.run(cmd=cmd)  # TODO logging
+            self.image.run(cmd=cmd, **self.migration_options)  # TODO logging
 
     def revert(self):
         self.revert_migrations()

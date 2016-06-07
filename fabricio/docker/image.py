@@ -2,19 +2,26 @@ import json
 
 import fabricio
 
-from fabricio.utils import writeable_property
+from fabricio.utils import default_property, Options
 
 
 class Image(object):
 
-    def __init__(self, name=None, tag=None):
-        forced_tag = tag
-        self.name, _, tag = name and str(name).partition(':') or [None] * 3
-        self.tag = forced_tag or tag or 'latest'
+    def __init__(self, name, tag=None, registry=None):
+        parsed_registry, parsed_name, parsed_tag = self._parse_image_name(name)
+        self.name = parsed_name
+        self.tag = tag or parsed_tag or 'latest'
+        self.registry = registry or parsed_registry
 
     def __str__(self):
         if 'id' in vars(self):
             return str(self.id)
+        if self.registry:
+            return '{registry}/{name}:{tag}'.format(
+                registry=self.registry,
+                name=self.name,
+                tag=self.tag,
+            )
         return '{name}:{tag}'.format(name=self.name, tag=self.tag)
 
     def __get__(self, container, container_cls):
@@ -28,18 +35,26 @@ class Image(object):
         image.id = container.info['Image']
         return image
 
-    def __getitem__(self, tag):
-        return self.__class__(name=self.name, tag=tag or self.tag)
+    def __getitem__(self, tag, registry=None):
+        if isinstance(tag, slice):
+            registry = tag.start
+            tag = tag.stop
+        return self.__class__(
+            name=self.name,
+            tag=tag or self.tag,
+            registry=registry or self.registry,
+        )
 
     def _get_field_name(self, container_cls):
         for attr in dir(container_cls):
             if getattr(container_cls, attr) is self:
                 return attr
 
-    def _get_image_info(self, image):
-        command = 'docker inspect --type image {image}'
-        info = fabricio.exec_command(command.format(image=image))
-        return json.loads(str(info))[0]
+    @staticmethod
+    def _parse_image_name(image):
+        registry, _, name_with_tag = image.rpartition('/')
+        name, _, tag = name_with_tag.partition(':')
+        return registry, name, tag
 
     @staticmethod
     def make_container_options(
@@ -56,7 +71,7 @@ class Image(object):
         stop_signal=None,
         options=None,
     ):
-        options = fabricio.Options(options or ())
+        options = Options(options or ())
         options.update((
             ('name', name),
             ('user', user),
@@ -76,16 +91,18 @@ class Image(object):
 
     @property
     def info(self):
-        return self._get_image_info(self)
+        command = 'docker inspect --type image {image}'
+        info = fabricio.sudo(command.format(image=self))
+        return json.loads(str(info))[0]
 
-    @writeable_property
+    @default_property
     def id(self):
         return self.info.get('Id')
 
     def delete(self, force=False, ignore_errors=False):
         command = 'docker rmi {force}{image}'
         force = force and '--force ' or ''
-        fabricio.exec_command(
+        fabricio.sudo(
             command.format(image=self.id, force=force),
             ignore_errors=ignore_errors,
         )
@@ -107,7 +124,7 @@ class Image(object):
         options=None,
     ):
         command = 'docker run {options} {image} {cmd}'
-        return fabricio.exec_command(command.format(
+        return fabricio.sudo(command.format(
             image=self,
             cmd=cmd or '',
             options=self.make_container_options(

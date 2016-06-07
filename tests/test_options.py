@@ -2,7 +2,7 @@ from collections import OrderedDict
 
 import unittest2 as unittest
 
-from fabricio import Options
+from fabricio.utils import Options
 
 
 class OptionsTestCase(unittest.TestCase):

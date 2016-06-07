@@ -8,7 +8,7 @@ class CronContainer(docker.Container):
     https://hub.docker.com/r/renskiy/cron/
     """
 
-    cmd = 'cron \&\& tail -f /var/log/cron.log'
+    cmd = '/bin/bash -c "cron && tail -f /var/log/cron.log"'
 
     def before_stop(self):
         self.execute('killall -HUP tail', ignore_errors=True)
