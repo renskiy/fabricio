@@ -314,15 +314,13 @@ class ContainerTestCase(unittest.TestCase):
             ),
             from_scratch=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # current container info
-                    '[{"Id": "new_image_id"}]',  # new image info
+                    RuntimeError,  # current container info
                     RuntimeError,  # obsolete container info
                     RuntimeError,  # rename current container
                     'new_container_id',  # run new container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker inspect --type image image:tag'),
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker run --name name --detach image:tag '),
