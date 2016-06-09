@@ -2,6 +2,7 @@ import mock
 import unittest2 as unittest
 
 from fabric import api as fab
+from fabric.main import load_tasks_from_module, is_task_module
 
 import fabricio
 
@@ -30,6 +31,7 @@ class TasksTestCase(unittest.TestCase):
         roles = ['role_1', 'role_2']
         hosts = ['host_1', 'host_2']
         tasks = TestTasks(roles=roles, hosts=hosts)
+        self.assertTrue(is_task_module(tasks))
         self.assertTrue(tasks.default.is_default)
         self.assertListEqual(['foo', 'bar'], tasks.default.aliases)
         self.assertEqual('name', tasks.task.name)
@@ -37,6 +39,15 @@ class TasksTestCase(unittest.TestCase):
         for task in tasks:
             self.assertListEqual(roles, task.roles)
             self.assertListEqual(hosts, task.hosts)
+        docstring, new_style, classic, default = load_tasks_from_module(tasks)
+        self.assertIsNone(docstring)
+        self.assertIn('default', new_style)
+        self.assertIn('alias', new_style)
+        self.assertIn('foo', new_style)
+        self.assertIn('bar', new_style)
+        self.assertIn('name', new_style)
+        self.assertDictEqual({}, classic)
+        self.assertIs(tasks.default, default)
 
 
 class DockerTasksTestCase(unittest.TestCase):
