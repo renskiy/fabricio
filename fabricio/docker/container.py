@@ -56,8 +56,8 @@ class Container(object):
             ignore_errors=ignore_errors,
         )
 
-    def run(self, tag=None):
-        self.__class__.image[tag].run(
+    def run(self, tag=None, registry=None):
+        self.__class__.image[registry:tag].run(
             cmd=self.cmd,
             temporary=False,
             name=self.name,
@@ -105,14 +105,14 @@ class Container(object):
         command = 'docker kill --signal {signal} {container}'
         fabricio.sudo(command.format(container=self, signal=signal))
 
-    def update(self, force=False, tag=None):
+    def update(self, force=False, tag=None, registry=None):
         if not force:
             try:
                 current_image_id = self.image.id
             except RuntimeError:  # current container not found
                 pass
             else:
-                new_image = self.__class__.image[tag]
+                new_image = self.__class__.image[registry:tag]
                 if current_image_id == new_image.id:
                     fabricio.log('No change detected, update skipped.')
                     return False
@@ -131,7 +131,7 @@ class Container(object):
             pass
         else:
             self.stop()
-        new_container.run(tag=tag)
+        new_container.run(tag=tag, registry=registry)
         return True
 
     def revert(self):

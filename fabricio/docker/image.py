@@ -35,10 +35,11 @@ class Image(object):
         image.id = container.info['Image']
         return image
 
-    def __getitem__(self, tag, registry=None):
-        if isinstance(tag, slice):
-            registry = tag.start
-            tag = tag.stop
+    def __getitem__(self, item):
+        if isinstance(item, slice):
+            registry, tag = item.start, item.stop
+        else:
+            registry, tag = None, item
         return self.__class__(
             name=self.name,
             tag=tag or self.tag,
