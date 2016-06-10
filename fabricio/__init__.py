@@ -1,6 +1,8 @@
+import functools
 import warnings
 
 from fabric import colors, api as fab
+from fabric.contrib import console
 
 
 def sudo(command, ignore_errors=False, quiet=True):
@@ -56,3 +58,23 @@ def local(command, **kwargs):
 
 def log(message, color=colors.yellow):
     fab.puts(color(message))
+
+
+def infrastructure(confirm=True, color=colors.yellow):
+    def _decorator(task):
+        @functools.wraps(task)
+        def _task(*args, **kwargs):
+            if confirm and console.confirm(
+                'Are you sure you want to select {infrastructure} '
+                'infrastructure to run task(s) on?'.format(
+                    infrastructure=color(task.__name__),
+                ),
+                default=False,
+            ):
+                return task(*args, **kwargs)
+            fab.abort('Aborted')
+        return _task
+    if callable(confirm):
+        func, confirm = confirm, infrastructure.__defaults__[0]
+        return _decorator(func)
+    return _decorator
