@@ -27,10 +27,13 @@ class PostgresqlContainer(docker.Container):
         old_file = StringIO()
         fab.get(remote_path=path, local_path=old_file, use_sudo=True)
         old_content = old_file.getvalue()
-        fabricio.sudo('mv {path_from} {path_to}'.format(
-            path_from=path,
-            path_to=path + '.backup',
-        ))
+        fabricio.run(
+            'mv {path_from} {path_to}'.format(
+                path_from=path,
+                path_to=path + '.backup',
+            ),
+            sudo=True,
+        )
         fab.put(StringIO(content), path, use_sudo=True, mode='0644')
         return content != old_content
 
@@ -64,19 +67,21 @@ class PostgresqlContainer(docker.Container):
     def revert(self):
         main_conf = self.data + '/postgresql.conf'
         hba_conf = self.data + '/pg_hba.conf'
-        fabricio.sudo(
+        fabricio.run(
             'mv {path_from} {path_to}'.format(
                 path_from=main_conf + '.backup',
                 path_to=main_conf,
             ),
             ignore_errors=True,
+            sudo=True,
         )
-        fabricio.sudo(
+        fabricio.run(
             'mv {path_from} {path_to}'.format(
                 path_from=hba_conf + '.backup',
                 path_to=hba_conf,
             ),
             ignore_errors=True,
+            sudo=True,
         )
         super(PostgresqlContainer, self).revert()
 
@@ -87,7 +92,10 @@ class PostgresqlContainer(docker.Container):
         ))
         try:
             command = 'tar --create --exclude postmaster.pid {src} | gzip > {dst}'
-            fabricio.sudo(command.format(src=self.data, dst=dst))
+            fabricio.run(
+                command.format(src=self.data, dst=dst),
+                sudo=True,
+            )
         finally:
             self.execute('psql --username {username} --command "{command};"'.format(
                 username=username,
@@ -98,6 +106,9 @@ class PostgresqlContainer(docker.Container):
         self.stop()
         try:
             command = 'gzip --decompress < {src} | tar --extract --directory {dst}'
-            fabricio.sudo(command.format(src=src, dst=self.data))
+            fabricio.run(
+                command.format(src=src, dst=self.data),
+                sudo=True,
+            )
         finally:
             self.start()

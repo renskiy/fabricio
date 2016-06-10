@@ -19,11 +19,11 @@ class ContainerTestCase(unittest.TestCase):
         expected_command = 'docker inspect --type container name'
         with mock.patch.object(
             fabricio,
-            'sudo',
+            'run',
             return_value=return_value,
-        ) as sudo:
+        ) as run:
             self.assertEqual(dict(Id='123', Image='abc'), container.info)
-            sudo.assert_called_once_with(expected_command)
+            run.assert_called_once_with(expected_command)
 
     def test_delete(self):
         cases = dict(
@@ -41,14 +41,14 @@ class ContainerTestCase(unittest.TestCase):
                 container = docker.Container(name='name')
                 with mock.patch.object(
                     fabricio,
-                    'sudo',
-                ) as sudo:
+                    'run',
+                ) as run:
                     expected_command = params['expected_command']
                     delete_kwargs = params['delete_kwargs']
 
                     container.delete(**delete_kwargs)
 
-                    sudo.assert_called_once_with(
+                    run.assert_called_once_with(
                         expected_command,
                         ignore_errors=False,
                     )
@@ -58,11 +58,11 @@ class ContainerTestCase(unittest.TestCase):
         expected_command = 'docker exec --tty name cmd'
         with mock.patch.object(
             fabricio,
-            'sudo',
+            'run',
             return_value='result'
-        ) as sudo:
+        ) as run:
             result = container.execute('cmd')
-            sudo.assert_called_once_with(
+            run.assert_called_once_with(
                 expected_command,
                 ignore_errors=False,
             )
@@ -71,9 +71,9 @@ class ContainerTestCase(unittest.TestCase):
     def test_start(self):
         container = docker.Container(name='name')
         expected_command = 'docker start name'
-        with mock.patch.object(fabricio, 'sudo') as sudo:
+        with mock.patch.object(fabricio, 'run') as run:
             container.start()
-            sudo.assert_called_once_with(expected_command)
+            run.assert_called_once_with(expected_command)
 
     def test_stop(self):
         cases = dict(
@@ -93,9 +93,9 @@ class ContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 container = docker.Container(name='name')
-                with mock.patch.object(fabricio, 'sudo') as sudo:
+                with mock.patch.object(fabricio, 'run') as run:
                     container.stop(timeout=data['timeout'])
-                    sudo.assert_called_once_with(data['expected_command'])
+                    run.assert_called_once_with(data['expected_command'])
 
     def test_restart(self):
         cases = dict(
@@ -115,24 +115,24 @@ class ContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 container = docker.Container(name='name')
-                with mock.patch.object(fabricio, 'sudo') as sudo:
+                with mock.patch.object(fabricio, 'run') as run:
                     container.restart(timeout=data['timeout'])
-                    sudo.assert_called_once_with(data['expected_command'])
+                    run.assert_called_once_with(data['expected_command'])
 
     def test_rename(self):
         container = docker.Container(name='name')
         expected_command = 'docker rename name new_name'
-        with mock.patch.object(fabricio, 'sudo') as sudo:
+        with mock.patch.object(fabricio, 'run') as run:
             container.rename('new_name')
-            sudo.assert_called_once_with(expected_command)
+            run.assert_called_once_with(expected_command)
             self.assertEqual('new_name', container.name)
 
     def test_signal(self):
         container = docker.Container(name='name')
         expected_command = 'docker kill --signal SIGTERM name'
-        with mock.patch.object(fabricio, 'sudo') as sudo:
+        with mock.patch.object(fabricio, 'run') as run:
             container.signal('SIGTERM')
-            sudo.assert_called_once_with(expected_command)
+            run.assert_called_once_with(expected_command)
 
     def test_run(self):
         cases = dict(
@@ -192,10 +192,10 @@ class ContainerTestCase(unittest.TestCase):
                 container = Container(**init_kwargs)
                 with mock.patch.object(
                     fabricio,
-                    'sudo',
-                ) as sudo:
+                    'run',
+                ) as run:
                     container.run()
-                    sudo.assert_called_once_with(expected_command)
+                    run.assert_called_once_with(expected_command)
 
     @mock.patch.object(fabricio, 'log')
     def test_update(self, *args):
@@ -338,14 +338,14 @@ class ContainerTestCase(unittest.TestCase):
                 excpected_result = params['excpected_result']
                 with mock.patch.object(
                     fabricio,
-                    'sudo',
+                    'run',
                     side_effect=side_effect,
-                ) as sudo:
+                ) as run:
                     result = container.update(**update_kwargs)
-                    sudo.assert_has_calls(expected_commands)
+                    run.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),
-                        sudo.call_count,
+                        run.call_count,
                     )
                     self.assertEqual(excpected_result, result)
 
@@ -369,12 +369,12 @@ class ContainerTestCase(unittest.TestCase):
         container = TestContainer(name='name')
         with mock.patch.object(
             fabricio,
-            'sudo',
+            'run',
             side_effect=side_effect,
-        ) as sudo:
+        ) as run:
             container.revert()
-            sudo.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), sudo.call_count)
+            run.assert_has_calls(expected_commands)
+            self.assertEqual(len(expected_commands), run.call_count)
 
 
 class ImageTestCase(unittest.TestCase):

@@ -93,7 +93,7 @@ class Image(object):
     @property
     def info(self):
         command = 'docker inspect --type image {image}'
-        info = fabricio.sudo(command.format(image=self))
+        info = fabricio.run(command.format(image=self))
         return json.loads(str(info))[0]
 
     @default_property
@@ -103,7 +103,7 @@ class Image(object):
     def delete(self, force=False, ignore_errors=False):
         command = 'docker rmi {force}{image}'
         force = force and '--force ' or ''
-        fabricio.sudo(
+        fabricio.run(
             command.format(image=self.id, force=force),
             ignore_errors=ignore_errors,
         )
@@ -125,7 +125,7 @@ class Image(object):
         options=None,
     ):
         command = 'docker run {options} {image} {cmd}'
-        return fabricio.sudo(command.format(
+        return fabricio.run(command.format(
             image=self,
             cmd=cmd or '',
             options=self.make_container_options(

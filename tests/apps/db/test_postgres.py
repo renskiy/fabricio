@@ -44,8 +44,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
@@ -58,8 +58,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(),
                 update_returns=False,
@@ -72,8 +72,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(tag='tag'),
                 update_returns=False,
@@ -86,8 +86,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(force=True),
                 update_returns=True,
@@ -100,8 +100,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                     mock.call('docker kill --signal HUP name'),
                 ],
                 update_kwargs=dict(),
@@ -115,8 +115,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
@@ -129,8 +129,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
@@ -144,8 +144,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 expected_commands=[
                     mock.call('docker run --name name --stop-signal INT --detach image:tag '),
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup'),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup'),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
@@ -161,8 +161,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 container = TestContainer(name='name')
                 with mock.patch.object(
                     fabricio,
-                    'sudo',
-                ) as sudo:
+                    'run',
+                ) as run:
                     with mock.patch.object(
                         files,
                         'exists',
@@ -179,10 +179,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                                 side_effect=data['old_configs'],
                             ):
                                 container.update(**data['update_kwargs'])
-                                sudo.assert_has_calls(data['expected_commands'])
+                                run.assert_has_calls(data['expected_commands'])
                                 self.assertEqual(
                                     len(data['expected_commands']),
-                                    sudo.call_count,
+                                    run.call_count,
                                 )
                                 update.assert_called_once_with(**data['expected_update_kwargs'])
 
@@ -191,18 +191,20 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             mock.call(
                 'mv /data/postgresql.conf.backup /data/postgresql.conf',
                 ignore_errors=True,
+                sudo=True,
             ),
             mock.call(
                 'mv /data/pg_hba.conf.backup /data/pg_hba.conf',
                 ignore_errors=True,
+                sudo=True,
             ),
         ]
-        with mock.patch.object(fabricio, 'sudo') as sudo:
+        with mock.patch.object(fabricio, 'run') as run:
             with mock.patch.object(docker.Container, 'revert') as revert:
                 container = TestContainer(name='name')
                 container.revert()
-                sudo.assert_has_calls(expected_commands)
-                self.assertEqual(len(expected_commands), sudo.call_count)
+                run.assert_has_calls(expected_commands)
+                self.assertEqual(len(expected_commands), run.call_count)
                 revert.assert_called_once()
 
     def test_backup(self):
@@ -213,7 +215,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         'docker exec --tty name psql --username postgres --command "SELECT pg_start_backup(\'backup\');"',
                         ignore_errors=False,
                     ),
-                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz'),
+                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz', sudo=True),
                     mock.call(
                         'docker exec --tty name psql --username postgres --command "SELECT pg_stop_backup();"',
                         ignore_errors=False,
@@ -227,7 +229,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         'docker exec --tty name psql --username user --command "SELECT pg_start_backup(\'backup\');"',
                         ignore_errors=False,
                     ),
-                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz'),
+                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz', sudo=True),
                     mock.call(
                         'docker exec --tty name psql --username user --command "SELECT pg_stop_backup();"',
                         ignore_errors=False,
@@ -239,19 +241,19 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 container = TestContainer(name='name')
-                with mock.patch.object(fabricio, 'sudo') as sudo:
+                with mock.patch.object(fabricio, 'run') as run:
                     container.backup('backup.tar.gz', **data['backup_kwargs'])
-                    sudo.assert_has_calls(data['expected_commands'])
-                    self.assertEqual(len(data['expected_commands']), sudo.call_count)
+                    run.assert_has_calls(data['expected_commands'])
+                    self.assertEqual(len(data['expected_commands']), run.call_count)
 
     def test_restore(self):
         expected_commands = [
             mock.call('docker stop --time 30 name'),
-            mock.call('gzip --decompress < backup.tar.gz | tar --extract --directory /data'),
+            mock.call('gzip --decompress < backup.tar.gz | tar --extract --directory /data', sudo=True),
             mock.call('docker start name')
         ]
         container = TestContainer(name='name')
-        with mock.patch.object(fabricio, 'sudo') as sudo:
+        with mock.patch.object(fabricio, 'run') as run:
             container.restore('backup.tar.gz')
-            sudo.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), sudo.call_count)
+            run.assert_has_calls(expected_commands)
+            self.assertEqual(len(expected_commands), run.call_count)
