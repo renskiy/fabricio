@@ -2,10 +2,31 @@ import functools
 import types
 import weakref
 
-from fabric import api as fab
+from fabric import api as fab, colors
+from fabric.contrib import console
 from fabric.main import is_task_object
 
 import fabricio
+
+
+def infrastructure(confirm=True, color=colors.yellow):
+    def _decorator(task):
+        @functools.wraps(task)
+        def _task(*args, **kwargs):
+            if confirm and console.confirm(
+                    'Are you sure you want to select {infrastructure} '
+                    'infrastructure to run task(s) on?'.format(
+                        infrastructure=color(task.__name__),
+                    ),
+                    default=False,
+            ):
+                return task(*args, **kwargs)
+            fab.abort('Aborted')
+        return _task
+    if callable(confirm):
+        func, confirm = confirm, infrastructure.__defaults__[0]
+        return _decorator(func)
+    return _decorator
 
 
 class Tasks(object):
