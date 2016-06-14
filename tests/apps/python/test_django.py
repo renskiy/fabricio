@@ -7,12 +7,54 @@ from fabricio.apps.python.django import DjangoContainer
 from fabricio import docker
 
 
-class TestContainer(DjangoContainer):
-
-    image = docker.Image('image:tag')
-
-
 class DjangoContainerTestCase(unittest.TestCase):
+
+    def test_apply_migrations(self):
+        cases = dict(
+            default=dict(
+                expected_command='docker run --rm --tty image:tag python manage.py migrate --noinput',
+                kwargs=dict(),
+                container_class_vars=dict(name='name'),
+            ),
+            customized=dict(
+                expected_command='docker run --rm --tty registry/image:foo python manage.py migrate --noinput',
+                kwargs=dict(tag='foo', registry='registry'),
+                container_class_vars=dict(name='name'),
+            ),
+            default_with_customized_container=dict(
+                expected_command='docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py migrate --noinput',
+                kwargs=dict(),
+                container_class_vars=dict(
+                    user='user',
+                    env='env',
+                    volumes='volumes',
+                    links='links',
+                    hosts='hosts',
+                    network='network',
+
+                    cmd='cmd',
+                    ports='ports',
+                    restart_policy='restart_policy',
+                    stop_signal='stop_signal',
+                    stop_timeout='stop_timeout',
+                ),
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                TestContainer = type(
+                    'TestContainer',
+                    (DjangoContainer, ),
+                    dict(
+                        dict(image=docker.Image('image:tag')),
+                        **data['container_class_vars']
+                    ),
+                )
+                container = TestContainer('test')
+                with mock.patch.object(fabricio, 'run') as run:
+                    container.apply_migrations(**data['kwargs'])
+                    del container.apply_migrations.__func__.return_value
+                    run.assert_called_once_with(data['expected_command'])
 
     def test_revert_migrations(self):
         cases = dict(

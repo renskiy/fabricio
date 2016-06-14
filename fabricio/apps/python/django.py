@@ -43,15 +43,19 @@ class DjangoContainer(docker.Container):
         )
 
     @fab.runs_once
-    def apply_migrations(self, tag=None):
-        self.__class__.image[tag].run(
+    def apply_migrations(self, tag=None, registry=None):
+        self.__class__.image[registry:tag].run(
             'python manage.py migrate --noinput',
             **self.migration_options
         )
 
-    def update(self, force=False, tag=None):
-        self.apply_migrations(tag=tag)
-        return super(DjangoContainer, self).update(force=force, tag=tag)
+    def update(self, force=False, tag=None, registry=None):
+        self.apply_migrations(tag=tag, registry=registry)
+        return super(DjangoContainer, self).update(
+            force=force,
+            tag=tag,
+            registry=registry,
+        )
 
     @staticmethod
     def _get_parent_migration(migration, migrations):
