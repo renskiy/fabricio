@@ -10,13 +10,12 @@ def _command(
     show=(),
     **kwargs
 ):
-    command = command.strip()
     if quiet:
         hide += ('stdout', )
     log('{method}: {command}'.format(method=fabric_method.__name__, command=command))
     with fab.settings(fab.hide(*hide), fab.show(*show), warn_only=True):
         result = fabric_method(command, **kwargs)
-        if result.failed and not ignore_errors:
+        if not ignore_errors and result.failed:
             raise RuntimeError(result)
     return result
 
@@ -30,12 +29,24 @@ def run(command, sudo=False, **kwargs):
     )
 
 
-def local(command, **kwargs):
-    return _command(
+def local(command, use_cache=False, **kwargs):
+    if use_cache and command in local.cache:
+        def from_cache(*args, **kwargs):
+            return local.cache[command]
+        return _command(
+            fabric_method=from_cache,
+            command=command,
+            **kwargs
+        )
+    result = _command(
         fabric_method=fab.local,
         command=command,
         **kwargs
     )
+    if use_cache:
+        local.cache[command] = result
+    return result
+local.cache = {}
 
 
 def log(message, color=colors.yellow):

@@ -144,8 +144,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 ),
                 tasks_push_kwargs=dict(),
                 expected_commands=[
-                    mock.call('docker tag test:latest localhost:5000/test:latest'),
-                    mock.call('docker push localhost:5000/test:latest', quiet=False),
+                    mock.call('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                 ],
             ),
             custom_tag=dict(
@@ -154,8 +154,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 ),
                 tasks_push_kwargs=dict(tag='tag'),
                 expected_commands=[
-                    mock.call('docker tag test:latest localhost:5000/test:tag'),
-                    mock.call('docker push localhost:5000/test:tag', quiet=False),
+                    mock.call('docker tag test:latest localhost:5000/test:tag', use_cache=True),
+                    mock.call('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
                 ],
             ),
             custom_local_registry=dict(
@@ -165,8 +165,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 ),
                 tasks_push_kwargs=dict(),
                 expected_commands=[
-                    mock.call('docker tag test:latest custom_host:1234/test:latest'),
-                    mock.call('docker push custom_host:1234/test:latest', quiet=False),
+                    mock.call('docker tag test:latest custom_host:1234/test:latest', use_cache=True),
+                    mock.call('docker push custom_host:1234/test:latest', quiet=False, use_cache=True),
                 ],
             ),
         )
@@ -214,6 +214,7 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     local.assert_called_once_with(
                         data['expected_command'],
                         quiet=False,
+                        use_cache=True,
                     )
 
     def test_deploy(self):
@@ -260,6 +261,7 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     local.assert_called_once_with(
                         data['expected_command'],
                         quiet=False,
+                        use_cache=True,
                     )
 
     def test_deploy(self):

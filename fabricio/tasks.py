@@ -14,11 +14,11 @@ def infrastructure(confirm=True, color=colors.yellow):
         @functools.wraps(task)
         def _task(*args, **kwargs):
             if confirm and console.confirm(
-                    'Are you sure you want to select {infrastructure} '
-                    'infrastructure to run task(s) on?'.format(
-                        infrastructure=color(task.__name__),
-                    ),
-                    default=False,
+                'Are you sure you want to select {infrastructure} '
+                'infrastructure to run task(s) on?'.format(
+                    infrastructure=color(task.__name__),
+                ),
+                default=False,
             ):
                 return task(*args, **kwargs)
             fab.abort('Aborted')
@@ -71,8 +71,14 @@ class DockerTasks(Tasks):
 
     registry_port = 5000
 
-    def __init__(self, container, local_registry='localhost:5000', **kwargs):
-        super(DockerTasks, self).__init__(**kwargs)
+    def __init__(
+        self,
+        container,
+        local_registry='localhost:5000',
+        roles=(),
+        hosts=(),
+    ):
+        super(DockerTasks, self).__init__(roles=roles, hosts=hosts)
         self.container = container
         registry_host, _, registry_port = local_registry.partition(':')
         self.local_registry_host = registry_host or 'localhost'
@@ -116,11 +122,18 @@ class DockerTasks(Tasks):
     @fab.task
     def push(self, tag=None):
         new_tag = self.image[self.local_registry:tag]
-        fabricio.local('docker tag {image} {tag}'.format(
-            image=self.image,
-            tag=new_tag,
-        ))
-        fabricio.local('docker push {tag}'.format(tag=new_tag), quiet=False)
+        fabricio.local(
+            'docker tag {image} {tag}'.format(
+                image=self.image,
+                tag=new_tag,
+            ),
+            use_cache=True,
+        )
+        fabricio.local(
+            'docker push {tag}'.format(tag=new_tag),
+            quiet=False,
+            use_cache=True,
+        )
 
     @fab.task(default=True)
     def deploy(self, force='no', tag=None):
@@ -135,6 +148,7 @@ class PullDockerTasks(DockerTasks):
         fabricio.local(
             'docker pull {image}'.format(image=self.image[tag]),
             quiet=False,
+            use_cache=True,
         )
 
     @fab.task(default=True)
@@ -145,8 +159,20 @@ class PullDockerTasks(DockerTasks):
 
 class BuildDockerTasks(DockerTasks):
 
-    def __init__(self, build_path='.', **kwargs):
-        super(BuildDockerTasks, self).__init__(**kwargs)
+    def __init__(
+        self,
+        container,
+        build_path='.',
+        local_registry='localhost:5000',
+        roles=(),
+        hosts=(),
+    ):
+        super(BuildDockerTasks, self).__init__(
+            container=container,
+            local_registry=local_registry,
+            roles=roles,
+            hosts=hosts,
+        )
         self.build_path = build_path
 
     @fab.task
@@ -157,6 +183,7 @@ class BuildDockerTasks(DockerTasks):
                 build_path=self.build_path,
             ),
             quiet=False,
+            use_cache=True,
         )
 
     @fab.task(default=True)
