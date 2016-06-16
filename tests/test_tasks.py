@@ -57,6 +57,51 @@ class DockerTasksTestCase(unittest.TestCase):
             default=dict(
                 tasks_init_kwargs=dict(container=TestContainer('name')),
                 tasks_update_kwargs=dict(),
+                expected_command='docker pull test:latest',
+                expected_container_update_params=dict(
+                    force=False,
+                    tag=None,
+                ),
+            ),
+            forced=dict(
+                tasks_init_kwargs=dict(container=TestContainer('name')),
+                tasks_update_kwargs=dict(force='yes'),
+                expected_command='docker pull test:latest',
+                expected_container_update_params=dict(
+                    force=True,
+                    tag=None,
+                ),
+            ),
+            custom_tag=dict(
+                tasks_init_kwargs=dict(container=TestContainer('name')),
+                tasks_update_kwargs=dict(tag='tag'),
+                expected_command='docker pull test:tag',
+                expected_container_update_params=dict(
+                    force=False,
+                    tag='tag',
+                ),
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                tasks = DockerTasks(**data['tasks_init_kwargs'])
+                with mock.patch.object(fabricio, 'run') as run:
+                    with mock.patch.object(
+                        docker.Container,
+                        'update',
+                    ) as container_update:
+                        tasks.update(**data['tasks_update_kwargs'])
+                        container_update.assert_called_once_with(**data['expected_container_update_params'])
+                    run.assert_called_once_with(data['expected_command'])
+
+
+class PullDockerTasksTestCase(unittest.TestCase):
+
+    def test_update(self):
+        cases = dict(
+            default=dict(
+                tasks_init_kwargs=dict(container=TestContainer('name')),
+                tasks_update_kwargs=dict(),
                 expected_command='docker pull localhost:5000/test:latest',
                 expected_tunnel_params=dict(
                     remote_port=5000,
@@ -120,7 +165,7 @@ class DockerTasksTestCase(unittest.TestCase):
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = DockerTasks(**data['tasks_init_kwargs'])
+                tasks = PullDockerTasks(**data['tasks_init_kwargs'])
                 with mock.patch.object(
                     fab,
                     'remote_tunnel',
@@ -154,7 +199,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 ),
                 tasks_push_kwargs=dict(tag='tag'),
                 expected_commands=[
-                    mock.call('docker tag test:latest localhost:5000/test:tag', use_cache=True),
+                    mock.call('docker tag test:tag localhost:5000/test:tag', use_cache=True),
                     mock.call('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
                 ],
             ),
@@ -169,10 +214,20 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call('docker push custom_host:1234/test:latest', quiet=False, use_cache=True),
                 ],
             ),
+            original_registry=dict(
+                tasks_init_kwargs=dict(
+                    container=TestContainer('name'),
+                    local_registry='custom_host:1234',
+                ),
+                tasks_push_kwargs=dict(local='no'),
+                expected_commands=[
+                    mock.call('docker push test:latest', quiet=False, use_cache=True),
+                ],
+            ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = DockerTasks(**data['tasks_init_kwargs'])
+                tasks = PullDockerTasks(**data['tasks_init_kwargs'])
                 with mock.patch.object(fabricio, 'local') as local:
                     tasks.push(**data['tasks_push_kwargs'])
                     local.assert_has_calls(data['expected_commands'])
@@ -183,17 +238,16 @@ class DockerTasksTestCase(unittest.TestCase):
 
     def test_deploy(self):
         with mock.patch.multiple(
-            DockerTasks,
+            PullDockerTasks,
+            pull=mock.DEFAULT,
             push=mock.DEFAULT,
             update=mock.DEFAULT,
         ) as patched:
-            tasks = DockerTasks(container='container')
+            tasks = PullDockerTasks(container='container')
             tasks.deploy(force='force', tag='tag')
+            patched['pull'].assert_called_once_with(tag='tag')
             patched['push'].assert_called_once_with(tag='tag')
             patched['update'].assert_called_once_with(force='force', tag='tag')
-
-
-class PullDockerTasksTestCase(unittest.TestCase):
 
     def test_pull(self):
         cases = dict(
@@ -216,14 +270,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
                         quiet=False,
                         use_cache=True,
                     )
-
-    def test_deploy(self):
-        with mock.patch.object(PullDockerTasks, 'pull') as pull:
-            with mock.patch.object(DockerTasks, 'deploy') as deploy:
-                tasks = PullDockerTasks(container='container')
-                tasks.deploy(force='force', tag='tag')
-                pull.assert_called_once_with(tag='tag')
-                deploy.assert_called_once_with(mock.ANY, force='force', tag='tag')
 
 
 class BuildDockerTasksTestCase(unittest.TestCase):
@@ -265,9 +311,14 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     )
 
     def test_deploy(self):
-        with mock.patch.object(BuildDockerTasks, 'build') as build:
-            with mock.patch.object(DockerTasks, 'deploy') as deploy:
-                tasks = BuildDockerTasks(container='container')
-                tasks.deploy(force='force', tag='tag')
-                build.assert_called_once_with(tag='tag')
-                deploy.assert_called_once_with(mock.ANY, force='force', tag='tag')
+        with mock.patch.multiple(
+            BuildDockerTasks,
+            build=mock.DEFAULT,
+            push=mock.DEFAULT,
+            update=mock.DEFAULT,
+        ) as patched:
+            tasks = BuildDockerTasks(container='container')
+            tasks.deploy(force='force', tag='tag')
+            patched['build'].assert_called_once_with(tag='tag')
+            patched['push'].assert_called_once_with(tag='tag')
+            patched['update'].assert_called_once_with(force='force', tag='tag')
