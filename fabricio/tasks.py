@@ -59,7 +59,10 @@ class Tasks(object):
                 setattr(self, attr, task)
         return self
 
-    def __init__(self, roles=(), hosts=()):
+    def __init__(self, roles=(), hosts=(), create_default_roles=True):
+        if create_default_roles:
+            for role in roles:
+                fab.env.roledefs.setdefault(role, [])
         for task in self:
             task.roles = roles
             task.hosts = hosts
@@ -72,8 +75,18 @@ class Tasks(object):
 
 class DockerTasks(Tasks):
 
-    def __init__(self, container, roles=(), hosts=()):
-        super(DockerTasks, self).__init__(roles=roles, hosts=hosts)
+    def __init__(
+        self,
+        container,
+        roles=(),
+        hosts=(),
+        create_default_roles=True,
+    ):
+        super(DockerTasks, self).__init__(
+            roles=roles,
+            hosts=hosts,
+            create_default_roles=create_default_roles,
+        )
         self.container = container  # type: docker.Container
 
     @property
@@ -106,11 +119,13 @@ class PullDockerTasks(DockerTasks):
         local_registry='localhost:5000',
         roles=(),
         hosts=(),
+        create_default_roles=True,
     ):
         super(PullDockerTasks, self).__init__(
             container=container,
             roles=roles,
             hosts=hosts,
+            create_default_roles=create_default_roles,
         )
         registry_host, _, registry_port = local_registry.partition(':')
         self.local_registry_host = registry_host or 'localhost'
@@ -198,12 +213,14 @@ class BuildDockerTasks(PullDockerTasks):
         local_registry='localhost:5000',
         roles=(),
         hosts=(),
+        create_default_roles=True,
     ):
         super(BuildDockerTasks, self).__init__(
             container=container,
             local_registry=local_registry,
             roles=roles,
             hosts=hosts,
+            create_default_roles=create_default_roles,
         )
         self.build_path = build_path
 
