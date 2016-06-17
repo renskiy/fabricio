@@ -5,6 +5,7 @@ import weakref
 from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
+from fabric.network import needs_host
 
 import fabricio
 
@@ -127,6 +128,7 @@ class PullDockerTasks(DockerTasks):
         )
 
     @fab.task
+    @needs_host
     def update(self, force='no', tag=None):
         """
         update[:force=no,tag=None] - recreate Docker container
