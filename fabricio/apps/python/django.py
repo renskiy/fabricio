@@ -2,7 +2,6 @@ import collections
 import itertools
 
 from cached_property import cached_property
-from fabric import api as fab
 
 from fabricio import docker
 
@@ -42,7 +41,6 @@ class DjangoContainer(docker.Container):
             network=self.network,
         )
 
-    @fab.serial
     def apply_migrations(self, tag=None, registry=None):
         self.__class__.image[registry:tag].run(
             'python manage.py migrate --noinput',
@@ -50,7 +48,7 @@ class DjangoContainer(docker.Container):
         )
 
     def update(self, force=False, tag=None, registry=None):
-        fab.execute(self.apply_migrations, tag=tag, registry=registry)
+        self.apply_migrations(tag=tag, registry=registry)
         return super(DjangoContainer, self).update(
             force=force,
             tag=tag,
@@ -93,7 +91,6 @@ class DjangoContainer(docker.Container):
             if backup_migration is None:
                 return revert_migrations.values()
 
-    @fab.serial
     def revert_migrations(self):
         migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
 
@@ -121,5 +118,5 @@ class DjangoContainer(docker.Container):
             self.image.run(cmd=cmd, **self.migration_options)  # TODO logging
 
     def revert(self):
-        fab.execute(self.revert_migrations)
+        self.revert_migrations()
         super(DjangoContainer, self).revert()
