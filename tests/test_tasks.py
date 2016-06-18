@@ -1,18 +1,62 @@
+import os
+import sys
+
+from StringIO import StringIO
+
 import mock
 import unittest2 as unittest
 
 from fabric import api as fab
+from fabric.contrib import console
 from fabric.main import load_tasks_from_module, is_task_module
 
 import fabricio
 
 from fabricio import docker
-from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, BuildDockerTasks
+from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, BuildDockerTasks, infrastructure
 
 
 class TestContainer(docker.Container):
 
     image = docker.Image('test')
+
+
+class TestCase(unittest.TestCase):
+
+    def setUp(self):
+        self.stderr = sys.stderr
+        sys.stderr = StringIO()
+
+    def tearDown(self):
+        sys.stderr = self.stderr
+
+    def test_infrastructure(self):
+        class AbortException(Exception):
+            pass
+
+        def task():
+            return 'result'
+
+        with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
+            with self.assertRaises(AbortException):
+                fab.execute(infrastructure(task))
+
+            environ_backup = os.environ.copy()
+            try:
+                os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = '1'
+                os.environ.pop('CUSTOM_ENV', None)
+                self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                with self.assertRaises(AbortException):
+                    fab.execute(infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task))
+            finally:
+                os.environ = environ_backup
+
+            with mock.patch.object(console, 'confirm', side_effect=(True, False)):
+                self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                with self.assertRaises(AbortException):
+                    fab.execute(infrastructure(task))
+
+            self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(confirm=False)(task)))
 
 
 class TasksTestCase(unittest.TestCase):

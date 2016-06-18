@@ -1,4 +1,5 @@
 import functools
+import os
 import types
 import weakref
 
@@ -12,19 +13,25 @@ import fabricio
 from fabricio import docker
 
 
-def infrastructure(confirm=True, color=colors.yellow):
+def infrastructure(
+    confirm=True,
+    color=colors.yellow,
+    autoconfirm_env_var='FABRICIO_INFRASTRUCTURE_AUTOCONFIRM',
+):
     def _decorator(task):
         @functools.wraps(task)
         def _task(*args, **kwargs):
-            if confirm and console.confirm(
-                'Are you sure you want to select {infrastructure} '
-                'infrastructure to run task(s) on?'.format(
-                    infrastructure=color(task.__name__),
-                ),
-                default=False,
-            ):
-                return task(*args, **kwargs)
-            fab.abort('Aborted')
+            if confirm:
+                confirmed = os.environ.get(autoconfirm_env_var, False)
+                if not confirmed and not console.confirm(
+                    'Are you sure you want to select {infrastructure} '
+                    'infrastructure to run task(s) on?'.format(
+                        infrastructure=color(task.__name__),
+                    ),
+                    default=False,
+                ):
+                    fab.abort('Aborted')
+            return task(*args, **kwargs)
         return _task
     if callable(confirm):
         func, confirm = confirm, infrastructure.__defaults__[0]
