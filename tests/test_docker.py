@@ -421,6 +421,17 @@ class ImageTestCase(unittest.TestCase):
                 expected_registry='127.0.0.1:5000',
                 expected_str='127.0.0.1:5000/image:tag',
             ),
+            with_tag_and_registry_and_user=dict(
+                init_kwargs=dict(
+                    name='user/image',
+                    tag='tag',
+                    registry='127.0.0.1:5000',
+                ),
+                expected_name='user/image',
+                expected_tag='tag',
+                expected_registry='127.0.0.1:5000',
+                expected_str='127.0.0.1:5000/user/image:tag',
+            ),
             single_arg_with_tag=dict(
                 init_kwargs=dict(
                     name='image:tag',
@@ -432,21 +443,21 @@ class ImageTestCase(unittest.TestCase):
             ),
             single_arg_with_registry=dict(
                 init_kwargs=dict(
-                    name='registry/image',
+                    name='registry:123/image',
                 ),
                 expected_name='image',
                 expected_tag='latest',
-                expected_registry='registry',
-                expected_str='registry/image:latest',
+                expected_registry='registry:123',
+                expected_str='registry:123/image:latest',
             ),
             single_arg_with_tag_and_registry=dict(
                 init_kwargs=dict(
-                    name='registry/image:tag',
+                    name='registry:123/image:tag',
                 ),
                 expected_name='image',
                 expected_tag='tag',
-                expected_registry='registry',
-                expected_str='registry/image:tag',
+                expected_registry='registry:123',
+                expected_str='registry:123/image:tag',
             ),
             forced_with_tag=dict(
                 init_kwargs=dict(
@@ -460,24 +471,24 @@ class ImageTestCase(unittest.TestCase):
             ),
             forced_with_registry=dict(
                 init_kwargs=dict(
-                    name='registry/image',
+                    name='user/image',
                     registry='foo',
                 ),
-                expected_name='image',
+                expected_name='user/image',
                 expected_tag='latest',
                 expected_registry='foo',
-                expected_str='foo/image:latest',
+                expected_str='foo/user/image:latest',
             ),
             forced_with_tag_and_registry=dict(
                 init_kwargs=dict(
-                    name='registry/image:tag',
+                    name='user/image:tag',
                     tag='foo',
                     registry='bar',
                 ),
-                expected_name='image',
+                expected_name='user/image',
                 expected_tag='foo',
                 expected_registry='bar',
-                expected_str='bar/image:foo',
+                expected_str='bar/user/image:foo',
             ),
         )
         for case, data in cases.items():

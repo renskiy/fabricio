@@ -53,8 +53,13 @@ class Image(object):
 
     @staticmethod
     def _parse_image_name(image):
-        registry, _, name_with_tag = image.rpartition('/')
+        registry_with_user, _, name_with_tag = image.rpartition('/')
         name, _, tag = name_with_tag.partition(':')
+        registry, _, user = registry_with_user.rpartition('/')
+        if not registry and ':' in user:
+            registry, user = user, registry
+        if user:
+            name = '{user}/{name}'.format(user=user, name=name)
         return registry, name, tag
 
     @staticmethod
