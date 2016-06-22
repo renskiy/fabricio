@@ -13,7 +13,7 @@ from fabric.main import load_tasks_from_module, is_task_module
 import fabricio
 
 from fabricio import docker
-from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, BuildDockerTasks, infrastructure
+from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, BuildDockerTasks, infrastructure, Registry
 
 
 class TestContainer(docker.Container):
@@ -103,51 +103,157 @@ class DockerTasksTestCase(unittest.TestCase):
     def tearDown(self):
         self.fab_settings.__exit__(None, None, None)
 
-    def test_update(self):
+    def test_commands_list(self):
         cases = dict(
             default=dict(
-                tasks_update_kwargs=dict(),
-                expected_command='docker pull test:latest',
-                expected_container_update_params=dict(
-                    force=False,
-                    tag=None,
-                ),
+                init_kwargs=dict(container='container'),
+                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy'],
+                unexpected_commands_list=['migrate', 'migrate_back', 'backup', 'restore'],
             ),
-            forced=dict(
-                tasks_update_kwargs=dict(force='yes'),
-                expected_command='docker pull test:latest',
-                expected_container_update_params=dict(
-                    force=True,
-                    tag=None,
-                ),
+            migrate_tasks=dict(
+                init_kwargs=dict(container='container', migrate_commands=True),
+                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy', 'migrate', 'migrate_back'],
+                unexpected_commands_list=['backup', 'restore'],
             ),
-            custom_tag=dict(
-                tasks_update_kwargs=dict(tag='tag'),
-                expected_command='docker pull test:tag',
-                expected_container_update_params=dict(
-                    force=False,
-                    tag='tag',
-                ),
+            backup_tasks=dict(
+                init_kwargs=dict(container='container', backup_commands=True),
+                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy', 'backup', 'restore'],
+                unexpected_commands_list=['migrate', 'migrate_back'],
+            ),
+            all_tasks=dict(
+                init_kwargs=dict(container='container', backup_commands=True, migrate_commands=True),
+                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate_back'],
+                unexpected_commands_list=[],
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = DockerTasks(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                )
-                with mock.patch.object(fabricio, 'run') as run:
-                    with mock.patch.object(
-                        docker.Container,
-                        'update',
-                    ) as container_update:
-                        fab.execute(tasks.update, **data['tasks_update_kwargs'])
-                        container_update.assert_called_once_with(**data['expected_container_update_params'])
-                    run.assert_called_once_with(data['expected_command'])
+                tasks = DockerTasks(**data['init_kwargs'])
+                docstring, new_style, classic, default = load_tasks_from_module(tasks)
+                for expected_command in data['expected_commands_list']:
+                    self.assertIn(expected_command, new_style)
+                for unexpected_command in data['unexpected_commands_list']:
+                    self.assertNotIn(unexpected_command, new_style)
+
+    def test_backup_runs_once(self):
+        tasks = DockerTasks(
+            container=TestContainer('name'),
+            backup_commands=True,
+            hosts=['host1', 'host2'],
+        )
+        with mock.patch.object(TestContainer, 'backup') as backup:
+            fab.execute(tasks.backup)
+            del DockerTasks.backup.wrapped.return_value  # reset runs_once behavior
+            backup.assert_called_once()
+
+    def test_restore_runs_once(self):
+        tasks = DockerTasks(
+            container=TestContainer('name'),
+            backup_commands=True,
+            hosts=['host1', 'host2'],
+        )
+        with mock.patch.object(TestContainer, 'restore') as restore:
+            fab.execute(tasks.restore)
+            del DockerTasks.restore.wrapped.return_value  # reset runs_once behavior
+            restore.assert_called_once()
+
+    @mock.patch.multiple(TestContainer, revert=mock.DEFAULT, migrate_back=mock.DEFAULT)
+    def test_rollback(self, revert, migrate_back):
+        tasks = DockerTasks(container=TestContainer('name'))
+        rollback = mock.Mock()
+        rollback.attach_mock(migrate_back, 'migrate_back')
+        rollback.attach_mock(revert, 'revert')
+
+        # default case
+        fab.execute(tasks.rollback)
+        self.assertListEqual(
+            [mock.call.migrate_back(), mock.call.revert()],
+            rollback.mock_calls,
+        )
+        rollback.reset_mock()
+
+        # with migrate_back disabled
+        fab.execute(tasks.rollback, migrate_back='no')
+        migrate_back.assert_not_called()
+        revert.assert_called_once()
+        rollback.reset_mock()
+
+    @mock.patch.multiple(TestContainer, backup=mock.DEFAULT, migrate=mock.DEFAULT, update=mock.DEFAULT)
+    @mock.patch.object(fabricio, 'run')
+    def test_deploy(self, run, backup, migrate, update):
+        cases = dict(
+            default=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
+                ],
+            ),
+            custom_registry=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull host:1234/test:latest'),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                init_kwargs=dict(registry='host:1234'),
+            ),
+            skip_migration=dict(
+                deploy_kwargs=dict(migrate='no'),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.update(force=False, tag=None, registry=None),
+                ],
+            ),
+            skip_backup=dict(
+                deploy_kwargs=dict(backup='no'),
+                expected_calls=[
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
+                ],
+            ),
+            custom_tag=dict(
+                deploy_kwargs=dict(tag='tag'),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull test:tag'),
+                    mock.call.migrate(tag='tag', registry=None),
+                    mock.call.update(force=False, tag='tag', registry=None),
+                ],
+            ),
+            forced=dict(
+                deploy_kwargs=dict(force='yes'),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=True, tag=None, registry=None),
+                ],
+            ),
+        )
+        deploy = mock.Mock()
+        deploy.attach_mock(backup, 'backup')
+        deploy.attach_mock(migrate, 'migrate')
+        deploy.attach_mock(update, 'update')
+        deploy.attach_mock(run, 'run')
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                tasks = DockerTasks(container=TestContainer('name'), **data.get('init_kwargs', {}))
+                tasks.deploy(**data['deploy_kwargs'])
+                DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
+                self.assertListEqual(data['expected_calls'], deploy.mock_calls)
+                deploy.reset_mock()
 
 
 class PullDockerTasksTestCase(unittest.TestCase):
 
+    maxDiff = None
+
     def setUp(self):
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
@@ -155,200 +261,130 @@ class PullDockerTasksTestCase(unittest.TestCase):
     def tearDown(self):
         self.fab_settings.__exit__(None, None, None)
 
-    def test_update(self):
+    @mock.patch.multiple(TestContainer, backup=mock.DEFAULT, migrate=mock.DEFAULT, update=mock.DEFAULT)
+    @mock.patch.multiple(fabricio, run=mock.DEFAULT, local=mock.DEFAULT)
+    @mock.patch.object(fab, 'remote_tunnel', return_value=mock.MagicMock())
+    def test_deploy(self, remote_tunnel, run, local, backup, migrate, update):
         cases = dict(
             default=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_update_kwargs=dict(),
-                expected_command='docker pull localhost:5000/test:latest',
-                expected_tunnel_params=dict(
-                    remote_port=5000,
-                    local_port=5000,
-                    local_host='localhost',
-                ),
-                expected_container_update_params=dict(
-                    force=False,
-                    tag=None,
-                    registry='localhost:5000',
-                ),
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+            ),
+            custom_registry=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull host:1234/test:latest'),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                init_kwargs=dict(registry='host:1234'),
+            ),
+            custom_local_registry=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest host:1234/test:latest', use_cache=True),
+                    mock.call.local('docker push host:1234/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi host:1234/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=1234, local_host='host'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+                init_kwargs=dict(local_registry='host:1234'),
             ),
             forced=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_update_kwargs=dict(force='yes'),
-                expected_command='docker pull localhost:5000/test:latest',
-                expected_tunnel_params=dict(
-                    remote_port=5000,
-                    local_port=5000,
-                    local_host='localhost',
-                ),
-                expected_container_update_params=dict(
-                    force=True,
-                    tag=None,
-                    registry='localhost:5000',
-                ),
-            ),
-            custom_tag=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_update_kwargs=dict(tag='tag'),
-                expected_command='docker pull localhost:5000/test:tag',
-                expected_tunnel_params=dict(
-                    remote_port=5000,
-                    local_port=5000,
-                    local_host='localhost',
-                ),
-                expected_container_update_params=dict(
-                    force=False,
-                    tag='tag',
-                    registry='localhost:5000',
-                ),
-            ),
-            custom_local_registry=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    local_registry='custom_host:1234',
-                    hosts=['host'],
-                ),
-                tasks_update_kwargs=dict(),
-                expected_command='docker pull localhost:5000/test:latest',
-                expected_tunnel_params=dict(
-                    remote_port=5000,
-                    local_port=1234,
-                    local_host='custom_host',
-                ),
-                expected_container_update_params=dict(
-                    force=False,
-                    tag=None,
-                    registry='localhost:5000',
-                ),
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                tasks = PullDockerTasks(**data['tasks_init_kwargs'])
-                with mock.patch.object(
-                    fab,
-                    'remote_tunnel',
-                    return_value=mock.MagicMock(),
-                ) as remote_tunnel:
-                    with mock.patch.object(fabricio, 'run') as run:
-                        with mock.patch.object(
-                            docker.Container,
-                            'update',
-                        ) as container_update:
-                            fab.execute(tasks.update, **data['tasks_update_kwargs'])
-                            container_update.assert_called_once_with(**data['expected_container_update_params'])
-                        run.assert_called_once_with(data['expected_command'])
-                    remote_tunnel.assert_called_once_with(**data['expected_tunnel_params'])
-
-    def test_push(self):
-        cases = dict(
-            default=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_push_kwargs=dict(),
-                expected_commands=[
-                    mock.call('docker tag test:latest localhost:5000/test:latest', use_cache=True),
-                    mock.call('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                deploy_kwargs=dict(force='yes'),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=True, tag=None, registry='localhost:5000'),
                 ],
             ),
             custom_tag=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_push_kwargs=dict(tag='tag'),
-                expected_commands=[
-                    mock.call('docker tag test:tag localhost:5000/test:tag', use_cache=True),
-                    mock.call('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
+                deploy_kwargs=dict(tag='tag'),
+                expected_calls=[
+                    mock.call.local('docker pull test:tag', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:tag localhost:5000/test:tag', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:tag', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:tag'),
+                    mock.call.migrate(tag='tag', registry='localhost:5000'),
+                    mock.call.update(force=False, tag='tag', registry='localhost:5000'),
                 ],
             ),
-            custom_local_registry=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    local_registry='custom_host:1234',
-                    hosts=['host'],
-                ),
-                tasks_push_kwargs=dict(),
-                expected_commands=[
-                    mock.call('docker tag test:latest custom_host:1234/test:latest', use_cache=True),
-                    mock.call('docker push custom_host:1234/test:latest', quiet=False, use_cache=True),
+            skip_backup=dict(
+                deploy_kwargs=dict(backup='no'),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
                 ],
             ),
-            original_registry=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    local_registry='custom_host:1234',
-                    hosts=['host'],
-                ),
-                tasks_push_kwargs=dict(local='no'),
-                expected_commands=[
-                    mock.call('docker push test:latest', quiet=False, use_cache=True),
+            skip_migration=dict(
+                deploy_kwargs=dict(migrate='no'),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
                 ],
             ),
         )
+        deploy = mock.Mock()
+        deploy.attach_mock(backup, 'backup')
+        deploy.attach_mock(migrate, 'migrate')
+        deploy.attach_mock(update, 'update')
+        deploy.attach_mock(run, 'run')
+        deploy.attach_mock(local, 'local')
+        deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = PullDockerTasks(**data['tasks_init_kwargs'])
-                with mock.patch.object(fabricio, 'local') as local:
-                    fab.execute(tasks.push, **data['tasks_push_kwargs'])
-                    local.assert_has_calls(data['expected_commands'])
-                    self.assertEqual(
-                        len(data['expected_commands']),
-                        local.call_count,
-                    )
-
-    def test_deploy(self):
-        with mock.patch.multiple(
-            PullDockerTasks,
-            pull=mock.DEFAULT,
-            push=mock.DEFAULT,
-            update=mock.DEFAULT,
-        ) as patched:
-            tasks = PullDockerTasks(container='container')
-            fab.execute(tasks.deploy, force='force', tag='tag')
-            patched['pull'].assert_called_once_with(tag='tag')
-            patched['push'].assert_called_once_with(tag='tag')
-            patched['update'].assert_called_once_with(force='force', tag='tag')
-
-    def test_pull(self):
-        cases = dict(
-            default=dict(
-                tasks_pull_kwargs=dict(),
-                expected_command='docker pull test:latest',
-            ),
-            custom_tag=dict(
-                tasks_pull_kwargs=dict(tag='tag'),
-                expected_command='docker pull test:tag',
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                tasks = PullDockerTasks(
-                    container=TestContainer('container'),
-                    hosts=['host'],
-                )
-                with mock.patch.object(fabricio, 'local') as local:
-                    fab.execute(tasks.pull, **data['tasks_pull_kwargs'])
-                    local.assert_called_once_with(
-                        data['expected_command'],
-                        quiet=False,
-                        use_cache=True,
-                    )
+                tasks = PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
+                tasks.deploy(**data['deploy_kwargs'])
+                DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
+                self.assertListEqual(data['expected_calls'], deploy.mock_calls)
+                deploy.reset_mock()
 
 
 class BuildDockerTasksTestCase(unittest.TestCase):
 
+    maxDiff = None
+
     def setUp(self):
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
@@ -356,54 +392,136 @@ class BuildDockerTasksTestCase(unittest.TestCase):
     def tearDown(self):
         self.fab_settings.__exit__(None, None, None)
 
-    def test_build(self):
+    @mock.patch.multiple(TestContainer, backup=mock.DEFAULT, migrate=mock.DEFAULT, update=mock.DEFAULT)
+    @mock.patch.multiple(fabricio, run=mock.DEFAULT, local=mock.DEFAULT)
+    @mock.patch.object(fab, 'remote_tunnel', return_value=mock.MagicMock())
+    def test_deploy(self, remote_tunnel, run, local, backup, migrate, update):
         cases = dict(
             default=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_build_kwargs=dict(),
-                expected_command='docker build --tag test:latest .',
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
             ),
             custom_build_path=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    build_path='foo',
-                    hosts=['host'],
-                ),
-                tasks_build_kwargs=dict(),
-                expected_command='docker build --tag test:latest foo',
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest build/path', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+                init_kwargs=dict(build_path='build/path'),
+            ),
+            custom_registry=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull host:1234/test:latest'),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                init_kwargs=dict(registry='host:1234'),
+            ),
+            custom_local_registry=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest host:1234/test:latest', use_cache=True),
+                    mock.call.local('docker push host:1234/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi host:1234/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=1234, local_host='host'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+                init_kwargs=dict(local_registry='host:1234'),
+            ),
+            forced=dict(
+                deploy_kwargs=dict(force='yes'),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=True, tag=None, registry='localhost:5000'),
+                ],
             ),
             custom_tag=dict(
-                tasks_init_kwargs=dict(
-                    container=TestContainer('name'),
-                    hosts=['host'],
-                ),
-                tasks_build_kwargs=dict(tag='tag'),
-                expected_command='docker build --tag test:tag .',
+                deploy_kwargs=dict(tag='tag'),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:tag .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:tag localhost:5000/test:tag', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:tag', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:tag'),
+                    mock.call.migrate(tag='tag', registry='localhost:5000'),
+                    mock.call.update(force=False, tag='tag', registry='localhost:5000'),
+                ],
+            ),
+            skip_backup=dict(
+                deploy_kwargs=dict(backup='no'),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+            ),
+            skip_migration=dict(
+                deploy_kwargs=dict(migrate='no'),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest .', quiet=False, use_cache=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
+                    mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull localhost:5000/test:latest'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
             ),
         )
+        deploy = mock.Mock()
+        deploy.attach_mock(backup, 'backup')
+        deploy.attach_mock(migrate, 'migrate')
+        deploy.attach_mock(update, 'update')
+        deploy.attach_mock(run, 'run')
+        deploy.attach_mock(local, 'local')
+        deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = BuildDockerTasks(**data['tasks_init_kwargs'])
-                with mock.patch.object(fabricio, 'local') as local:
-                    fab.execute(tasks.build, **data['tasks_build_kwargs'])
-                    local.assert_called_once_with(
-                        data['expected_command'],
-                        quiet=False,
-                        use_cache=True,
-                    )
-
-    def test_deploy(self):
-        with mock.patch.multiple(
-            BuildDockerTasks,
-            build=mock.DEFAULT,
-            push=mock.DEFAULT,
-            update=mock.DEFAULT,
-        ) as patched:
-            tasks = BuildDockerTasks(container='container')
-            fab.execute(tasks.deploy, force='force', tag='tag')
-            patched['build'].assert_called_once_with(tag='tag')
-            patched['push'].assert_called_once_with(tag='tag')
-            patched['update'].assert_called_once_with(force='force', tag='tag')
+                tasks = BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
+                tasks.deploy(**data['deploy_kwargs'])
+                DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
+                self.assertListEqual(data['expected_calls'], deploy.mock_calls)
+                deploy.reset_mock()

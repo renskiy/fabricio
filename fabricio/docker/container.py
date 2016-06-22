@@ -145,3 +145,15 @@ class Container(object):
 
     def get_backup_container(self):
         return self.fork(name='{container}_backup'.format(container=self))
+
+    def migrate(self, tag=None, registry=None):
+        pass
+
+    def migrate_back(self):
+        pass
+
+    def backup(self):
+        pass
+
+    def restore(self):
+        pass

@@ -41,18 +41,10 @@ class DjangoContainer(docker.Container):
             network=self.network,
         )
 
-    def apply_migrations(self, tag=None, registry=None):
+    def migrate(self, tag=None, registry=None):
         self.__class__.image[registry:tag].run(
             'python manage.py migrate --noinput',
             **self.migration_options
-        )
-
-    def update(self, force=False, tag=None, registry=None):
-        self.apply_migrations(tag=tag, registry=registry)
-        return super(DjangoContainer, self).update(
-            force=force,
-            tag=tag,
-            registry=registry,
         )
 
     @staticmethod
@@ -91,7 +83,7 @@ class DjangoContainer(docker.Container):
             if backup_migration is None:
                 return revert_migrations.values()
 
-    def revert_migrations(self):
+    def migrate_back(self):
         migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
 
         try:
@@ -116,7 +108,3 @@ class DjangoContainer(docker.Container):
                 migration=migration.name,
             )
             self.image.run(cmd=cmd, **self.migration_options)  # TODO logging
-
-    def revert(self):
-        self.revert_migrations()
-        super(DjangoContainer, self).revert()

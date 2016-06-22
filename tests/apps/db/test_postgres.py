@@ -49,7 +49,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
-                expected_update_kwargs=dict(force=False, tag=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
             ),
             no_change_at_all=dict(
                 pg_exists=True,
@@ -63,7 +63,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 update_returns=False,
-                expected_update_kwargs=dict(force=False, tag=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
             ),
             with_tag=dict(
                 pg_exists=True,
@@ -77,7 +77,21 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(tag='tag'),
                 update_returns=False,
-                expected_update_kwargs=dict(force=False, tag='tag'),
+                expected_update_kwargs=dict(force=False, tag='tag', registry=None),
+            ),
+            custom_registry=dict(
+                pg_exists=True,
+                old_configs=[
+                    'postgresql.conf',
+                    'pg_hba.conf',
+                ],
+                expected_commands=[
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                ],
+                update_kwargs=dict(registry='registry'),
+                update_returns=False,
+                expected_update_kwargs=dict(force=False, tag=None, registry='registry'),
             ),
             forced=dict(
                 pg_exists=True,
@@ -91,7 +105,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(force=True),
                 update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None),
+                expected_update_kwargs=dict(force=True, tag=None, registry=None),
             ),
             not_updated_pg_hba_changed=dict(
                 pg_exists=True,
@@ -106,7 +120,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 update_returns=False,
-                expected_update_kwargs=dict(force=False, tag=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
             ),
             main_conf_changed=dict(
                 pg_exists=True,
@@ -120,7 +134,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None),
+                expected_update_kwargs=dict(force=True, tag=None, registry=None),
             ),
             configs_changed=dict(
                 pg_exists=True,
@@ -134,7 +148,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None),
+                expected_update_kwargs=dict(force=True, tag=None, registry=None),
             ),
             from_scratch=dict(
                 pg_exists=False,
@@ -149,7 +163,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None),
+                expected_update_kwargs=dict(force=True, tag=None, registry=None),
             ),
         )
         for case, data in cases.items():
@@ -207,6 +221,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 self.assertEqual(len(expected_commands), run.call_count)
                 revert.assert_called_once()
 
+    @unittest.skip('PostgresqlContainer.backup() needs to be reworked')
     def test_backup(self):
         cases = dict(
             default=dict(
@@ -246,6 +261,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     run.assert_has_calls(data['expected_commands'])
                     self.assertEqual(len(data['expected_commands']), run.call_count)
 
+    @unittest.skip('PostgresqlContainer.restore() needs to be reworked')
     def test_restore(self):
         expected_commands = [
             mock.call('docker stop --time 30 name'),

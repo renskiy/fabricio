@@ -7,10 +7,24 @@ from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
 from fabric.network import needs_host
+from fabric.tasks import WrappedCallableTask
 
 import fabricio
 
 from fabricio import docker
+
+
+class IgnoreHostsTask(WrappedCallableTask):
+
+    hosts = roles = property(lambda self: (), lambda self, value: None)
+
+
+class Registry(str):
+
+    def __init__(self, *args, **kwargs):
+        super(Registry, self).__init__(*args, **kwargs)
+        self.host, _, port = self.partition(':')
+        self.port = port and int(port)
 
 
 def infrastructure(
@@ -49,7 +63,7 @@ class Tasks(object):
 
     def __new__(cls, **kwargs):
         self = object.__new__(cls)
-        weak_self = weakref.proxy(self)
+        _self = weakref.proxy(self)
         for attr in dir(cls):
             attr_value = getattr(cls, attr)
             if is_task_object(attr_value):
@@ -57,12 +71,12 @@ class Tasks(object):
                     default=attr_value.is_default,
                     name=attr_value.name,
                     aliases=attr_value.aliases,
+                    task_class=attr_value.__class__,
                 )
-                task = task_decorator(
-                    functools.wraps(attr_value.wrapped)(
-                        functools.partial(attr_value.wrapped, weak_self),
-                    ),
-                )
+                task = task_decorator(functools.wraps(attr_value.wrapped)(
+                    # TODO fix Fabric's --display option
+                    functools.partial(attr_value.wrapped, _self),
+                ))
                 setattr(self, attr, task)
         return self
 
@@ -85,16 +99,18 @@ class DockerTasks(Tasks):
     def __init__(
         self,
         container,
-        roles=(),
-        hosts=(),
-        create_default_roles=True,
+        registry=None,
+        migrate_commands=False,
+        backup_commands=False,
+        **kwargs
     ):
-        super(DockerTasks, self).__init__(
-            roles=roles,
-            hosts=hosts,
-            create_default_roles=create_default_roles,
-        )
+        super(DockerTasks, self).__init__(**kwargs)
+        self.registry = registry and Registry(registry)
         self.container = container  # type: docker.Container
+        self.backup.use_task_objects = backup_commands
+        self.restore.use_task_objects = backup_commands
+        self.migrate.use_task_objects = migrate_commands
+        self.migrate_back.use_task_objects = migrate_commands
 
     @property
     def image(self):
@@ -107,93 +123,128 @@ class DockerTasks(Tasks):
         """
         self.container.revert()
 
-    @fab.task(default=True)
-    def update(self, force='no', tag=None):
+    @fab.task
+    @fab.serial
+    def migrate(self, tag=None):
         """
-        update[:force=no,tag=None] - recreate Docker container
+        migrate[:tag=None] - apply migrations
         """
-        fabricio.run('docker pull {image}'.format(image=self.image[tag]))
-        self.container.update(force=force == 'yes', tag=tag)
-
-
-class PullDockerTasks(DockerTasks):
-
-    registry = 'localhost:5000'
-
-    def __init__(
-        self,
-        container,
-        local_registry='localhost:5000',
-        roles=(),
-        hosts=(),
-        create_default_roles=True,
-    ):
-        super(PullDockerTasks, self).__init__(
-            container=container,
-            roles=roles,
-            hosts=hosts,
-            create_default_roles=create_default_roles,
-        )
-        registry_host, _, registry_port = local_registry.partition(':')
-        self.local_registry_host = registry_host or 'localhost'
-        self.local_registry_port = int(registry_port) or 5000
-
-    @property
-    def registry_port(self):
-        return int(self.registry.split(':', 1)[1])
-
-    @property
-    def local_registry(self):
-        return '{registry}:{port}'.format(
-            registry=self.local_registry_host,
-            port=self.local_registry_port,
-        )
+        self.container.migrate(tag=tag, registry=self.registry)
 
     @fab.task
-    @needs_host
-    def update(self, force='no', tag=None):
+    @fab.serial
+    def migrate_back(self):
         """
-        update[:force=no,tag=None] - recreate Docker container
+        migrate_back - remove applied migrations returning to previous state
         """
-        with fab.remote_tunnel(
-            remote_port=self.registry_port,
-            local_port=self.local_registry_port,
-            local_host=self.local_registry_host,
-        ):
-            fabricio.run('docker pull {image}'.format(
-                image=self.image[self.registry:tag])
-            )
-            self.container.update(
-                force=force == 'yes',
-                tag=tag,
-                registry=self.registry
-            )
+        self.container.migrate_back()
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def rollback(self, migrate_back='yes'):
+        """
+        rollback[:migrate_back=yes] - migrate_back -> revert
+        """
+        if migrate_back == 'yes':
+            fab.execute(self.migrate_back)
+        fab.execute(self.revert)
 
     @fab.task
-    def push(self, local='yes', tag=None):
+    @fab.runs_once
+    def backup(self):
         """
-        push[:local=yes,tag=None] - push Docker image to local (default) or original registry
+        backup - backup data
         """
-        registry = local == 'yes' and self.local_registry or None
-        registry_tag = str(self.image[registry:tag])
-        if registry:
-            fabricio.local(
-                'docker tag {image} {tag}'.format(
-                    image=self.image[tag],
-                    tag=registry_tag,
-                ),
-                use_cache=True,
-            )
-        fabricio.local(
-            'docker push {tag}'.format(tag=registry_tag),
-            quiet=False,
-            use_cache=True,
-        )
+        self.container.backup()
+
+    @fab.task
+    @fab.runs_once
+    def restore(self):
+        """
+        restore - restore data
+        """
+        self.container.restore()
 
     @fab.task
     def pull(self, tag=None):
         """
-        pull[:tag=None] - pull Docker image from original registry
+        pull[:tag=None] - pull Docker image from registry
+        """
+        fabricio.run('docker pull {image}'.format(
+            image=self.image[self.registry:tag],
+        ))
+
+    @fab.task
+    def update(self, force='no', tag=None):
+        """
+        update[:force=no,tag=None] - recreate Docker container
+        """
+        self.container.update(
+            force=force == 'yes',
+            tag=tag,
+            registry=self.registry,
+        )
+
+    @fab.task(default=True, task_class=IgnoreHostsTask)
+    def deploy(self, force='no', tag=None, migrate='yes', backup='yes'):
+        """
+        deploy[:force=no,tag=None,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
+        """
+        if backup == 'yes':
+            fab.execute(self.backup)
+        fab.execute(self.pull, tag=tag)
+        if migrate == 'yes':
+            fab.execute(self.migrate, tag=tag)
+        fab.execute(self.update, force=force, tag=tag)
+
+
+class PullDockerTasks(DockerTasks):
+
+    def __init__(self, registry='localhost:5000', local_registry='localhost:5000', **kwargs):
+        super(PullDockerTasks, self).__init__(registry=registry, **kwargs)
+        self.local_registry = Registry(local_registry)
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def push(self, tag=None):
+        """
+        push[:tag=None] - push Docker image to registry
+        """
+        local_tag = str(self.image[self.local_registry:tag])
+        fabricio.local(
+            'docker tag {image} {tag}'.format(
+                image=self.image[tag],
+                tag=local_tag,
+            ),
+            use_cache=True,
+        )
+        fabricio.local(
+            'docker push {tag}'.format(tag=local_tag),
+            quiet=False,
+            use_cache=True,
+        )
+        fabricio.local(
+            'docker rmi {tag}'.format(tag=local_tag),
+            use_cache=True,
+        )
+
+    @fab.task
+    @needs_host
+    def pull(self, tag=None):
+        """
+        pull[:tag=None] - pull Docker image from registry
+        """
+        with fab.remote_tunnel(
+            remote_port=self.registry.port,
+            local_port=self.local_registry.port,
+            local_host=self.local_registry.host,
+        ):
+            fabricio.run('docker pull {image}'.format(
+                image=self.image[self.registry:tag]),
+            )
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def prepare(self, tag=None):
+        """
+        prepare[:tag=None] - prepare Docker image
         """
         fabricio.local(
             'docker pull {image}'.format(image=self.image[tag]),
@@ -201,40 +252,26 @@ class PullDockerTasks(DockerTasks):
             use_cache=True,
         )
 
-    @fab.task(default=True)
-    def deploy(self, force='no', tag=None):
+    @fab.task(default=True, task_class=IgnoreHostsTask)
+    def deploy(self, force='no', tag=None, *args, **kwargs):
         """
-        deploy[:force=no,tag=None] - pull -> push -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=yes] - prepare -> push -> backup -> pull -> migrate -> update
         """
-        self.pull(tag=tag)
-        self.push(tag=tag)
-        self.update(force=force, tag=tag)
+        fab.execute(self.prepare, tag=tag)
+        fab.execute(self.push, tag=tag)
+        DockerTasks.deploy(self, force=force, tag=tag, *args, **kwargs)
 
 
 class BuildDockerTasks(PullDockerTasks):
 
-    def __init__(
-        self,
-        container,
-        build_path='.',
-        local_registry='localhost:5000',
-        roles=(),
-        hosts=(),
-        create_default_roles=True,
-    ):
-        super(BuildDockerTasks, self).__init__(
-            container=container,
-            local_registry=local_registry,
-            roles=roles,
-            hosts=hosts,
-            create_default_roles=create_default_roles,
-        )
+    def __init__(self, build_path='.', **kwargs):
+        super(BuildDockerTasks, self).__init__(**kwargs)
         self.build_path = build_path
 
-    @fab.task
-    def build(self, tag=None):
+    @fab.task(task_class=IgnoreHostsTask)
+    def prepare(self, tag=None):
         """
-        build[:tag=None] - build Docker image
+        prepare[:tag=None] - prepare Docker image
         """
         fabricio.local(
             'docker build --tag {tag} {build_path}'.format(
@@ -244,12 +281,3 @@ class BuildDockerTasks(PullDockerTasks):
             quiet=False,
             use_cache=True,
         )
-
-    @fab.task(default=True)
-    def deploy(self, force='no', tag=None):
-        """
-        deploy[:force=no,tag=None] - build -> push -> update
-        """
-        self.build(tag=tag)
-        self.push(tag=tag)
-        self.update(force=force, tag=tag)

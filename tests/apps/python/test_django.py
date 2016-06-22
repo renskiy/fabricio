@@ -52,7 +52,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                 )
                 container = TestContainer('test')
                 with mock.patch.object(fabricio, 'run') as run:
-                    container.apply_migrations(**data['kwargs'])
+                    container.migrate(**data['kwargs'])
                     run.assert_called_once_with(data['expected_command'])
 
     def test_revert_migrations(self):
@@ -212,7 +212,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         ),
                     )
                     container = TestContainer(name='name')
-                    container.revert_migrations()
+                    container.migrate_back()
                     run.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),

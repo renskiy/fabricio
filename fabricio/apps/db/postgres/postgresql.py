@@ -45,7 +45,7 @@ class PostgresqlContainer(docker.Container):
         self.run()
         time.sleep(10)  # wait until all data prepared during first start
 
-    def update(self, force=False, tag=None):
+    def update(self, force=False, tag=None, registry=None):
         if not self.initialized:
             self.init_db()
             force = True
@@ -59,7 +59,11 @@ class PostgresqlContainer(docker.Container):
             path=self.data + '/pg_hba.conf',
         )
         force = force or main_config_changed
-        updated = super(PostgresqlContainer, self).update(force=force, tag=tag)
+        updated = super(PostgresqlContainer, self).update(
+            force=force,
+            tag=tag,
+            registry=registry,
+        )
         if not updated and hba_config_changed:
             self.signal('HUP')  # reload configs
         return updated
@@ -85,7 +89,8 @@ class PostgresqlContainer(docker.Container):
         )
         super(PostgresqlContainer, self).revert()
 
-    def backup(self, dst, username='postgres'):
+    def backup(self, dst='', username='postgres'):
+        return  # TODO backup arguments should be provided to __init__
         self.execute('psql --username {username} --command "{command};"'.format(
             username=username,
             command="SELECT pg_start_backup('backup')",
@@ -102,7 +107,8 @@ class PostgresqlContainer(docker.Container):
                 command="SELECT pg_stop_backup()",
             ))
 
-    def restore(self, src):
+    def restore(self, src=''):
+        return  # TODO restore arguments should be provided to __init__
         self.stop()
         try:
             command = 'gzip --decompress < {src} | tar --extract --directory {dst}'
