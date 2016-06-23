@@ -3,6 +3,8 @@ import os
 import types
 import weakref
 
+from distutils.util import strtobool
+
 from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
@@ -140,11 +142,11 @@ class DockerTasks(Tasks):
         self.container.migrate_back()
 
     @fab.task(task_class=IgnoreHostsTask)
-    def rollback(self, migrate_back='yes'):
+    def rollback(self, migrate_back=True):
         """
         rollback[:migrate_back=yes] - migrate_back -> revert
         """
-        if migrate_back == 'yes':
+        if strtobool(str(migrate_back)):
             fab.execute(self.migrate_back)
         fab.execute(self.revert)
 
@@ -174,25 +176,25 @@ class DockerTasks(Tasks):
         ))
 
     @fab.task
-    def update(self, force='no', tag=None):
+    def update(self, force=False, tag=None):
         """
         update[:force=no,tag=None] - recreate Docker container
         """
         self.container.update(
-            force=force == 'yes',
+            force=strtobool(str(force)),
             tag=tag,
             registry=self.registry,
         )
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, force='no', tag=None, migrate='yes', backup='yes'):
+    def deploy(self, force=False, tag=None, migrate=True, backup=True):
         """
         deploy[:force=no,tag=None,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
         """
-        if backup == 'yes':
+        if strtobool(str(backup)):
             fab.execute(self.backup)
         fab.execute(self.pull, tag=tag)
-        if migrate == 'yes':
+        if strtobool(str(migrate)):
             fab.execute(self.migrate, tag=tag)
         fab.execute(self.update, force=force, tag=tag)
 
@@ -253,7 +255,7 @@ class PullDockerTasks(DockerTasks):
         )
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, force='no', tag=None, *args, **kwargs):
+    def deploy(self, force=False, tag=None, *args, **kwargs):
         """
         deploy[:force=no,tag=None,migrate=yes,backup=yes] - prepare -> push -> backup -> pull -> migrate -> update
         """

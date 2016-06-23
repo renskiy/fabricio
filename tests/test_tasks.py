@@ -187,8 +187,24 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.update(force=False, tag=None, registry=None),
                 ],
             ),
+            skip_migration_bool=dict(
+                deploy_kwargs=dict(migrate=False),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.update(force=False, tag=None, registry=None),
+                ],
+            ),
             skip_backup=dict(
                 deploy_kwargs=dict(backup='no'),
+                expected_calls=[
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
+                ],
+            ),
+            skip_backup_bool=dict(
+                deploy_kwargs=dict(backup=False),
                 expected_calls=[
                     mock.call.run('docker pull test:latest'),
                     mock.call.migrate(tag=None, registry=None),
@@ -206,6 +222,15 @@ class DockerTasksTestCase(unittest.TestCase):
             ),
             forced=dict(
                 deploy_kwargs=dict(force='yes'),
+                expected_calls=[
+                    mock.call.backup(),
+                    mock.call.run('docker pull test:latest'),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=True, tag=None, registry=None),
+                ],
+            ),
+            forced_bool=dict(
+                deploy_kwargs=dict(force=True),
                 expected_calls=[
                     mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
