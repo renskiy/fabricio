@@ -195,7 +195,7 @@ class ContainerTestCase(unittest.TestCase):
                     'run',
                 ) as run:
                     container.run()
-                    run.assert_called_once_with(expected_command)
+                    run.assert_called_once_with(expected_command, quiet=True)
 
     @mock.patch.object(fabricio, 'log')
     def test_update(self, *args):
@@ -239,7 +239,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --name name --detach image:tag '),
+                    mock.call('docker run --name name --detach image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(force=True),
                 excpected_result=True,
@@ -263,7 +263,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --name name --detach image:tag '),
+                    mock.call('docker run --name name --detach image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -287,7 +287,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --name name --detach image:foo '),
+                    mock.call('docker run --name name --detach image:foo ', quiet=True),
                 ],
                 update_kwargs=dict(tag='foo'),
                 excpected_result=True,
@@ -307,7 +307,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --name name --detach image:tag '),
+                    mock.call('docker run --name name --detach image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -323,7 +323,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rename name name_backup'),
-                    mock.call('docker run --name name --detach image:tag '),
+                    mock.call('docker run --name name --detach image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,

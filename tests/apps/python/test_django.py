@@ -9,7 +9,7 @@ from fabricio import docker
 
 class DjangoContainerTestCase(unittest.TestCase):
 
-    def test_apply_migrations(self):
+    def test_migrate(self):
         cases = dict(
             default=dict(
                 expected_command='docker run --rm --tty image:tag python manage.py migrate --noinput',
@@ -53,9 +53,9 @@ class DjangoContainerTestCase(unittest.TestCase):
                 container = TestContainer('test')
                 with mock.patch.object(fabricio, 'run') as run:
                     container.migrate(**data['kwargs'])
-                    run.assert_called_once_with(data['expected_command'])
+                    run.assert_called_once_with(data['expected_command'], quiet=False)
 
-    def test_revert_migrations(self):
+    def test_migrate_back(self):
         cases = dict(
             no_change=dict(
                 side_effect=(
@@ -74,9 +74,9 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                 ],
             ),
             no_migrations=dict(
@@ -88,9 +88,9 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                 ],
             ),
             regular=dict(
@@ -117,12 +117,12 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py migrate --no-input app3 zero'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py migrate --no-input app2 0001_initial'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py migrate --no-input app0 zero'),
+                    mock.call('docker run --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
+                    mock.call('docker run --rm --tty current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
+                    mock.call('docker run --rm --tty current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
+                    mock.call('docker run --rm --tty current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
                 ],
             ),
             with_container_custom_options=dict(
@@ -149,12 +149,12 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py migrate --no-input app3 zero'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py migrate --no-input app2 0001_initial'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py migrate --no-input app0 zero'),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
                 ],
                 container_class_vars=dict(
                     user='user',
@@ -189,7 +189,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'),
+                    mock.call('docker run --rm --tty current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
                 ],
             ),

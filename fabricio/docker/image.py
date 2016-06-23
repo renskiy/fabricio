@@ -117,6 +117,7 @@ class Image(object):
         self,
         cmd=None,
         temporary=True,
+        quiet=True,
         name=None,
         user=None,
         ports=None,
@@ -130,21 +131,24 @@ class Image(object):
         options=None,
     ):
         command = 'docker run {options} {image} {cmd}'
-        return fabricio.run(command.format(
-            image=self,
-            cmd=cmd or '',
-            options=self.make_container_options(
-                temporary=temporary,
-                name=name,
-                user=user,
-                ports=ports,
-                env=env,
-                volumes=volumes,
-                links=links,
-                hosts=hosts,
-                network=network,
-                restart_policy=restart_policy,
-                stop_signal=stop_signal,
-                options=options,
+        return fabricio.run(
+            command.format(
+                image=self,
+                cmd=cmd or '',
+                options=self.make_container_options(
+                    temporary=temporary,
+                    name=name,
+                    user=user,
+                    ports=ports,
+                    env=env,
+                    volumes=volumes,
+                    links=links,
+                    hosts=hosts,
+                    network=network,
+                    restart_policy=restart_policy,
+                    stop_signal=stop_signal,
+                    options=options,
+                ),
             ),
-        ))
+            quiet=quiet,
+        )

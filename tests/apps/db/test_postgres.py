@@ -157,7 +157,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('docker run --name name --stop-signal INT --detach image:tag '),
+                    mock.call('docker run --name name --stop-signal INT --detach image:tag ', quiet=True),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],

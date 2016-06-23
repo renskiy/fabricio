@@ -44,6 +44,7 @@ class DjangoContainer(docker.Container):
     def migrate(self, tag=None, registry=None):
         self.__class__.image[registry:tag].run(
             'python manage.py migrate --noinput',
+            quiet=False,
             **self.migration_options
         )
 
@@ -107,4 +108,4 @@ class DjangoContainer(docker.Container):
                 app=migration.app,
                 migration=migration.name,
             )
-            self.image.run(cmd=cmd, **self.migration_options)  # TODO logging
+            self.image.run(cmd=cmd, quiet=False, **self.migration_options)
