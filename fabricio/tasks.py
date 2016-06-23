@@ -149,7 +149,7 @@ class DockerTasks(Tasks):
         fab.execute(self.revert)
 
     @fab.task
-    @fab.runs_once
+    @fab.serial
     def backup(self):
         """
         backup - backup data
@@ -157,7 +157,7 @@ class DockerTasks(Tasks):
         self.container.backup()
 
     @fab.task
-    @fab.runs_once
+    @fab.serial
     def restore(self):
         """
         restore - restore data

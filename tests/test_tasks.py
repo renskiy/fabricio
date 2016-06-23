@@ -135,28 +135,6 @@ class DockerTasksTestCase(unittest.TestCase):
                 for unexpected_command in data['unexpected_commands_list']:
                     self.assertNotIn(unexpected_command, new_style)
 
-    def test_backup_runs_once(self):
-        tasks = DockerTasks(
-            container=TestContainer('name'),
-            backup_commands=True,
-            hosts=['host1', 'host2'],
-        )
-        with mock.patch.object(TestContainer, 'backup') as backup:
-            fab.execute(tasks.backup)
-            del DockerTasks.backup.wrapped.return_value  # reset runs_once behavior
-            backup.assert_called_once()
-
-    def test_restore_runs_once(self):
-        tasks = DockerTasks(
-            container=TestContainer('name'),
-            backup_commands=True,
-            hosts=['host1', 'host2'],
-        )
-        with mock.patch.object(TestContainer, 'restore') as restore:
-            fab.execute(tasks.restore)
-            del DockerTasks.restore.wrapped.return_value  # reset runs_once behavior
-            restore.assert_called_once()
-
     @mock.patch.multiple(TestContainer, revert=mock.DEFAULT, migrate_back=mock.DEFAULT)
     def test_rollback(self, revert, migrate_back):
         tasks = DockerTasks(container=TestContainer('name'))
@@ -245,7 +223,6 @@ class DockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 tasks = DockerTasks(container=TestContainer('name'), **data.get('init_kwargs', {}))
                 tasks.deploy(**data['deploy_kwargs'])
-                DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()
 
@@ -376,7 +353,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 tasks = PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
                 tasks.deploy(**data['deploy_kwargs'])
-                DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()
 
@@ -522,6 +498,5 @@ class BuildDockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 tasks = BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
                 tasks.deploy(**data['deploy_kwargs'])
-                DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()
