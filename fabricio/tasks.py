@@ -47,8 +47,10 @@ def infrastructure(
                     default=False,
                 ):
                     fab.abort('Aborted')
+            fab.env.infrastructure = task.__name__
             return task(*args, **kwargs)
         return _task
+    fab.env.setdefault('infrastructure', None)
     if callable(confirm):
         func, confirm = confirm, infrastructure.__defaults__[0]
         return _decorator(func)

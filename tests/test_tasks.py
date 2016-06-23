@@ -38,6 +38,9 @@ class TestCase(unittest.TestCase):
             return 'result'
 
         with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
+            infrastructure(task)
+            self.assertIsNone(fab.env.infrastructure)
+
             with self.assertRaises(AbortException):
                 fab.execute(infrastructure(task))
 
@@ -46,6 +49,9 @@ class TestCase(unittest.TestCase):
                 os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = '1'
                 os.environ.pop('CUSTOM_ENV', None)
                 self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                self.assertEqual('task', fab.env.infrastructure)
+                infrastructure(task)
+                self.assertIsNotNone(fab.env.infrastructure)
                 with self.assertRaises(AbortException):
                     fab.execute(infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task))
             finally:
