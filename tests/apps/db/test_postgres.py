@@ -1,7 +1,8 @@
 import time
 
+from StringIO import StringIO
+
 import mock
-import six
 import unittest2 as unittest
 
 from fabric import api as fab
@@ -187,8 +188,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 postgresql.open.side_effect = (
-                    six.StringIO('postgresql.conf'),
-                    six.StringIO('pg_hba.conf'),
+                    StringIO('postgresql.conf'),
+                    StringIO('pg_hba.conf'),
                 )
                 container = TestContainer(name='name')
                 with mock.patch.object(
@@ -206,7 +207,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                             return_value=data['update_returns'],
                         ) as update:
                             with mock.patch.object(
-                                six.StringIO,
+                                StringIO,
                                 'getvalue',
                                 side_effect=data['old_configs'],
                             ):
