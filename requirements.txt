@@ -1,4 +1,5 @@
 cached-property
+docker-py
 fabric
 mock
 unittest2

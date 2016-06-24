@@ -1,5 +1,7 @@
 import json
 
+from docker import utils, auth
+
 import fabricio
 
 from fabricio.utils import default_property, Options
@@ -53,13 +55,10 @@ class Image(object):
 
     @staticmethod
     def _parse_image_name(image):
-        registry_with_user, _, name_with_tag = image.rpartition('/')
-        name, _, tag = name_with_tag.partition(':')
-        registry, _, user = registry_with_user.rpartition('/')
-        if not registry and ':' in user:
-            registry, user = user, registry
-        if user:
-            name = '{user}/{name}'.format(user=user, name=name)
+        repository, tag = utils.parse_repository_tag(image)
+        registry, name = auth.resolve_repository_name(repository)
+        if registry == auth.INDEX_NAME:
+            registry = ''
         return registry, name, tag
 
     @staticmethod
