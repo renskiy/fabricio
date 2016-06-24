@@ -1,6 +1,6 @@
 import json
 
-from docker import utils, auth
+from docker import utils as docker_utils, auth as docker_auth
 
 import fabricio
 
@@ -55,9 +55,9 @@ class Image(object):
 
     @staticmethod
     def _parse_image_name(image):
-        repository, tag = utils.parse_repository_tag(image)
-        registry, name = auth.resolve_repository_name(repository)
-        if registry == auth.INDEX_NAME:
+        repository, tag = docker_utils.parse_repository_tag(image)
+        registry, name = docker_auth.resolve_repository_name(repository)
+        if registry == docker_auth.INDEX_NAME:
             registry = ''
         return registry, name, tag
 
