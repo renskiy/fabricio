@@ -1,5 +1,7 @@
 import collections
 
+from distutils.util import strtobool
+
 
 class default_property(object):
 
@@ -38,3 +40,7 @@ class Options(collections.OrderedDict):
 
     def __str__(self):
         return ' '.join(self.make_options())
+
+
+def yes(value):
+    return strtobool(str(value))

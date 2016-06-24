@@ -3,8 +3,6 @@ import os
 import types
 import weakref
 
-from distutils.util import strtobool
-
 from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
@@ -13,7 +11,7 @@ from fabric.tasks import WrappedCallableTask
 
 import fabricio
 
-from fabricio import docker
+from fabricio import docker, utils
 
 
 class IgnoreHostsTask(WrappedCallableTask):
@@ -148,7 +146,7 @@ class DockerTasks(Tasks):
         """
         rollback[:migrate_back=yes] - migrate_back -> revert
         """
-        if strtobool(str(migrate_back)):
+        if utils.yes(migrate_back):
             fab.execute(self.migrate_back)
         fab.execute(self.revert)
 
@@ -183,7 +181,7 @@ class DockerTasks(Tasks):
         update[:force=no,tag=None] - recreate Docker container
         """
         self.container.update(
-            force=strtobool(str(force)),
+            force=utils.yes(force),
             tag=tag,
             registry=self.registry,
         )
@@ -193,10 +191,10 @@ class DockerTasks(Tasks):
         """
         deploy[:force=no,tag=None,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
         """
-        if strtobool(str(backup)):
+        if utils.yes(backup):
             fab.execute(self.backup)
         fab.execute(self.pull, tag=tag)
-        if strtobool(str(migrate)):
+        if utils.yes(migrate):
             fab.execute(self.migrate, tag=tag)
         fab.execute(self.update, force=force, tag=tag)
 
