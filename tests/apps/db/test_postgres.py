@@ -1,10 +1,10 @@
 import time
 
-import fabric.api
 import mock
 import six
 import unittest2 as unittest
 
+from fabric import api as fab
 from fabric.contrib import files
 
 import fabricio
@@ -28,12 +28,15 @@ class PostgresqlContainerTestCase(unittest.TestCase):
 
     def setUp(self):
         postgresql.open = mock.MagicMock()
+        self.fab_settings = fab.settings(fab.hide('everything'))
+        self.fab_settings.__enter__()
 
     def tearDown(self):
         postgresql.open = open
+        self.fab_settings.__exit__(None, None, None)
 
-    @mock.patch.object(fabric.api, 'get')
-    @mock.patch.object(fabric.api, 'put')
+    @mock.patch.object(fab, 'get')
+    @mock.patch.object(fab, 'put')
     @mock.patch.object(time, 'sleep')
     def test_update(self, *args):
         cases = dict(
@@ -164,6 +167,21 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 update_kwargs=dict(),
                 update_returns=True,
                 expected_update_kwargs=dict(force=True, tag=None, registry=None),
+            ),
+            from_scratch_with_custom_tag_and_registry=dict(
+                pg_exists=False,
+                old_configs=[
+                    'old_postgresql.conf',
+                    'old_pg_hba.conf',
+                ],
+                expected_commands=[
+                    mock.call('docker run --name name --stop-signal INT --detach registry/image:foo ', quiet=True),
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                ],
+                update_kwargs=dict(tag='foo', registry='registry'),
+                update_returns=True,
+                expected_update_kwargs=dict(force=True, tag='foo', registry='registry'),
             ),
         )
         for case, data in cases.items():

@@ -37,18 +37,11 @@ class PostgresqlContainer(docker.Container):
         fab.put(StringIO(content), path, use_sudo=True, mode='0644')
         return content != old_content
 
-    @property
-    def initialized(self):
-        return files.exists(self.data + '/PG_VERSION', use_sudo=True)
-
-    def init_db(self):
-        self.run()
-        time.sleep(10)  # wait until all data prepared during first start
-
     def update(self, force=False, tag=None, registry=None):
-        if not self.initialized:
-            self.init_db()
-            force = True
+        if not files.exists(self.data + '/PG_VERSION', use_sudo=True):
+            fabricio.log('PostgreSQL database not found, creating new...')
+            self.run(tag=tag, registry=registry)
+            time.sleep(10)  # wait until all data prepared during first start
 
         main_config_changed = self.update_config(
             content=open(self.postgresql_conf).read(),
