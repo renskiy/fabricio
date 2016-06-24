@@ -8,7 +8,7 @@ import unittest2 as unittest
 
 from fabric import api as fab
 from fabric.contrib import console
-from fabric.main import load_tasks_from_module, is_task_module
+from fabric.main import load_tasks_from_module, is_task_module, is_task_object
 
 import fabricio
 
@@ -38,7 +38,8 @@ class TestCase(unittest.TestCase):
             return 'result'
 
         with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
-            infrastructure(task)
+            self.assertTrue(is_task_object(infrastructure(task)))
+            self.assertTrue(is_task_object(infrastructure()(task)))
             self.assertIsNone(fab.env.infrastructure)
 
             with self.assertRaises(AbortException):

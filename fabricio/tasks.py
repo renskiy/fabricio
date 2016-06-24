@@ -47,7 +47,7 @@ def infrastructure(
                     fab.abort('Aborted')
             fab.env.infrastructure = task.__name__
             return task(*args, **kwargs)
-        return _task
+        return fab.task(_task)
     fab.env.setdefault('infrastructure', None)
     if callable(confirm):
         func, confirm = confirm, infrastructure.__defaults__[0]
