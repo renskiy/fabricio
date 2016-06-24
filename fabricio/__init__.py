@@ -11,7 +11,7 @@ def _command(
     **kwargs
 ):
     if quiet:
-        hide += ('stdout', )
+        hide += ('stdout', 'warnings')
     log('{method}: {command}'.format(method=fabric_method.__name__, command=command))
     with fab.settings(fab.hide(*hide), fab.show(*show), warn_only=True):
         result = fabric_method(command, **kwargs)
