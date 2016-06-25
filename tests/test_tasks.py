@@ -47,23 +47,38 @@ class TestCase(unittest.TestCase):
 
             environ_backup = os.environ.copy()
             try:
-                os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = '1'
-                os.environ.pop('CUSTOM_ENV', None)
-                self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                os.environ.pop('FABRICIO_INFRASTRUCTURE_AUTOCONFIRM', None)
+                with self.assertRaises(AbortException):
+                    fab.execute(infrastructure(task))
+
+                for env in ('yes', 'true', '1', 'YES', 'True'):
+                    os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = env
+                    self.assertDictEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+
                 self.assertEqual('task', fab.env.infrastructure)
+
+                for env in ('no', 'false', '0', 'NO', 'False'):
+                    os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = env
+                    with self.assertRaises(AbortException):
+                        fab.execute(infrastructure(task))
+
                 infrastructure(task)
                 self.assertIsNotNone(fab.env.infrastructure)
-                with self.assertRaises(AbortException):
-                    fab.execute(infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task))
+
+                os.environ['CUSTOM_ENV'] = '1'
+                self.assertDictEqual(
+                    {'<local-only>': 'result'},
+                    fab.execute(infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task)),
+                )
             finally:
                 os.environ = environ_backup
 
             with mock.patch.object(console, 'confirm', side_effect=(True, False)):
-                self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                self.assertDictEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
                 with self.assertRaises(AbortException):
                     fab.execute(infrastructure(task))
 
-            self.assertEqual({'<local-only>': 'result'}, fab.execute(infrastructure(confirm=False)(task)))
+            self.assertDictEqual({'<local-only>': 'result'}, fab.execute(infrastructure(confirm=False)(task)))
 
 
 class TasksTestCase(unittest.TestCase):

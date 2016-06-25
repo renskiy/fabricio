@@ -36,7 +36,7 @@ def infrastructure(
         @functools.wraps(task)
         def _task(*args, **kwargs):
             if confirm:
-                confirmed = os.environ.get(autoconfirm_env_var, False)
+                confirmed = utils.yes(os.environ.get(autoconfirm_env_var, 0))
                 if not confirmed and not console.confirm(
                     'Are you sure you want to select {infrastructure} '
                     'infrastructure to run task(s) on?'.format(
