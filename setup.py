@@ -6,7 +6,7 @@ with open('README.rst') as description:
 
 setup(
     name='fabricio',
-    version='0.2.6',
+    version='0.2.7',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],
@@ -17,6 +17,7 @@ setup(
     classifiers=[
         'Development Status :: 4 - Beta',
         'Intended Audience :: Developers',
+        'Intended Audience :: System Administrators',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2.7',
