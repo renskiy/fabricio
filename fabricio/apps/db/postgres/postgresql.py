@@ -1,3 +1,4 @@
+import os
 import time
 
 from StringIO import StringIO
@@ -38,18 +39,21 @@ class PostgresqlContainer(docker.Container):
         return content != old_content
 
     def update(self, force=False, tag=None, registry=None):
-        if not files.exists(self.data + '/PG_VERSION', use_sudo=True):
+        if not files.exists(
+            os.path.join(self.data, 'PG_VERSION'),
+            use_sudo=True,
+        ):
             fabricio.log('PostgreSQL database not found, creating new...')
             self.run(tag=tag, registry=registry)
             time.sleep(10)  # wait until all data prepared during first start
 
         main_config_changed = self.update_config(
             content=open(self.postgresql_conf).read(),
-            path=self.data + '/postgresql.conf',
+            path=os.path.join(self.data, 'postgresql.conf'),
         )
         hba_config_changed = self.update_config(
             content=open(self.pg_hba_conf).read(),
-            path=self.data + '/pg_hba.conf',
+            path=os.path.join(self.data, 'pg_hba.conf'),
         )
         force = force or main_config_changed
         updated = super(PostgresqlContainer, self).update(
@@ -62,8 +66,8 @@ class PostgresqlContainer(docker.Container):
         return updated
 
     def revert(self):
-        main_conf = self.data + '/postgresql.conf'
-        hba_conf = self.data + '/pg_hba.conf'
+        main_conf = os.path.join(self.data, 'postgresql.conf')
+        hba_conf = os.path.join(self.data, 'pg_hba.conf')
         fabricio.run(
             'mv {path_from} {path_to}'.format(
                 path_from=main_conf + '.backup',
