@@ -1,7 +1,7 @@
 from distutils.core import setup
 from setuptools import find_packages
 
-with open('README.md') as description:
+with open('README.rst') as description:
     long_description = description.read()
 
 setup(
