@@ -45,7 +45,7 @@ The most basic :code:`fabfile.py` you can use with the Fabricio is something lik
         hosts=['user@example.com'],
     )
     
-Type and execute :code:`fab --list` in your terminal to see available Fabric commands:
+Type :code:`fab --list` in your terminal to see available Fabric commands:
 
 .. code::
 
@@ -58,7 +58,7 @@ Type and execute :code:`fab --list` in your terminal to see available Fabric com
         nginx.rollback  rollback[:migrate_back=yes] - migrate_back -> revert
         nginx.update    update[:force=no,tag=None] - recreate Docker container
 
-Finally, to deploy such configuration you simly have to execute following bash command:
+Finally, to deploy such configuration you simply have to execute following bash command:
 
 .. code:: bash
 
@@ -180,7 +180,7 @@ Forced update forces creation of new container.
 Local Docker registry
 =====================
 
-It is often when production infrastructure has limited access to the Internet. In such case Fabricio offers ablity to use local Docker registry which can be used as an intermediate registry for the selected infrastructure. To use this option you have to have local Docker registry running within your LAN and also Docker client on your work PC. You can up your own Docker registry by executing following command on the PC with Docker installed:
+It is often when production infrastructure has limited access to the Internet. In such case Fabricio offers ability to use local Docker registry which can be used as an intermediate registry for the selected infrastructure. To use this option you have to have local Docker registry running within your LAN and also Docker client on your work PC. You can up your own Docker registry by executing following command on the PC with Docker installed:
 
 .. code:: bash
 
@@ -216,7 +216,7 @@ The first one pulls Image from the original registry and the second pushes it to
 Building Docker images
 ======================
 
-Using local Docker registry you can also build Docker images from local sources. This examples shows how this can be set up:
+Using local Docker registry you can also build Docker images from local sources. This example shows how this can be set up:
 
 .. code:: python
 
