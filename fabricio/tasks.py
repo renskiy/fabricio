@@ -3,6 +3,8 @@ import os
 import types
 import weakref
 
+import six
+
 from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
@@ -50,7 +52,7 @@ def infrastructure(
         return fab.task(_task)
     fab.env.setdefault('infrastructure', None)
     if callable(confirm):
-        func, confirm = confirm, infrastructure.__defaults__[0]
+        func, confirm = confirm, six.get_function_defaults(infrastructure)[0]
         return _decorator(func)
     return _decorator
 

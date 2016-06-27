@@ -2,6 +2,8 @@ import collections
 
 from distutils.util import strtobool
 
+import six
+
 
 class default_property(object):
 
@@ -32,7 +34,7 @@ class Options(collections.OrderedDict):
             if isinstance(value, bool):
                 if value is True:
                     yield self.make_option(option)
-            elif isinstance(value, basestring):
+            elif isinstance(value, six.string_types):
                 yield self.make_option(option, value)
             else:
                 for single_value in value:

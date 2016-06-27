@@ -1,9 +1,8 @@
 import os
 import sys
 
-from StringIO import StringIO
-
 import mock
+import six
 import unittest2 as unittest
 
 from fabric import api as fab
@@ -25,7 +24,7 @@ class TestCase(unittest.TestCase):
 
     def setUp(self):
         self.stderr = sys.stderr
-        sys.stderr = StringIO()
+        sys.stderr = six.StringIO()
 
     def tearDown(self):
         sys.stderr = self.stderr

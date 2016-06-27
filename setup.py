@@ -25,7 +25,8 @@ setup(
     ],
     install_requires=[
         'Fabric>=1.1,<2.0',
-        'cached-property>=1.3,<2.0',
-        'docker-py>=1.8.1,<2.0',
+        'cached-property>=1.3',
+        'docker-py>=1.8.1',
+        'six>=1.4.0',
     ],
 )
