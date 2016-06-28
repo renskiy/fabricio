@@ -55,7 +55,7 @@ class ContainerTestCase(unittest.TestCase):
 
     def test_execute(self):
         container = docker.Container(name='name')
-        expected_command = 'docker exec --tty name cmd'
+        expected_command = 'docker exec --tty --interactive name cmd'
         with mock.patch.object(
             fabricio,
             'run',
@@ -65,6 +65,7 @@ class ContainerTestCase(unittest.TestCase):
             run.assert_called_once_with(
                 expected_command,
                 ignore_errors=False,
+                quiet=True,
             )
             self.assertEqual('result', result)
 
