@@ -1,5 +1,9 @@
-import collections
 import itertools
+
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 from cached_property import cached_property
 
@@ -69,7 +73,7 @@ class DjangoContainer(docker.Container):
             backup_migrations.splitlines(),
         ))
 
-        revert_migrations = collections.OrderedDict()
+        revert_migrations = OrderedDict()
 
         while True:
             backup_migration = next(backup_migrations, None)

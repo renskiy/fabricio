@@ -1,4 +1,7 @@
-import collections
+try:
+    from collections import OrderedDict
+except ImportError:
+    from ordereddict import OrderedDict
 
 from distutils.util import strtobool
 
@@ -17,7 +20,7 @@ class default_property(object):
         return self.func(obj)
 
 
-class Options(collections.OrderedDict):
+class Options(OrderedDict):
 
     @staticmethod
     def make_option(option, value=None):

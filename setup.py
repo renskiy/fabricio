@@ -1,8 +1,22 @@
+import sys
+
 from distutils.core import setup
 from setuptools import find_packages
 
 with open('README.rst') as description:
     long_description = description.read()
+
+install_requires = [
+    'Fabric>=1.1,<2.0',
+    'cached-property>=1.3',
+    'docker-py>=1.8.1,<2.0',
+    'six>=1.4.0',
+]
+
+if sys.version_info < (2,7):
+    install_requires.append(
+        'ordereddict>=1.1',
+    )
 
 setup(
     name='fabricio',
@@ -21,13 +35,9 @@ setup(
         'Topic :: Utilities',
         'Topic :: System :: Networking',
         'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Operating System :: OS Independent',
     ],
-    install_requires=[
-        'Fabric>=1.1,<2.0',
-        'cached-property>=1.3',
-        'docker-py>=1.8.1',
-        'six>=1.4.0',
-    ],
+    install_requires=install_requires,
 )

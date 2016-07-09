@@ -2,5 +2,6 @@ cached-property
 docker-py
 fabric
 mock
+ordereddict
 six
 unittest2
