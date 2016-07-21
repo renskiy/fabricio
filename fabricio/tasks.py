@@ -38,7 +38,7 @@ def infrastructure(
         @functools.wraps(task)
         def _task(*args, **kwargs):
             if confirm:
-                confirmed = utils.yes(os.environ.get(autoconfirm_env_var, 0))
+                confirmed = utils.strtobool(os.environ.get(autoconfirm_env_var, 0))
                 if not confirmed and not console.confirm(
                     'Are you sure you want to select {infrastructure} '
                     'infrastructure to run task(s) on?'.format(
@@ -148,7 +148,7 @@ class DockerTasks(Tasks):
         """
         rollback[:migrate_back=yes] - migrate_back -> revert
         """
-        if utils.yes(migrate_back):
+        if utils.strtobool(migrate_back):
             fab.execute(self.migrate_back)
         fab.execute(self.revert)
 
@@ -183,7 +183,7 @@ class DockerTasks(Tasks):
         update[:force=no,tag=None] - recreate Docker container
         """
         self.container.update(
-            force=utils.yes(force),
+            force=utils.strtobool(force),
             tag=tag,
             registry=self.registry,
         )
@@ -193,10 +193,10 @@ class DockerTasks(Tasks):
         """
         deploy[:force=no,tag=None,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
         """
-        if utils.yes(backup):
+        if utils.strtobool(backup):
             fab.execute(self.backup)
         fab.execute(self.pull, tag=tag)
-        if utils.yes(migrate):
+        if utils.strtobool(migrate):
             fab.execute(self.migrate, tag=tag)
         fab.execute(self.update, force=force, tag=tag)
 
@@ -241,9 +241,7 @@ class PullDockerTasks(DockerTasks):
             local_port=self.local_registry.port,
             local_host=self.local_registry.host,
         ):
-            fabricio.run('docker pull {image}'.format(
-                image=self.image[self.registry:tag]),
-            )
+            DockerTasks.pull(self, tag=tag)
 
     @fab.task(task_class=IgnoreHostsTask)
     def prepare(self, tag=None):
@@ -255,6 +253,7 @@ class PullDockerTasks(DockerTasks):
             quiet=False,
             use_cache=True,
         )
+        self.remove_obsolete_images()
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, force=False, tag=None, *args, **kwargs):
@@ -265,6 +264,12 @@ class PullDockerTasks(DockerTasks):
         fab.execute(self.push, tag=tag)
         DockerTasks.deploy(self, force=force, tag=tag, *args, **kwargs)
 
+    @staticmethod
+    def remove_obsolete_images():
+        fabricio.local(
+            'docker rmi $(docker images --filter "dangling=true" --quiet)',
+        )
+
 
 class BuildDockerTasks(PullDockerTasks):
 
@@ -273,15 +278,29 @@ class BuildDockerTasks(PullDockerTasks):
         self.build_path = build_path
 
     @fab.task(task_class=IgnoreHostsTask)
-    def prepare(self, tag=None):
+    def prepare(self, tag=None, no_cache=False):
         """
-        prepare[:tag=None] - prepare Docker image
+        prepare[:tag=None,no_cache=no] - prepare Docker image
         """
+        options = utils.Options([
+            ('tag', str(self.image[tag])),
+            ('no-cache', utils.strtobool(no_cache)),
+        ])
         fabricio.local(
-            'docker build --tag {tag} {build_path}'.format(
-                tag=self.image[tag],
+            'docker build {options} {build_path}'.format(
                 build_path=self.build_path,
+                options=options,
             ),
             quiet=False,
             use_cache=True,
         )
+        self.remove_obsolete_images()
+
+    @fab.task(default=True, task_class=IgnoreHostsTask)
+    def deploy(self, force=False, tag=None, no_cache=False, *args, **kwargs):
+        """
+        deploy[:force=no,tag=None,migrate=yes,backup=yes,no_cache=no] - prepare -> push -> backup -> pull -> migrate -> update
+        """
+        fab.execute(self.prepare, tag=tag, no_cache=no_cache)
+        fab.execute(self.push, tag=tag)
+        DockerTasks.deploy(self, force=force, tag=tag, *args, **kwargs)

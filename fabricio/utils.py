@@ -1,9 +1,11 @@
+import warnings
+
 try:
     from collections import OrderedDict
 except ImportError:
     from ordereddict import OrderedDict
 
-from distutils.util import strtobool
+from distutils import util as distutils
 
 import six
 
@@ -47,5 +49,18 @@ class Options(OrderedDict):
         return ' '.join(self.make_options())
 
 
+def strtobool(value):
+    return bool(distutils.strtobool(str(value)))
+
+
 def yes(value):
-    return strtobool(str(value))
+    warnings.warn(
+        'yes() is deprecated and will be removed in v0.3, '
+        'use strtobool() instead',
+        DeprecationWarning,
+    )
+    warnings.warn(
+        'yes() will be removed in Fabricio v0.3, use strtobool() instead',
+        RuntimeWarning,
+    )
+    return strtobool(value)
