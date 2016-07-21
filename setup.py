@@ -20,7 +20,7 @@ if sys.version_info < (2,7):
 
 setup(
     name='fabricio',
-    version='0.2.8',
+    version='0.2.9',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],
@@ -35,6 +35,7 @@ setup(
         'Topic :: Utilities',
         'Topic :: System :: Networking',
         'License :: OSI Approved :: MIT License',
+        'Programming Language :: Python :: 2',
         'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Operating System :: OS Independent',
