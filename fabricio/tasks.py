@@ -268,6 +268,7 @@ class PullDockerTasks(DockerTasks):
     def remove_obsolete_images():
         fabricio.local(
             'docker rmi $(docker images --filter "dangling=true" --quiet)',
+            ignore_errors=True,
         )
 
 
