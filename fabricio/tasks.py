@@ -69,8 +69,7 @@ class Tasks(object):
                     aliases=attr_value.aliases,
                     task_class=attr_value.__class__,
                 )
-                task = task_decorator(functools.wraps(attr_value.wrapped)(
-                    # TODO fix Fabric's --display option
+                task = task_decorator(functools.wraps(attr_value)(
                     functools.partial(attr_value.wrapped, _self),
                 ))
                 setattr(self, attr, task)
