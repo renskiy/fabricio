@@ -12,7 +12,8 @@ from fabric.main import load_tasks_from_module, is_task_module, is_task_object
 import fabricio
 
 from fabricio import docker
-from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, BuildDockerTasks, infrastructure, Registry
+from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, \
+    BuildDockerTasks, infrastructure
 
 
 class TestContainer(docker.Container):

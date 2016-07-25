@@ -21,14 +21,6 @@ class IgnoreHostsTask(WrappedCallableTask):
     hosts = roles = property(lambda self: (), lambda self, value: None)
 
 
-class Registry(str):
-
-    def __init__(self, *args, **kwargs):
-        super(Registry, self).__init__(*args, **kwargs)
-        self.host, _, port = self.partition(':')
-        self.port = port and int(port)
-
-
 def infrastructure(
     confirm=True,
     color=colors.yellow,
@@ -109,7 +101,7 @@ class DockerTasks(Tasks):
         **kwargs
     ):
         super(DockerTasks, self).__init__(**kwargs)
-        self.registry = registry and Registry(registry)
+        self.registry = registry and docker.Registry(registry)
         self.container = container  # type: docker.Container
         self.backup.use_task_objects = backup_commands
         self.restore.use_task_objects = backup_commands
@@ -205,7 +197,7 @@ class PullDockerTasks(DockerTasks):
 
     def __init__(self, registry='localhost:5000', local_registry='localhost:5000', **kwargs):
         super(PullDockerTasks, self).__init__(registry=registry, **kwargs)
-        self.local_registry = Registry(local_registry)
+        self.local_registry = docker.Registry(local_registry)
 
     @fab.task(task_class=IgnoreHostsTask)
     def push(self, tag=None):
