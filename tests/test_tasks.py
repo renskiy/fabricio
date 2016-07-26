@@ -11,9 +11,7 @@ from fabric.main import load_tasks_from_module, is_task_module, is_task_object
 
 import fabricio
 
-from fabricio import docker
-from fabricio.tasks import Tasks, DockerTasks, PullDockerTasks, \
-    BuildDockerTasks, infrastructure
+from fabricio import docker, tasks
 
 
 class TestContainer(docker.Container):
@@ -30,6 +28,21 @@ class TestCase(unittest.TestCase):
     def tearDown(self):
         sys.stderr = self.stderr
 
+    def test_skip_unknown_host(self):
+
+        mocked_task = mock.Mock()
+
+        @tasks.skip_unknown_host
+        def task():
+            mocked_task()
+
+        with fab.settings(fab.hide('everything')):
+            fab.execute(task)
+            mocked_task.assert_not_called()
+
+            fab.execute(task, host='host')
+            mocked_task.assert_called_once()
+
     def test_infrastructure(self):
         class AbortException(Exception):
             pass
@@ -38,53 +51,62 @@ class TestCase(unittest.TestCase):
             return 'result'
 
         with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
-            self.assertTrue(is_task_object(infrastructure(task)))
-            self.assertTrue(is_task_object(infrastructure()(task)))
+            self.assertTrue(is_task_object(tasks.infrastructure(task)))
+            self.assertTrue(is_task_object(tasks.infrastructure()(task)))
             self.assertIsNone(fab.env.infrastructure)
 
             with self.assertRaises(AbortException):
-                fab.execute(infrastructure(task))
+                fab.execute(tasks.infrastructure(task))
 
             environ_backup = os.environ.copy()
             try:
                 os.environ.pop('FABRICIO_INFRASTRUCTURE_AUTOCONFIRM', None)
                 with self.assertRaises(AbortException):
-                    fab.execute(infrastructure(task))
+                    fab.execute(tasks.infrastructure(task))
 
                 for env in ('yes', 'true', '1', 'YES', 'True'):
                     os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = env
-                    self.assertDictEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                    self.assertDictEqual(
+                        {'<local-only>': 'result'},
+                        fab.execute(tasks.infrastructure(task)),
+                    )
 
                 self.assertEqual('task', fab.env.infrastructure)
 
                 for env in ('no', 'false', '0', 'NO', 'False'):
                     os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = env
                     with self.assertRaises(AbortException):
-                        fab.execute(infrastructure(task))
+                        fab.execute(tasks.infrastructure(task))
 
-                infrastructure(task)
+                tasks.infrastructure(task)
                 self.assertIsNotNone(fab.env.infrastructure)
 
                 os.environ['CUSTOM_ENV'] = '1'
                 self.assertDictEqual(
                     {'<local-only>': 'result'},
-                    fab.execute(infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task)),
+                    fab.execute(tasks.infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task)),
                 )
             finally:
                 os.environ = environ_backup
 
             with mock.patch.object(console, 'confirm', side_effect=(True, False)):
-                self.assertDictEqual({'<local-only>': 'result'}, fab.execute(infrastructure(task)))
+                self.assertDictEqual(
+                    {'<local-only>': 'result'},
+                    fab.execute(tasks.infrastructure(task)),
+                )
                 with self.assertRaises(AbortException):
-                    fab.execute(infrastructure(task))
+                    fab.execute(tasks.infrastructure(task))
 
-            self.assertDictEqual({'<local-only>': 'result'}, fab.execute(infrastructure(confirm=False)(task)))
+            self.assertDictEqual(
+                {'<local-only>': 'result'},
+                fab.execute(tasks.infrastructure(confirm=False)(task)),
+            )
 
 
 class TasksTestCase(unittest.TestCase):
 
     def test_tasks(self):
-        class TestTasks(Tasks):
+        class TestTasks(tasks.Tasks):
 
             @fab.task(default=True, aliases=['foo', 'bar'])
             def default(self):
@@ -96,16 +118,16 @@ class TasksTestCase(unittest.TestCase):
 
         roles = ['role_1', 'role_2']
         hosts = ['host_1', 'host_2']
-        tasks = TestTasks(roles=roles, hosts=hosts)
-        self.assertTrue(is_task_module(tasks))
-        self.assertTrue(tasks.default.is_default)
-        self.assertListEqual(['foo', 'bar'], tasks.default.aliases)
-        self.assertEqual('name', tasks.task.name)
-        self.assertListEqual(['alias'], tasks.task.aliases)
-        for task in tasks:
+        tasks_list = TestTasks(roles=roles, hosts=hosts)
+        self.assertTrue(is_task_module(tasks_list))
+        self.assertTrue(tasks_list.default.is_default)
+        self.assertListEqual(['foo', 'bar'], tasks_list.default.aliases)
+        self.assertEqual('name', tasks_list.task.name)
+        self.assertListEqual(['alias'], tasks_list.task.aliases)
+        for task in tasks_list:
             self.assertListEqual(roles, task.roles)
             self.assertListEqual(hosts, task.hosts)
-        docstring, new_style, classic, default = load_tasks_from_module(tasks)
+        docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
         self.assertIsNone(docstring)
         self.assertIn('default', new_style)
         self.assertIn('alias', new_style)
@@ -113,10 +135,12 @@ class TasksTestCase(unittest.TestCase):
         self.assertIn('bar', new_style)
         self.assertIn('name', new_style)
         self.assertDictEqual({}, classic)
-        self.assertIs(tasks.default, default)
+        self.assertIs(tasks_list.default, default)
 
 
 class DockerTasksTestCase(unittest.TestCase):
+
+    maxDiff = None
 
     def setUp(self):
         self.fab_settings = fab.settings(fab.hide('everything'))
@@ -150,8 +174,8 @@ class DockerTasksTestCase(unittest.TestCase):
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = DockerTasks(**data['init_kwargs'])
-                docstring, new_style, classic, default = load_tasks_from_module(tasks)
+                tasks_list = tasks.DockerTasks(**data['init_kwargs'])
+                docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
                 for expected_command in data['expected_commands_list']:
                     self.assertIn(expected_command, new_style)
                 for unexpected_command in data['unexpected_commands_list']:
@@ -159,13 +183,13 @@ class DockerTasksTestCase(unittest.TestCase):
 
     @mock.patch.multiple(TestContainer, revert=mock.DEFAULT, migrate_back=mock.DEFAULT)
     def test_rollback(self, revert, migrate_back):
-        tasks = DockerTasks(container=TestContainer('name'))
+        tasks_list = tasks.DockerTasks(container=TestContainer('name'), hosts=['host'])
         rollback = mock.Mock()
         rollback.attach_mock(migrate_back, 'migrate_back')
         rollback.attach_mock(revert, 'revert')
 
         # default case
-        fab.execute(tasks.rollback)
+        fab.execute(tasks_list.rollback)
         self.assertListEqual(
             [mock.call.migrate_back(), mock.call.revert()],
             rollback.mock_calls,
@@ -173,7 +197,7 @@ class DockerTasksTestCase(unittest.TestCase):
         rollback.reset_mock()
 
         # with migrate_back disabled
-        fab.execute(tasks.rollback, migrate_back='no')
+        fab.execute(tasks_list.rollback, migrate_back='no')
         migrate_back.assert_not_called()
         revert.assert_called_once()
         rollback.reset_mock()
@@ -268,8 +292,12 @@ class DockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(run, 'run')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = DockerTasks(container=TestContainer('name'), **data.get('init_kwargs', {}))
-                tasks.deploy(**data['deploy_kwargs'])
+                tasks_list = tasks.DockerTasks(
+                    container=TestContainer('name'),
+                    hosts=['host'],
+                    **data.get('init_kwargs', {})
+                )
+                tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()
 
@@ -405,8 +433,8 @@ class PullDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
-                tasks.deploy(**data['deploy_kwargs'])
+                tasks_list = tasks.PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
+                tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()
 
@@ -573,7 +601,7 @@ class BuildDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks = BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
-                tasks.deploy(**data['deploy_kwargs'])
+                tasks_list = tasks.BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
+                tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()

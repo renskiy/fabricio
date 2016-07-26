@@ -8,17 +8,19 @@ import six
 from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
-from fabric.network import needs_host
 from fabric.tasks import WrappedCallableTask
 
 import fabricio
 
 from fabricio import docker, utils
 
-
-class IgnoreHostsTask(WrappedCallableTask):
-
-    hosts = roles = property(lambda self: (), lambda self, value: None)
+__all__ = [
+    'infrastructure',
+    'skip_unknown_host',
+    'DockerTasks',
+    'PullDockerTasks',
+    'BuildDockerTasks',
+]
 
 
 def infrastructure(
@@ -41,12 +43,30 @@ def infrastructure(
                     fab.abort('Aborted')
             fab.env.infrastructure = task.__name__
             return task(*args, **kwargs)
+        _task.wrapped = task  # compatibility with '--display <task>' option
         return fab.task(_task)
     fab.env.setdefault('infrastructure', None)
     if callable(confirm):
         func, confirm = confirm, six.get_function_defaults(infrastructure)[0]
         return _decorator(func)
     return _decorator
+
+
+def skip_unknown_host(task):
+    @functools.wraps(task)
+    def _task(*args, **kwargs):
+        if fab.env.get('host_string', False):
+            return task(*args, **kwargs)
+        fabricio.log('task `{task}` skipped (no host provided)'.format(
+            task=fab.env.command,
+        ))
+    _task.wrapped = task  # compatibility with '--display <task>' option
+    return _task
+
+
+class IgnoreHostsTask(WrappedCallableTask):
+
+    hosts = roles = property(lambda self: (), lambda self, value: None)
 
 
 class Tasks(object):
@@ -112,6 +132,7 @@ class DockerTasks(Tasks):
         return self.container.__class__.image
 
     @fab.task
+    @skip_unknown_host
     def revert(self):
         """
         revert - revert Docker container to previous version
@@ -120,6 +141,7 @@ class DockerTasks(Tasks):
 
     @fab.task
     @fab.serial
+    @skip_unknown_host
     def migrate(self, tag=None):
         """
         migrate[:tag=None] - apply migrations
@@ -128,6 +150,7 @@ class DockerTasks(Tasks):
 
     @fab.task
     @fab.serial
+    @skip_unknown_host
     def migrate_back(self):
         """
         migrate_back - remove applied migrations returning to previous state
@@ -145,6 +168,7 @@ class DockerTasks(Tasks):
 
     @fab.task
     @fab.serial
+    @skip_unknown_host
     def backup(self):
         """
         backup - backup data
@@ -153,6 +177,7 @@ class DockerTasks(Tasks):
 
     @fab.task
     @fab.serial
+    @skip_unknown_host
     def restore(self):
         """
         restore - restore data
@@ -160,6 +185,7 @@ class DockerTasks(Tasks):
         self.container.restore()
 
     @fab.task
+    @skip_unknown_host
     def pull(self, tag=None):
         """
         pull[:tag=None] - pull Docker image from registry
@@ -169,6 +195,7 @@ class DockerTasks(Tasks):
         ))
 
     @fab.task
+    @skip_unknown_host
     def update(self, force=False, tag=None):
         """
         update[:force=no,tag=None] - recreate Docker container
@@ -222,7 +249,7 @@ class PullDockerTasks(DockerTasks):
         )
 
     @fab.task
-    @needs_host
+    @skip_unknown_host
     def pull(self, tag=None):
         """
         pull[:tag=None] - pull Docker image from registry
