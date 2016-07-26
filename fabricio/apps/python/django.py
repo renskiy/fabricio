@@ -1,13 +1,8 @@
 import itertools
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-
 from cached_property import cached_property
 
-from fabricio import docker
+from fabricio import docker, utils
 
 
 class Migration(str):
@@ -73,7 +68,7 @@ class DjangoContainer(docker.Container):
             backup_migrations.splitlines(),
         ))
 
-        revert_migrations = OrderedDict()
+        revert_migrations = utils.OrderedDict()
 
         while True:
             backup_migration = next(backup_migrations, None)
