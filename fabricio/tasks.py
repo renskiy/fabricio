@@ -304,6 +304,7 @@ class BuildDockerTasks(PullDockerTasks):
         options = utils.Options([
             ('tag', str(self.image[tag])),
             ('no-cache', utils.strtobool(no_cache)),
+            ('pull', True),
         ])
         fabricio.local(
             'docker build {options} {build_path}'.format(
