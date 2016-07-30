@@ -4,11 +4,6 @@ from fabricio import docker
 
 
 class CronContainer(docker.Container):
-    """
-    This class designed to use with Docker containers created
-    from images which inherit for example this image:
-    https://hub.docker.com/r/renskiy/cron/
-    """
 
     def __init__(self, *args, **kwargs):
         warnings.warn(
