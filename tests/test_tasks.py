@@ -209,7 +209,6 @@ class DockerTasksTestCase(unittest.TestCase):
             default=dict(
                 deploy_kwargs=dict(),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.migrate(tag=None, registry=None),
                     mock.call.update(force=False, tag=None, registry=None),
@@ -218,7 +217,6 @@ class DockerTasksTestCase(unittest.TestCase):
             custom_registry=dict(
                 deploy_kwargs=dict(),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull host:1234/test:latest'),
                     mock.call.migrate(tag=None, registry='host:1234'),
                     mock.call.update(force=False, tag=None, registry='host:1234'),
@@ -228,7 +226,6 @@ class DockerTasksTestCase(unittest.TestCase):
             skip_migration=dict(
                 deploy_kwargs=dict(migrate='no'),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.update(force=False, tag=None, registry=None),
                 ],
@@ -236,22 +233,23 @@ class DockerTasksTestCase(unittest.TestCase):
             skip_migration_bool=dict(
                 deploy_kwargs=dict(migrate=False),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.update(force=False, tag=None, registry=None),
                 ],
             ),
-            skip_backup=dict(
-                deploy_kwargs=dict(backup='no'),
+            backup_enabled=dict(
+                deploy_kwargs=dict(backup='yes'),
                 expected_calls=[
+                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.migrate(tag=None, registry=None),
                     mock.call.update(force=False, tag=None, registry=None),
                 ],
             ),
-            skip_backup_bool=dict(
-                deploy_kwargs=dict(backup=False),
+            backup_enabled_bool=dict(
+                deploy_kwargs=dict(backup=True),
                 expected_calls=[
+                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.migrate(tag=None, registry=None),
                     mock.call.update(force=False, tag=None, registry=None),
@@ -260,7 +258,6 @@ class DockerTasksTestCase(unittest.TestCase):
             custom_tag=dict(
                 deploy_kwargs=dict(tag='tag'),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull test:tag'),
                     mock.call.migrate(tag='tag', registry=None),
                     mock.call.update(force=False, tag='tag', registry=None),
@@ -269,7 +266,6 @@ class DockerTasksTestCase(unittest.TestCase):
             forced=dict(
                 deploy_kwargs=dict(force='yes'),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.migrate(tag=None, registry=None),
                     mock.call.update(force=True, tag=None, registry=None),
@@ -278,7 +274,6 @@ class DockerTasksTestCase(unittest.TestCase):
             forced_bool=dict(
                 deploy_kwargs=dict(force=True),
                 expected_calls=[
-                    mock.call.backup(),
                     mock.call.run('docker pull test:latest'),
                     mock.call.migrate(tag=None, registry=None),
                     mock.call.update(force=True, tag=None, registry=None),
@@ -326,7 +321,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -341,7 +335,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull host:1234/test:latest'),
                     mock.call.migrate(tag=None, registry='host:1234'),
@@ -357,7 +350,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest host:1234/test:latest', use_cache=True),
                     mock.call.local('docker push host:1234/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi host:1234/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=1234, local_host='host'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -373,7 +365,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -388,21 +379,21 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:tag localhost:5000/test:tag', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:tag', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:tag'),
                     mock.call.migrate(tag='tag', registry='localhost:5000'),
                     mock.call.update(force=False, tag='tag', registry='localhost:5000'),
                 ],
             ),
-            skip_backup=dict(
-                deploy_kwargs=dict(backup='no'),
+            backup_enabled=dict(
+                deploy_kwargs=dict(backup='yes'),
                 expected_calls=[
                     mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -417,7 +408,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.update(force=False, tag=None, registry='localhost:5000'),
@@ -463,7 +453,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -478,7 +467,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -493,7 +481,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -509,7 +496,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull host:1234/test:latest'),
                     mock.call.migrate(tag=None, registry='host:1234'),
@@ -525,7 +511,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest host:1234/test:latest', use_cache=True),
                     mock.call.local('docker push host:1234/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi host:1234/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=1234, local_host='host'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -541,7 +526,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -556,21 +540,21 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:tag localhost:5000/test:tag', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:tag', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:tag', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:tag'),
                     mock.call.migrate(tag='tag', registry='localhost:5000'),
                     mock.call.update(force=False, tag='tag', registry='localhost:5000'),
                 ],
             ),
-            skip_backup=dict(
-                deploy_kwargs=dict(backup='no'),
+            backup_enabled=dict(
+                deploy_kwargs=dict(backup='yes'),
                 expected_calls=[
                     mock.call.local('docker build --tag test:latest --pull .', quiet=False, use_cache=True),
                     mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.migrate(tag=None, registry='localhost:5000'),
@@ -585,7 +569,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
-                    mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=5000, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull localhost:5000/test:latest'),
                     mock.call.update(force=False, tag=None, registry='localhost:5000'),

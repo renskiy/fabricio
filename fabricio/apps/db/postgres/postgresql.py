@@ -1,6 +1,8 @@
 import os
 import time
 
+from datetime import datetime
+
 import six
 
 from fabric import api as fab
@@ -9,9 +11,107 @@ from fabric.contrib import files
 import fabricio
 
 from fabricio import docker
+from fabricio.utils import Options
 
 
-class PostgresqlContainer(docker.Container):
+class PostgresqlBackupMixin(docker.Container):
+    """
+    Your Docker image must have pg_dump and pg_restore installed in order
+    to run backup and restore respectively
+    (usually this requires `postgresql-client-common` package for Ubuntu/Debian)
+    """
+
+    db_name = None
+
+    db_user = 'postgres'
+
+    db_host = None
+
+    db_port = None
+
+    db_backup_folder = NotImplemented
+
+    db_backup_format = 'c'
+
+    db_backup_compress_level = None  # 0-9 (0 - no compression, 9 - max)
+
+    db_backup_workers = 1
+
+    db_backup_name = '{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump'
+
+    db_restore_workers = 4
+
+    @property
+    def db_connection_options(self):
+        return Options([
+            ('username', self.db_user),
+            ('host', self.db_host),
+            ('port', self.db_port),
+        ])
+
+    @property
+    def db_backup_options(self):
+        return Options([
+            ('if-exists', True),
+            ('create', True),
+            ('clean', True),
+        ])
+
+    def make_backup_command(self):
+        options = Options(self.db_connection_options)
+        options.update(self.db_backup_options)
+        options.update([
+            ('format', self.db_backup_format),
+            ('dbname', self.db_name),
+            ('compress', self.db_backup_compress_level),
+            ('jobs', self.db_backup_workers),
+            ('file', os.path.join(
+                self.db_backup_folder,
+                self.db_backup_name.format(datetime=datetime.utcnow())),
+            ),
+        ])
+        return 'pg_dump {options}'.format(options=options)
+
+    def backup(self):
+        if self.db_backup_folder is NotImplemented:
+            fabricio.log('db_backup_folder is not provided, DB backup skipped')
+            return
+        self.execute(self.make_backup_command(), quiet=False)
+
+    @property
+    def db_restore_options(self):
+        return self.db_backup_options
+
+    def make_restore_command(self, backup_name):
+        options = Options(self.db_connection_options)
+        options.update(self.db_restore_options)
+        options.update([
+            ('dbname', 'template1'),  # use any existing DB
+            ('jobs', str(self.db_restore_workers)),
+            ('file', os.path.join(self.db_backup_folder, backup_name)),
+        ])
+        return 'pg_restore {options}'.format(options=options)
+
+    def restore(self, backup_name=None):
+        """
+        Before run this method you have somehow to disable incoming connections,
+        e.g. by stopping all database client containers:
+
+            client_container.stop()
+            pg_container.restore()
+            client_container.start()
+        """
+        if self.db_backup_folder is NotImplemented:
+            raise NotImplementedError('db_backup_folder is not provided')
+
+        if backup_name is None:
+            # TODO choose last backup instead of raising ValueError
+            raise ValueError('You must provide backup_name to restore DB data')
+
+        self.execute(self.make_restore_command(backup_name), quiet=False)
+
+
+class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
 
     postgresql_conf = NotImplemented  # type: str
 
@@ -85,33 +185,3 @@ class PostgresqlContainer(docker.Container):
             sudo=True,
         )
         super(PostgresqlContainer, self).revert()
-
-    def backup(self, dst='', username='postgres'):
-        return  # TODO backup arguments should be provided to __init__
-        self.execute('psql --username {username} --command "{command};"'.format(
-            username=username,
-            command="SELECT pg_start_backup('backup')",
-        ))
-        try:
-            command = 'tar --create --exclude postmaster.pid {src} | gzip > {dst}'
-            fabricio.run(
-                command.format(src=self.data, dst=dst),
-                sudo=True,
-            )
-        finally:
-            self.execute('psql --username {username} --command "{command};"'.format(
-                username=username,
-                command="SELECT pg_stop_backup()",
-            ))
-
-    def restore(self, src=''):
-        return  # TODO restore arguments should be provided to __init__
-        self.stop()
-        try:
-            command = 'gzip --decompress < {src} | tar --extract --directory {dst}'
-            fabricio.run(
-                command.format(src=src, dst=self.data),
-                sudo=True,
-            )
-        finally:
-            self.start()

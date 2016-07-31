@@ -178,11 +178,11 @@ class DockerTasks(Tasks):
     @fab.task
     @fab.serial
     @skip_unknown_host
-    def restore(self):
+    def restore(self, backup_name=None):
         """
-        restore - restore data
+        restore[backup_name=None] - restore data
         """
-        self.container.restore()
+        self.container.restore(backup_name=backup_name)
 
     @fab.task
     @skip_unknown_host
@@ -207,9 +207,9 @@ class DockerTasks(Tasks):
         )
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, force=False, tag=None, migrate=True, backup=True):
+    def deploy(self, force=False, tag=None, migrate=True, backup=False):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=no] - backup -> pull -> migrate -> update
         """
         if utils.strtobool(backup):
             fab.execute(self.backup)
@@ -276,7 +276,7 @@ class PullDockerTasks(DockerTasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, force=False, tag=None, *args, **kwargs):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=yes] - prepare -> push -> backup -> pull -> migrate -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=no] - prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag)
         fab.execute(self.push, tag=tag)
@@ -319,7 +319,7 @@ class BuildDockerTasks(PullDockerTasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, force=False, tag=None, no_cache=False, *args, **kwargs):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=yes,no_cache=no] - prepare -> push -> backup -> pull -> migrate -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=no,no_cache=no] - prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)

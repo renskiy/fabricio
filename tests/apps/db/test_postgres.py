@@ -239,55 +239,105 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 self.assertEqual(len(expected_commands), run.call_count)
                 revert.assert_called_once()
 
-    @unittest.skip('PostgresqlContainer.backup() needs to be reworked')
     def test_backup(self):
         cases = dict(
+            not_implemented=dict(
+                expected_commands=[],
+                container_class_attributes=dict(),
+            ),
             default=dict(
                 expected_commands=[
-                    mock.call(
-                        'docker exec --tty name psql --username postgres --command "SELECT pg_start_backup(\'backup\');"',
-                        ignore_errors=False,
-                    ),
-                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz', sudo=True),
-                    mock.call(
-                        'docker exec --tty name psql --username postgres --command "SELECT pg_stop_backup();"',
-                        ignore_errors=False,
-                    )
+                    mock.call('docker exec --tty --interactive name pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
-                backup_kwargs=dict(),
+                container_class_attributes=dict(
+                    db_backup_folder='/data/backup/postgres',
+                    db_backup_name='backup.dump',
+                ),
             ),
-            username_overridden=dict(
+            regular=dict(
                 expected_commands=[
-                    mock.call(
-                        'docker exec --tty name psql --username user --command "SELECT pg_start_backup(\'backup\');"',
-                        ignore_errors=False,
-                    ),
-                    mock.call('tar --create --exclude postmaster.pid /data | gzip > backup.tar.gz', sudo=True),
-                    mock.call(
-                        'docker exec --tty name psql --username user --command "SELECT pg_stop_backup();"',
-                        ignore_errors=False,
-                    )
+                    mock.call('docker exec --tty --interactive name pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
-                backup_kwargs=dict(username='user'),
+                container_class_attributes=dict(
+                    db_backup_folder='/data/backup/postgres',
+                    db_backup_name='backup.dump',
+                    db_user='user',
+                    db_host='localhost',
+                    db_port=5432,
+                    db_name='test_db',
+                    db_backup_format='t',
+                    db_backup_compress_level=9,
+                    db_backup_workers=2,
+                ),
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                container = TestContainer(name='name')
+                Container = type(
+                    'TestContainer',
+                    (postgresql.PostgresqlBackupMixin, ),
+                    data['container_class_attributes'],
+                )
+                container = Container(name='name')
                 with mock.patch.object(fabricio, 'run') as run:
-                    container.backup('backup.tar.gz', **data['backup_kwargs'])
+                    container.backup()
                     run.assert_has_calls(data['expected_commands'])
-                    self.assertEqual(len(data['expected_commands']), run.call_count)
+                    self.assertEqual(
+                        len(data['expected_commands']),
+                        run.call_count,
+                    )
 
-    @unittest.skip('PostgresqlContainer.restore() needs to be reworked')
     def test_restore(self):
-        expected_commands = [
-            mock.call('docker stop --time 30 name'),
-            mock.call('gzip --decompress < backup.tar.gz | tar --extract --directory /data', sudo=True),
-            mock.call('docker start name')
-        ]
-        container = TestContainer(name='name')
-        with mock.patch.object(fabricio, 'run') as run:
-            container.restore('backup.tar.gz')
-            run.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), run.call_count)
+        cases = dict(
+            default=dict(
+                expected_commands=[
+                    mock.call('docker exec --tty --interactive name pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
+                ],
+                container_class_attributes=dict(
+                    db_backup_folder='/data/backup/postgres',
+                ),
+            ),
+            regular=dict(
+                expected_commands=[
+                    mock.call('docker exec --tty --interactive name pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
+                ],
+                container_class_attributes=dict(
+                    db_backup_folder='/data/backup/postgres',
+                    db_backup_name='backup.dump',
+                    db_user='user',
+                    db_host='localhost',
+                    db_port=5432,
+                    db_name='test_db',
+                    db_backup_format='t',
+                    db_restore_workers=2,
+                ),
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                Container = type(
+                    'TestContainer',
+                    (postgresql.PostgresqlBackupMixin, ),
+                    data['container_class_attributes'],
+                )
+                container = Container(name='name')
+                with mock.patch.object(fabricio, 'run') as run:
+                    container.restore(backup_name='backup.dump')
+                    run.assert_has_calls(data['expected_commands'])
+                    self.assertEqual(
+                        len(data['expected_commands']),
+                        run.call_count,
+                    )
+
+    def test_restore_raises_error_if_db_backup_folder_not_set(self):
+        container = postgresql.PostgresqlBackupMixin(name='name')
+        with self.assertRaises(NotImplementedError):
+            container.restore(backup_name='backup.dump')
+
+    def test_restore_raises_error_if_backup_name_not_provided(self):
+        class Container(postgresql.PostgresqlBackupMixin):
+            db_backup_folder = '/data/backup/postgres'
+
+        container = Container(name='name')
+        with self.assertRaises(ValueError):
+            container.restore()

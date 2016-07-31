@@ -157,5 +157,5 @@ class Container(object):
     def backup(self):
         pass
 
-    def restore(self):
+    def restore(self, backup_name=None):
         pass

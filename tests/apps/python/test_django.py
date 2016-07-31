@@ -1,28 +1,64 @@
 import mock
 import unittest2 as unittest
 
+from fabric import api as fab
+
 import fabricio
 
-from fabricio.apps.python.django import DjangoContainer
 from fabricio import docker
+from fabricio.apps.python.django import DjangoContainer
 
 
 class DjangoContainerTestCase(unittest.TestCase):
 
-    def test_migrate(self):
+    @mock.patch.object(docker.Container, 'backup', return_value=mock.Mock())
+    @mock.patch.object(fabricio, 'run', return_value=mock.Mock())
+    def test_migrate(self, run, backup):
         cases = dict(
-            default=dict(
-                expected_command='docker run --rm --tty image:tag python manage.py migrate --noinput',
+            no_new_migrations=dict(
+                side_effect=('', ),
+                expected_commands=[
+                    mock.call.run('docker run --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                ],
+                kwargs=dict(),
+                container_class_vars=dict(name='name'),
+            ),
+            new_migrations=dict(
+                side_effect=(
+                    '[ ]  app.0001_initial',
+                    '',
+                ),
+                expected_commands=[
+                    mock.call.run('docker run --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.backup(),
+                    mock.call.run('docker run --rm --tty image:tag python manage.py migrate --noinput', quiet=False),
+                ],
                 kwargs=dict(),
                 container_class_vars=dict(name='name'),
             ),
             customized=dict(
-                expected_command='docker run --rm --tty registry/image:foo python manage.py migrate --noinput',
+                side_effect=(
+                    '[ ]  app.0001_initial',
+                    '',
+                ),
+                expected_commands=[
+                    mock.call.run('docker run --rm --tty registry/image:foo python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.backup(),
+                    mock.call.run('docker run --rm --tty registry/image:foo python manage.py migrate --noinput', quiet=False),
+                ],
                 kwargs=dict(tag='foo', registry='registry'),
                 container_class_vars=dict(name='name'),
             ),
             default_with_customized_container=dict(
-                expected_command='docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py migrate --noinput',
+                side_effect=(
+                    '[ ]  app.0001_initial',
+                    '',
+                ),
+                expected_commands=[
+                    mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.backup(),
+                    mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py migrate --noinput', quiet=False),
+                ],
                 kwargs=dict(),
                 container_class_vars=dict(
                     user='user',
@@ -42,6 +78,10 @@ class DjangoContainerTestCase(unittest.TestCase):
         )
         for case, data in cases.items():
             with self.subTest(case=case):
+                run.side_effect = data['side_effect']
+                migrate = mock.Mock()
+                migrate.attach_mock(backup, 'backup')
+                migrate.attach_mock(run, 'run')
                 TestContainer = type(
                     'TestContainer',
                     (DjangoContainer, ),
@@ -51,9 +91,12 @@ class DjangoContainerTestCase(unittest.TestCase):
                     ),
                 )
                 container = TestContainer('test')
-                with mock.patch.object(fabricio, 'run') as run:
+                with fab.settings(fab.hide('everything')):
                     container.migrate(**data['kwargs'])
-                    run.assert_called_once_with(data['expected_command'], quiet=False)
+                    self.assertListEqual(
+                        data['expected_commands'],
+                        migrate.mock_calls,
+                    )
 
     def test_migrate_back(self):
         cases = dict(

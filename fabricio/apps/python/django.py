@@ -2,7 +2,7 @@ import itertools
 
 from cached_property import cached_property
 
-from fabricio import docker, utils
+from fabricio import docker, utils, log
 
 
 class Migration(str):
@@ -41,7 +41,20 @@ class DjangoContainer(docker.Container):
         )
 
     def migrate(self, tag=None, registry=None):
-        self.__class__.image[registry:tag].run(
+        image = self.__class__.image[registry:tag]
+
+        unapplied_migrations = image.run(
+            'python manage.py showmigrations --plan | egrep "^\[ \]"',
+            **self.migration_options
+        )
+
+        if not unapplied_migrations:
+            log('No new migrations detected')
+            return
+
+        self.backup()  # make backup before applying migrations
+
+        image.run(
             'python manage.py migrate --noinput',
             quiet=False,
             **self.migration_options

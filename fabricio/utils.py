@@ -41,6 +41,8 @@ class Options(OrderedDict):
                     yield self.make_option(option)
             elif isinstance(value, six.string_types):
                 yield self.make_option(option, value)
+            elif isinstance(value, six.integer_types):
+                yield self.make_option(option, str(value))
             else:
                 for single_value in value:
                     yield self.make_option(option, single_value)

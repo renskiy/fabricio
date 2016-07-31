@@ -16,6 +16,10 @@ class OptionsTestCase(unittest.TestCase):
                 options=OrderedDict(foo='bar'),
                 expected_str_version='--foo bar',
             ),
+            integer=dict(
+                options=OrderedDict(foo=42),
+                expected_str_version='--foo 42',
+            ),
             triple_length=dict(
                 options=OrderedDict([
                     ('foo', 'foo'),
