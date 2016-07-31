@@ -116,6 +116,7 @@ class Container(object):
                 new_image = self.__class__.image[registry:tag]
                 if current_image_id == new_image.id:
                     fabricio.log('No change detected, update skipped.')
+                    self.start()  # force starting container
                     return False
         new_container = self.fork(name=self.name)
         obsolete_container = self.get_backup_container()

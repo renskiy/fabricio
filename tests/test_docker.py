@@ -205,10 +205,12 @@ class ContainerTestCase(unittest.TestCase):
                 side_effect=(
                     '[{"Image": "image_id"}]',  # current container info
                     '[{"Id": "image_id"}]',  # new image info
+                    '',  # force starting container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type image image:tag'),
+                    mock.call('docker start name'),
                 ],
                 update_kwargs=dict(),
                 excpected_result=False,
@@ -217,10 +219,12 @@ class ContainerTestCase(unittest.TestCase):
                 side_effect=(
                     '[{"Image": "image_id"}]',  # current container info
                     '[{"Id": "image_id"}]',  # new image info
+                    '',  # force starting container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type image image:foo'),
+                    mock.call('docker start name'),
                 ],
                 update_kwargs=dict(tag='foo'),
                 excpected_result=False,
