@@ -1,5 +1,7 @@
+import contextlib
 import functools
 import os
+import sys
 import types
 import weakref
 
@@ -190,9 +192,10 @@ class DockerTasks(Tasks):
         """
         pull[:tag=None] - pull Docker image from registry
         """
-        fabricio.run('docker pull {image}'.format(
-            image=self.image[self.registry:tag],
-        ))
+        fabricio.run(
+            'docker pull {image}'.format(image=self.image[self.registry:tag]),
+            quiet=False,
+        )
 
     @fab.task
     @skip_unknown_host
@@ -254,12 +257,17 @@ class PullDockerTasks(DockerTasks):
         """
         pull[:tag=None] - pull Docker image from registry
         """
-        with fab.remote_tunnel(
-            remote_port=self.registry.port,
-            local_port=self.local_registry.port,
-            local_host=self.local_registry.host,
-        ):
-            DockerTasks.pull(self, tag=tag)
+        with contextlib.closing(open(os.devnull, 'w')) as output:
+            with utils.patch(sys, 'stdout', output):
+                # forward sys.stdout to os.devnull to prevent
+                # printing debug messages by fab.remote_tunnel
+
+                with fab.remote_tunnel(
+                    remote_port=self.registry.port,
+                    local_port=self.local_registry.port,
+                    local_host=self.local_registry.host,
+                ):
+                    DockerTasks.pull(self, tag=tag)
 
     @fab.task(task_class=IgnoreHostsTask)
     def prepare(self, tag=None):

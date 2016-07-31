@@ -1,4 +1,8 @@
+import sys
+
 from fabric import colors, api as fab
+
+from fabricio import utils
 
 
 def _command(
@@ -12,7 +16,10 @@ def _command(
 ):
     if quiet:
         hide += ('output', 'warnings')
-    log('{method}: {command}'.format(method=fabric_method.__name__, command=command))
+    log('{method}: {command}'.format(
+        method=fabric_method.__name__,
+        command=command,
+    ))
     with fab.settings(fab.hide(*hide), fab.show(*show), warn_only=True):
         result = fabric_method(command, **kwargs)
         if not ignore_errors and result.failed:
@@ -20,11 +27,13 @@ def _command(
     return result
 
 
-def run(command, sudo=False, **kwargs):
+def run(command, sudo=False, stdout=sys.stdout, stderr=sys.stderr, **kwargs):
     fabric_method = sudo and fab.sudo or fab.run
     return _command(
         fabric_method=fabric_method,
         command=command,
+        stdout=stdout,
+        stderr=stderr,
         **kwargs
     )
 
@@ -49,5 +58,6 @@ def local(command, use_cache=False, **kwargs):
 local.cache = {}
 
 
-def log(message, color=colors.yellow):
-    fab.puts(color(message))
+def log(message, color=colors.yellow, output=sys.stdout):
+    with utils.patch(sys, 'stdout', output):
+        fab.puts(color(message))

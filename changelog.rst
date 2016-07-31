@@ -9,8 +9,10 @@ Release 0.2.14
 - Enhancement: ``apps.python.django.DjangoContainer.migrate()`` calls ``backup()`` before applying migrations
 - Change: ``tasks.DockerTasks.deploy()`` does not run ``backup`` task by default
 - Enhancement: implemented ``apps.db.postgres.PostgresqlContainer.backup()`` and ``apps.db.postgres.PostgresqlContainer.restore()`` (`#17`_)
+- Enhancement: Fabric's ``remote_tunnel`` has been muzzled and ``tasks.DockerTasks.pull()`` output enabled instead (`#42`_)
 
 .. _#17: https://github.com/renskiy/fabricio/issues/17
+.. _#42: https://github.com/renskiy/fabricio/issues/42
 
 Release 0.2.13
 --------------

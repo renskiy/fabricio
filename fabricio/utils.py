@@ -1,3 +1,4 @@
+import contextlib
 import warnings
 
 try:
@@ -8,6 +9,14 @@ except ImportError:
 from distutils import util as distutils
 
 import six
+
+
+@contextlib.contextmanager
+def patch(obj, attr, value, default=None):
+    original = getattr(obj, attr, default)
+    setattr(obj, attr, value)
+    yield
+    setattr(obj, attr, original)
 
 
 class default_property(object):
