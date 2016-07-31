@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.2.16
+--------------
+
+- Fix: Fixed Django migrations plan
+- Fix: Fixed Django migrations change detection
+
 Release 0.2.14
 --------------
 
