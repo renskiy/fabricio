@@ -63,7 +63,7 @@ class DjangoContainer(docker.Container):
     @staticmethod
     def _get_parent_migration(migration, migrations):
         migrations = iter(migrations)
-        list(iter(migrations.next, migration))  # skip children migrations
+        any(migration == m for m in migrations)  # skip later migrations
         for parent_migration in migrations:
             if migration.app == parent_migration.app:
                 return parent_migration
