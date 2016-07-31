@@ -97,7 +97,7 @@ class DjangoContainer(docker.Container):
                 return revert_migrations.values()
 
     def migrate_back(self):
-        migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk {print \$2}'
+        migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"'
 
         try:
             current_migrations = self.image.run(
