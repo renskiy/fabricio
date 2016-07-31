@@ -24,6 +24,10 @@ Features
 - migrations apply and rollback
 - data backup and restore
 
+See changelog_ for detailed info.
+
+.. _changelog: changelog.rst
+
 Basic example
 =============
 
