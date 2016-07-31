@@ -18,7 +18,7 @@ class DjangoContainerTestCase(unittest.TestCase):
             no_new_migrations=dict(
                 side_effect=('', ),
                 expected_commands=[
-                    mock.call.run('docker run --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.run('docker run --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
                 ],
                 kwargs=dict(),
                 container_class_vars=dict(name='name'),
@@ -29,7 +29,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                     '',
                 ),
                 expected_commands=[
-                    mock.call.run('docker run --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.run('docker run --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
                     mock.call.backup(),
                     mock.call.run('docker run --rm --tty image:tag python manage.py migrate --noinput', quiet=False),
                 ],
@@ -42,7 +42,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                     '',
                 ),
                 expected_commands=[
-                    mock.call.run('docker run --rm --tty registry/image:foo python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.run('docker run --rm --tty registry/image:foo python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
                     mock.call.backup(),
                     mock.call.run('docker run --rm --tty registry/image:foo python manage.py migrate --noinput', quiet=False),
                 ],
@@ -55,7 +55,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                     '',
                 ),
                 expected_commands=[
-                    mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"', quiet=True),
+                    mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
                     mock.call.backup(),
                     mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty image:tag python manage.py migrate --noinput', quiet=False),
                 ],

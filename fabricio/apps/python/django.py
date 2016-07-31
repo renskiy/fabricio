@@ -44,7 +44,7 @@ class DjangoContainer(docker.Container):
         image = self.__class__.image[registry:tag]
 
         unapplied_migrations = image.run(
-            'python manage.py showmigrations --plan | egrep "^\[ \]"',
+            'python manage.py showmigrations --plan | egrep "^\[ \]"; true',
             **self.migration_options
         )
 
