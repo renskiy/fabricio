@@ -14,7 +14,8 @@ from fabric.tasks import WrappedCallableTask
 
 import fabricio
 
-from fabricio import docker, utils
+from fabricio import docker
+from fabricio.utils import patch, strtobool, Options
 
 __all__ = [
     'infrastructure',
@@ -34,7 +35,7 @@ def infrastructure(
         @functools.wraps(task)
         def _task(*args, **kwargs):
             if confirm:
-                confirmed = utils.strtobool(os.environ.get(autoconfirm_env_var, 0))
+                confirmed = strtobool(os.environ.get(autoconfirm_env_var, 0))
                 if not confirmed and not console.confirm(
                     'Are you sure you want to select {infrastructure} '
                     'infrastructure to run task(s) on?'.format(
@@ -164,7 +165,7 @@ class DockerTasks(Tasks):
         """
         rollback[:migrate_back=yes] - migrate_back -> revert
         """
-        if utils.strtobool(migrate_back):
+        if strtobool(migrate_back):
             fab.execute(self.migrate_back)
         fab.execute(self.revert)
 
@@ -204,7 +205,7 @@ class DockerTasks(Tasks):
         update[:force=no,tag=None] - recreate Docker container
         """
         self.container.update(
-            force=utils.strtobool(force),
+            force=strtobool(force),
             tag=tag,
             registry=self.registry,
         )
@@ -212,19 +213,25 @@ class DockerTasks(Tasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, force=False, tag=None, migrate=True, backup=False):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=no] - backup -> pull -> migrate -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=no] - \
+backup -> pull -> migrate -> update
         """
-        if utils.strtobool(backup):
+        if strtobool(backup):
             fab.execute(self.backup)
         fab.execute(self.pull, tag=tag)
-        if utils.strtobool(migrate):
+        if strtobool(migrate):
             fab.execute(self.migrate, tag=tag)
         fab.execute(self.update, force=force, tag=tag)
 
 
 class PullDockerTasks(DockerTasks):
 
-    def __init__(self, registry='localhost:5000', local_registry='localhost:5000', **kwargs):
+    def __init__(
+        self,
+        registry='localhost:5000',
+        local_registry='localhost:5000',
+        **kwargs
+    ):
         super(PullDockerTasks, self).__init__(registry=registry, **kwargs)
         self.local_registry = docker.Registry(local_registry)
 
@@ -258,7 +265,7 @@ class PullDockerTasks(DockerTasks):
         pull[:tag=None] - pull Docker image from registry
         """
         with contextlib.closing(open(os.devnull, 'w')) as output:
-            with utils.patch(sys, 'stdout', output):
+            with patch(sys, 'stdout', output):
                 # forward sys.stdout to os.devnull to prevent
                 # printing debug messages by fab.remote_tunnel
 
@@ -284,7 +291,8 @@ class PullDockerTasks(DockerTasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, force=False, tag=None, *args, **kwargs):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=no] - prepare -> push -> backup -> pull -> migrate -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=no] - \
+prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag)
         fab.execute(self.push, tag=tag)
@@ -309,9 +317,9 @@ class BuildDockerTasks(PullDockerTasks):
         """
         prepare[:tag=None,no_cache=no] - prepare Docker image
         """
-        options = utils.Options([
+        options = Options([
             ('tag', str(self.image[tag])),
-            ('no-cache', utils.strtobool(no_cache)),
+            ('no-cache', strtobool(no_cache)),
             ('pull', True),
         ])
         fabricio.local(
@@ -327,7 +335,8 @@ class BuildDockerTasks(PullDockerTasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, force=False, tag=None, no_cache=False, *args, **kwargs):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=no,no_cache=no] - prepare -> push -> backup -> pull -> migrate -> update
+        deploy[:force=no,tag=None,migrate=yes,backup=no,no_cache=no] - \
+prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)
