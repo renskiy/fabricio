@@ -347,6 +347,7 @@ class ContainerTestCase(unittest.TestCase):
                     side_effect=side_effect,
                 ) as run:
                     result = container.update(**update_kwargs)
+                    self.assertEqual('name', container.name)
                     run.assert_has_calls(expected_commands)
                     self.assertEqual(
                         len(expected_commands),

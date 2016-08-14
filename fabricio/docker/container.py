@@ -33,14 +33,20 @@ class Container(object):
 
     def __init__(self, name, options=None):
         self.name = name
-        self.options = options
+        self.options = options or {}
 
     def __str__(self):
         return str(self.name)
 
-    def fork(self, name, options=None):
-        options = options or self.options
+    def fork(self, name=None, options=None):
+        if name is None:
+            name = self.name
+        if options is None:
+            options = self.options.copy()
         return self.__class__(name=name, options=options)
+
+    def __copy__(self):
+        return self.fork()
 
     @property
     def info(self):
@@ -128,11 +134,12 @@ class Container(object):
             obsolete_container.delete()
             obsolete_image.delete(ignore_errors=True)
         try:
-            self.rename(obsolete_container.name)
+            backup_container = self.fork()
+            backup_container.rename(obsolete_container.name)
         except RuntimeError:
             pass
         else:
-            self.stop()
+            backup_container.stop()
         new_container.run(tag=tag, registry=registry)
         return True
 
