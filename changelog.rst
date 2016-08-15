@@ -6,7 +6,7 @@ Release 0.2.17
 
 - Fix: Fixed bug when Container.update() changed container name (`#50`_)
 
-.. _#50: https://github.com/renskiy/fabricio/issues/17
+.. _#50: https://github.com/renskiy/fabricio/issues/50
 
 Release 0.2.16
 --------------
