@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Next Release (0.2.18)
+---------------------
+
+- Enhancement: ``PostgresqlBackupMixin``: Do actual backup only if ``db_backup_enabled`` is True (`#51`_)
+
+.. _#51: https://github.com/renskiy/fabricio/issues/51
+
 Release 0.2.17
 --------------
 
