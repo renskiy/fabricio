@@ -243,12 +243,20 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         cases = dict(
             not_implemented=dict(
                 expected_commands=[],
-                container_class_attributes=dict(),
+                container_class_attributes=dict(db_backup_enabled=True),
             ),
             default=dict(
                 expected_commands=[
                     mock.call('docker exec --tty --interactive name pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
+                container_class_attributes=dict(
+                    db_backup_folder='/data/backup/postgres',
+                    db_backup_name='backup.dump',
+                    db_backup_enabled=True,
+                ),
+            ),
+            disabled=dict(
+                expected_commands=[],
                 container_class_attributes=dict(
                     db_backup_folder='/data/backup/postgres',
                     db_backup_name='backup.dump',
@@ -268,6 +276,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     db_backup_format='t',
                     db_backup_compress_level=9,
                     db_backup_workers=2,
+                    db_backup_enabled=True,
                 ),
             ),
         )

@@ -1,1 +1,1 @@
-from .postgresql import PostgresqlContainer
+from .postgresql import PostgresqlContainer, PostgresqlBackupMixin

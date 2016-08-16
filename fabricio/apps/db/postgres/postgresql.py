@@ -5,7 +5,7 @@ from datetime import datetime
 
 import six
 
-from fabric import api as fab
+from fabric import api as fab, colors
 from fabric.contrib import files
 
 import fabricio
@@ -20,6 +20,8 @@ class PostgresqlBackupMixin(docker.Container):
     to run backup and restore respectively
     (usually this requires `postgresql-client-common` package for Ubuntu/Debian)
     """
+
+    db_backup_enabled = False
 
     db_name = None
 
@@ -67,14 +69,19 @@ class PostgresqlBackupMixin(docker.Container):
             ('jobs', self.db_backup_workers),
             ('file', os.path.join(
                 self.db_backup_folder,
-                self.db_backup_name.format(datetime=datetime.utcnow())),
-            ),
+                self.db_backup_name.format(datetime=datetime.utcnow())
+            )),
         ])
         return 'pg_dump {options}'.format(options=options)
 
     def backup(self):
+        if not self.db_backup_enabled:
+            return
         if self.db_backup_folder is NotImplemented:
-            fabricio.log('db_backup_folder is not provided, DB backup skipped')
+            fabricio.log(
+                'WARNING: db_backup_folder is not provided, DB backup skipped',
+                color=colors.red,
+            )
             return
         self.execute(self.make_backup_command(), quiet=False)
 
@@ -125,7 +132,7 @@ class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
 
     @staticmethod
     def update_config(content, path):
-        old_file = six.StringIO()
+        old_file = six.BytesIO()
         fab.get(remote_path=path, local_path=old_file, use_sudo=True)
         old_content = old_file.getvalue()
         fabricio.run(
@@ -135,7 +142,7 @@ class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
             ),
             sudo=True,
         )
-        fab.put(six.StringIO(content), path, use_sudo=True, mode='0644')
+        fab.put(six.BytesIO(content), path, use_sudo=True, mode='0644')
         return content != old_content
 
     def update(self, force=False, tag=None, registry=None):
