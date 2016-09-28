@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Next Release (0.3)
-------------------
+Release 0.3
+-----------
 
 - Change: ``PostgresqlBackupMixin``: Do actual backup only if ``db_backup_enabled`` is True
 - Change: modified ``DockerTasks`` commands params order: force, tag, registry => tag, registry, force(`#52`_)
