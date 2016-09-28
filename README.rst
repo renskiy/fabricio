@@ -51,21 +51,23 @@ The most basic :code:`fabfile.py` you can use with the Fabricio is something lik
     
 Type :code:`fab --list` in your terminal to see available Fabric commands:
 
-.. code::
+::
 
     Available commands:
 
-        nginx           deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        nginx.deploy    deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        nginx.pull      pull[:tag=None] - pull Docker image from registry
-        nginx.rollback  rollback[:migrate_back=yes] - rollback container to previous version
-        nginx.update    update[:tag=None,force=no] - recreate Docker container
+        nginx           backup -> pull -> migrate -> update
+        nginx.deploy    backup -> pull -> migrate -> update
+        nginx.pull      pull Docker image from registry
+        nginx.rollback  rollback container to previous version
+        nginx.update    recreate Docker container
 
 Finally, to deploy such configuration you simply have to execute following bash command:
 
 .. code:: bash
 
     fab nginx
+
+To display detailed info about command (including available options) use following command: ``fab --display <command>``.
 
 Install
 =======
@@ -138,16 +140,16 @@ Here is the list of available commands:
         production.confirm  automatically confirm production infrastructure selection
         staging             select staging infrastructure to run task(s) on
         staging.confirm     automatically confirm staging infrastructure selection
-        balancer            deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        balancer.deploy     deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        balancer.pull       pull[:tag=None] - pull Docker image from registry
-        balancer.rollback   rollback[:migrate_back=yes] - rollback container to previous version
-        balancer.update     update[:tag=None,force=no] - recreate Docker container
-        web                 deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        web.deploy          deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        web.pull            pull[:tag=None] - pull Docker image from registry
-        web.rollback        rollback[:migrate_back=yes] - rollback container to previous version
-        web.update          update[:tag=None,force=no] - recreate Docker container
+        balancer            backup -> pull -> migrate -> update
+        balancer.deploy     backup -> pull -> migrate -> update
+        balancer.pull       pull Docker image from registry
+        balancer.rollback   rollback container to previous version
+        balancer.update     recreate Docker container
+        web                 backup -> pull -> migrate -> update
+        web.deploy          backup -> pull -> migrate -> update
+        web.pull            pull Docker image from registry
+        web.rollback        rollback container to previous version
+        web.update          recreate Docker container
         
 'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 
@@ -209,10 +211,10 @@ When your local Docker registry is up and run you can use special tasks class to
 
 List of commands in this case updated with additional two commands:
 
-.. code::
+::
 
-    nginx.prepare   prepare[:tag=None] - prepare Docker image
-    nginx.push      push[:tag=None] - push Docker image to registry
+    nginx.prepare   prepare Docker image
+    nginx.push      push Docker image to registry
     
 The first one pulls Image from the original registry and the second pushes it to the local registry which is used as main registry for all configuration's infrastructures.
 

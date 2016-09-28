@@ -159,7 +159,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def revert(self):
         """
-        revert - revert Docker container to previous version
+        revert Docker container to previous version
         """
         self.container.revert()
 
@@ -168,7 +168,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def migrate(self, tag=None):
         """
-        migrate[:tag=None] - apply migrations
+        apply migrations
         """
         self.container.migrate(tag=tag, registry=self.registry)
 
@@ -177,14 +177,14 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def migrate_back(self):
         """
-        migrate_back - remove applied migrations returning to previous state
+        remove applied migrations returning to previous state
         """
         self.container.migrate_back()
 
     @fab.task(task_class=IgnoreHostsTask)
     def rollback(self, migrate_back=True):
         """
-        rollback[:migrate_back=yes] - rollback container to previous version
+        rollback Docker container to previous version
         """
         if strtobool(migrate_back):
             fab.execute(self.migrate_back)
@@ -204,7 +204,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def restore(self, backup_name=None):
         """
-        restore[backup_name=None] - restore data
+        restore data
         """
         self.container.restore(backup_name=backup_name)
 
@@ -212,7 +212,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def pull(self, tag=None):
         """
-        pull[:tag=None] - pull Docker image from registry
+        pull Docker image from registry
         """
         fabricio.run(
             'docker pull {image}'.format(image=self.image[self.registry:tag]),
@@ -223,7 +223,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def update(self, tag=None, force=False):
         """
-        update[:tag=None,force=no] - recreate Docker container
+        start new Docker container if necessary
         """
         self.container.update(
             tag=tag,
@@ -234,8 +234,7 @@ class DockerTasks(Tasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, tag=None, force=False, migrate=True, backup=False):
         """
-        deploy[:tag=None,force=no,migrate=yes,backup=no] - \
-backup -> pull -> migrate -> update
+        backup -> pull -> migrate -> update
         """
         if strtobool(backup):
             fab.execute(self.backup)
@@ -259,7 +258,7 @@ class PullDockerTasks(DockerTasks):
     @fab.task(task_class=IgnoreHostsTask)
     def push(self, tag=None):
         """
-        push[:tag=None] - push Docker image to registry
+        push Docker image to registry
         """
         local_tag = str(self.image[self.local_registry:tag])
         fabricio.local(
@@ -283,7 +282,7 @@ class PullDockerTasks(DockerTasks):
     @skip_unknown_host
     def pull(self, tag=None):
         """
-        pull[:tag=None] - pull Docker image from registry
+        pull Docker image from registry
         """
         with contextlib.closing(open(os.devnull, 'w')) as output:
             with patch(sys, 'stdout', output):
@@ -300,7 +299,7 @@ class PullDockerTasks(DockerTasks):
     @fab.task(task_class=IgnoreHostsTask)
     def prepare(self, tag=None):
         """
-        prepare[:tag=None] - prepare Docker image
+        prepare Docker image
         """
         fabricio.local(
             'docker pull {image}'.format(image=self.image[tag]),
@@ -312,8 +311,7 @@ class PullDockerTasks(DockerTasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, tag=None, force=False, *args, **kwargs):
         """
-        deploy[:tag=None,force=no,migrate=yes,backup=no] - \
-prepare -> push -> backup -> pull -> migrate -> update
+        prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag)
         fab.execute(self.push, tag=tag)
@@ -336,7 +334,7 @@ class BuildDockerTasks(PullDockerTasks):
     @fab.task(task_class=IgnoreHostsTask)
     def prepare(self, tag=None, no_cache=False):
         """
-        prepare[:tag=None,no_cache=no] - prepare Docker image
+        prepare Docker image
         """
         options = Options([
             ('tag', str(self.image[tag])),
@@ -356,8 +354,7 @@ class BuildDockerTasks(PullDockerTasks):
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, tag=None, force=False, no_cache=False, *args, **kwargs):
         """
-        deploy[:tag=None,force=no,migrate=yes,backup=no,no_cache=no] - \
-prepare -> push -> backup -> pull -> migrate -> update
+        prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)
