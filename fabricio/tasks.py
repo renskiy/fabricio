@@ -5,8 +5,6 @@ import sys
 import types
 import weakref
 
-import six
-
 from fabric import api as fab, colors
 from fabric.contrib import console
 from fabric.main import is_task_object
@@ -15,7 +13,7 @@ from fabric.tasks import WrappedCallableTask
 import fabricio
 
 from fabricio import docker
-from fabricio.utils import patch, strtobool, Options
+from fabricio.utils import patch, strtobool, Options, OrderedDict
 
 __all__ = [
     'infrastructure',
@@ -24,35 +22,6 @@ __all__ = [
     'PullDockerTasks',
     'BuildDockerTasks',
 ]
-
-
-def infrastructure(
-    confirm=True,
-    color=colors.yellow,
-    autoconfirm_env_var='FABRICIO_INFRASTRUCTURE_AUTOCONFIRM',
-):
-    def _decorator(task):
-        @functools.wraps(task)
-        def _task(*args, **kwargs):
-            if confirm:
-                confirmed = strtobool(os.environ.get(autoconfirm_env_var, 0))
-                if not confirmed and not console.confirm(
-                    'Are you sure you want to select {infrastructure} '
-                    'infrastructure to run task(s) on?'.format(
-                        infrastructure=color(task.__name__),
-                    ),
-                    default=False,
-                ):
-                    fab.abort('Aborted')
-            fab.env.infrastructure = task.__name__
-            return task(*args, **kwargs)
-        _task.wrapped = task  # compatibility with '--display <task>' option
-        return fab.task(_task)
-    fab.env.setdefault('infrastructure', None)
-    if callable(confirm):
-        func, confirm = confirm, six.get_function_defaults(infrastructure)[0]
-        return _decorator(func)
-    return _decorator
 
 
 def skip_unknown_host(task):
@@ -80,7 +49,7 @@ class Tasks(object):
 
     __class__ = types.ModuleType
 
-    def __new__(cls, **kwargs):
+    def __new__(cls, *args, **kwargs):
         self = object.__new__(cls)
         _self = weakref.proxy(self)
         for attr in dir(cls):
@@ -110,6 +79,57 @@ class Tasks(object):
         for name, attr_value in vars(self).items():
             if is_task_object(attr_value):
                 yield attr_value
+
+
+class Infrastructure(Tasks):
+
+    def __new__(cls, *args, **kwargs):
+        if len(args) > 1:
+            raise ValueError('only 1 positional argument allowed')
+        if not args:
+            return lambda callback: cls(callback, **kwargs)
+        return super(Infrastructure, cls).__new__(cls, *args, **kwargs)
+
+    def __init__(self, callback=None, color=colors.yellow, *args, **kwargs):
+        super(Infrastructure, self).__init__(*args, **kwargs)
+        self.callback = callback
+        self.color = color
+        name = color(callback.__name__)
+        self.default.__doc__ = self.default.__doc__.format(name=name)
+        self.confirm.__doc__ = self.confirm.__doc__.format(name=name)
+        # We need to be sure that `default()` will be at first place
+        # every time when vars(self) is being invoked.
+        # See Fabric's `extract_tasks()`
+        self.__dict__ = OrderedDict(
+            (('default', self.default), ),
+            **self.__dict__
+        )
+        fab.env.setdefault('infrastructure', None)
+
+    @fab.task(default=True, name='confirm')
+    def default(self, *args, **kwargs):
+        """
+        select {name} infrastructure to run task(s) on
+        """
+        if not console.confirm(
+            'Are you sure you want to select {name} '
+            'infrastructure to run task(s) on?'.format(
+                name=self.color(self.callback.__name__),
+            ),
+            default=False,
+        ):
+            fab.abort('Aborted')
+        self.confirm(*args, **kwargs)
+
+    @fab.task
+    def confirm(self, *args, **kwargs):
+        """
+        automatically confirm {name} infrastructure selection
+        """
+        fab.env.infrastructure = self.callback.__name__
+        self.callback(*args, **kwargs)
+
+infrastructure = Infrastructure
 
 
 class DockerTasks(Tasks):

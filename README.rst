@@ -93,7 +93,7 @@ You can define as many roles and infrastructures as you need. The following exam
         )
     
     
-    @tasks.infrastructure(color=colors.red)
+    @tasks.infrastructure
     def production():
         fab.env.roledefs.update(
             balancer=['user@balancer.example.com'],
@@ -130,22 +130,24 @@ You can define as many roles and infrastructures as you need. The following exam
 
 Here is the list of available commands:
 
-.. code::
+::
 
     Available commands:
 
-        production
-        staging
-        balancer           deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        balancer.deploy    deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        balancer.pull      pull[:tag=None] - pull Docker image from registry
-        balancer.rollback  rollback[:migrate_back=yes] - rollback container to previous version
-        balancer.update    update[:tag=None,force=no] - recreate Docker container
-        web                deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        web.deploy         deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
-        web.pull           pull[:tag=None] - pull Docker image from registry
-        web.rollback       rollback[:migrate_back=yes] - rollback container to previous version
-        web.update         update[:tag=None,force=no] - recreate Docker container
+        production          select production infrastructure to run task(s) on
+        production.confirm  automatically confirm production infrastructure selection
+        staging             select staging infrastructure to run task(s) on
+        staging.confirm     automatically confirm staging infrastructure selection
+        balancer            deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
+        balancer.deploy     deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
+        balancer.pull       pull[:tag=None] - pull Docker image from registry
+        balancer.rollback   rollback[:migrate_back=yes] - rollback container to previous version
+        balancer.update     update[:tag=None,force=no] - recreate Docker container
+        web                 deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
+        web.deploy          deploy[:tag=None,force=no,migrate=yes,backup=yes] - backup -> pull -> migrate -> update
+        web.pull            pull[:tag=None] - pull Docker image from registry
+        web.rollback        rollback[:migrate_back=yes] - rollback container to previous version
+        web.update          update[:tag=None,force=no] - recreate Docker container
         
 'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 

@@ -48,59 +48,38 @@ class TestCase(unittest.TestCase):
             pass
 
         def task():
-            return 'result'
+            pass
+
+        cases = dict(
+            decorator=tasks.infrastructure,
+            invoked=tasks.infrastructure(),
+        )
 
         with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
-            self.assertTrue(is_task_object(tasks.infrastructure(task)))
-            self.assertTrue(is_task_object(tasks.infrastructure()(task)))
-            self.assertIsNone(fab.env.infrastructure)
+            for case, decorator in cases.items():
+                with self.subTest(case=case):
+                    fab.env.pop('infrastructure', None)
 
-            with self.assertRaises(AbortException):
-                fab.execute(tasks.infrastructure(task))
+                    infrastructure = decorator(task)
 
-            environ_backup = os.environ.copy()
-            try:
-                os.environ.pop('FABRICIO_INFRASTRUCTURE_AUTOCONFIRM', None)
-                with self.assertRaises(AbortException):
-                    fab.execute(tasks.infrastructure(task))
+                    self.assertIsNone(fab.env.infrastructure)
 
-                for env in ('yes', 'true', '1', 'YES', 'True'):
-                    os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = env
-                    self.assertDictEqual(
-                        {'<local-only>': 'result'},
-                        fab.execute(tasks.infrastructure(task)),
-                    )
+                    self.assertTrue(is_task_object(infrastructure.confirm))
+                    self.assertTrue(is_task_object(infrastructure.default))
 
-                self.assertEqual('task', fab.env.infrastructure)
-
-                for env in ('no', 'false', '0', 'NO', 'False'):
-                    os.environ['FABRICIO_INFRASTRUCTURE_AUTOCONFIRM'] = env
                     with self.assertRaises(AbortException):
-                        fab.execute(tasks.infrastructure(task))
+                        fab.execute(infrastructure.default)
 
-                tasks.infrastructure(task)
-                self.assertIsNotNone(fab.env.infrastructure)
+                    fab.execute(infrastructure.confirm)
+                    self.assertEqual('task', fab.env.infrastructure)
 
-                os.environ['CUSTOM_ENV'] = '1'
-                self.assertDictEqual(
-                    {'<local-only>': 'result'},
-                    fab.execute(tasks.infrastructure(autoconfirm_env_var='CUSTOM_ENV')(task)),
-                )
-            finally:
-                os.environ = environ_backup
+                    fab.env.pop('infrastructure', None)
 
-            with mock.patch.object(console, 'confirm', side_effect=(True, False)):
-                self.assertDictEqual(
-                    {'<local-only>': 'result'},
-                    fab.execute(tasks.infrastructure(task)),
-                )
-                with self.assertRaises(AbortException):
-                    fab.execute(tasks.infrastructure(task))
-
-            self.assertDictEqual(
-                {'<local-only>': 'result'},
-                fab.execute(tasks.infrastructure(confirm=False)(task)),
-            )
+                    with mock.patch.object(console, 'confirm', side_effect=(True, False)):
+                        fab.execute(infrastructure.default)
+                        self.assertEqual('task', fab.env.infrastructure)
+                        with self.assertRaises(AbortException):
+                            fab.execute(infrastructure.default)
 
 
 class TasksTestCase(unittest.TestCase):
