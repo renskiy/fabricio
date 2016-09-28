@@ -1,19 +1,20 @@
 Changelog
 =========
 
-Next Release (0.2.18)
----------------------
+Next Release (0.3)
+------------------
 
-- Enhancement: ``PostgresqlBackupMixin``: Do actual backup only if ``db_backup_enabled`` is True (`#51`_)
+- Change: ``PostgresqlBackupMixin``: Do actual backup only if ``db_backup_enabled`` is True
+- Change: modified ``DockerTasks`` commands params order: force, tag, registry => tag, registry, force(`#52`_)
+- Change: ``DockerTasks``: 'revert' command was removed from the list of available commands in favour of 'rollback'
+- Change: ``tasks.infrastructure`` decorator does not require special environ variable to be autoconfirmed, instead special command '<infrastructure>.confirm' can be used for this purpose
 
-.. _#51: https://github.com/renskiy/fabricio/issues/51
+.. _#52: https://github.com/renskiy/fabricio/issues/52
 
 Release 0.2.17
 --------------
 
-- Fix: Fixed bug when Container.update() changed container name (`#50`_)
-
-.. _#50: https://github.com/renskiy/fabricio/issues/50
+- Fix: Fixed bug when Container.update() changed container name
 
 Release 0.2.16
 --------------
