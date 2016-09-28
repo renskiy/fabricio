@@ -112,7 +112,7 @@ class Container(object):
         command = 'docker kill --signal {signal} {container}'
         fabricio.run(command.format(container=self, signal=signal))
 
-    def update(self, force=False, tag=None, registry=None):
+    def update(self, tag=None, registry=None, force=False):
         if not force:
             try:
                 current_image_id = self.image.id

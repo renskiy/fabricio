@@ -200,20 +200,20 @@ class DockerTasks(Tasks):
 
     @fab.task
     @skip_unknown_host
-    def update(self, force=False, tag=None):
+    def update(self, tag=None, force=False):
         """
-        update[:force=no,tag=None] - recreate Docker container
+        update[:tag=None,force=no] - recreate Docker container
         """
         self.container.update(
-            force=strtobool(force),
             tag=tag,
             registry=self.registry,
+            force=strtobool(force),
         )
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, force=False, tag=None, migrate=True, backup=False):
+    def deploy(self, tag=None, force=False, migrate=True, backup=False):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=no] - \
+        deploy[:tag=None,force=no,migrate=yes,backup=no] - \
 backup -> pull -> migrate -> update
         """
         if strtobool(backup):
@@ -221,7 +221,7 @@ backup -> pull -> migrate -> update
         fab.execute(self.pull, tag=tag)
         if strtobool(migrate):
             fab.execute(self.migrate, tag=tag)
-        fab.execute(self.update, force=force, tag=tag)
+        fab.execute(self.update, tag=tag, force=force)
 
 
 class PullDockerTasks(DockerTasks):
@@ -289,14 +289,14 @@ class PullDockerTasks(DockerTasks):
         self.remove_obsolete_images()
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, force=False, tag=None, *args, **kwargs):
+    def deploy(self, tag=None, force=False, *args, **kwargs):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=no] - \
+        deploy[:tag=None,force=no,migrate=yes,backup=no] - \
 prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(self, force=force, tag=tag, *args, **kwargs)
+        DockerTasks.deploy(self, tag=tag, force=force, *args, **kwargs)
 
     @staticmethod
     def remove_obsolete_images():
@@ -333,11 +333,11 @@ class BuildDockerTasks(PullDockerTasks):
         self.remove_obsolete_images()
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, force=False, tag=None, no_cache=False, *args, **kwargs):
+    def deploy(self, tag=None, force=False, no_cache=False, *args, **kwargs):
         """
-        deploy[:force=no,tag=None,migrate=yes,backup=no,no_cache=no] - \
+        deploy[:tag=None,force=no,migrate=yes,backup=no,no_cache=no] - \
 prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(self, force=force, tag=tag, *args, **kwargs)
+        DockerTasks.deploy(self, tag=tag, force=force, *args, **kwargs)
