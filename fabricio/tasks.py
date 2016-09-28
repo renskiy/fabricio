@@ -129,6 +129,7 @@ class DockerTasks(Tasks):
         self.restore.use_task_objects = backup_commands
         self.migrate.use_task_objects = migrate_commands
         self.migrate_back.use_task_objects = migrate_commands
+        self.revert.use_task_objects = False  # disabled in favour of rollback
 
     @property
     def image(self):
@@ -163,7 +164,7 @@ class DockerTasks(Tasks):
     @fab.task(task_class=IgnoreHostsTask)
     def rollback(self, migrate_back=True):
         """
-        rollback[:migrate_back=yes] - migrate_back -> revert
+        rollback[:migrate_back=yes] - rollback container to previous version
         """
         if strtobool(migrate_back):
             fab.execute(self.migrate_back)

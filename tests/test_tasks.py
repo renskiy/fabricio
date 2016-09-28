@@ -153,23 +153,23 @@ class DockerTasksTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 init_kwargs=dict(container='container'),
-                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy'],
-                unexpected_commands_list=['migrate', 'migrate_back', 'backup', 'restore'],
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate_back', 'backup', 'restore'],
             ),
             migrate_tasks=dict(
                 init_kwargs=dict(container='container', migrate_commands=True),
-                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy', 'migrate', 'migrate_back'],
-                unexpected_commands_list=['backup', 'restore'],
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'migrate', 'migrate_back'],
+                unexpected_commands_list=['revert', 'backup', 'restore'],
             ),
             backup_tasks=dict(
                 init_kwargs=dict(container='container', backup_commands=True),
-                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy', 'backup', 'restore'],
-                unexpected_commands_list=['migrate', 'migrate_back'],
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate_back'],
             ),
             all_tasks=dict(
                 init_kwargs=dict(container='container', backup_commands=True, migrate_commands=True),
-                expected_commands_list=['revert', 'pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate_back'],
-                unexpected_commands_list=[],
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate_back'],
+                unexpected_commands_list=['revert'],
             ),
         )
         for case, data in cases.items():
