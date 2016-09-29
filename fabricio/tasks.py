@@ -177,7 +177,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def migrate_back(self):
         """
-        remove applied migrations returning to previous state
+        remove previously applied migrations if any
         """
         self.container.migrate_back()
 
@@ -195,7 +195,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def backup(self):
         """
-        backup - backup data
+        backup data
         """
         self.container.backup()
 
