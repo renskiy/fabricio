@@ -1,5 +1,4 @@
 import contextlib
-import warnings
 
 try:
     from collections import OrderedDict
@@ -62,16 +61,3 @@ class Options(OrderedDict):
 
 def strtobool(value):
     return bool(distutils.strtobool(str(value)))
-
-
-def yes(value):
-    warnings.warn(
-        'yes() is deprecated and will be removed in v0.3, '
-        'use strtobool() instead',
-        DeprecationWarning,
-    )
-    warnings.warn(
-        'yes() will be removed in Fabricio v0.3, use strtobool() instead',
-        RuntimeWarning,
-    )
-    return strtobool(value)
