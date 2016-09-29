@@ -309,13 +309,14 @@ class PullDockerTasks(DockerTasks):
         self.remove_obsolete_images()
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, tag=None, force=False, *args, **kwargs):
+    def deploy(self, tag=None, force=False, migrate=True, backup=False):
         """
         prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(self, tag=tag, force=force, *args, **kwargs)
+        DockerTasks.deploy(
+            self, tag=tag, force=force, migrate=migrate, backup=backup)
 
     @staticmethod
     def remove_obsolete_images():
@@ -352,10 +353,12 @@ class BuildDockerTasks(PullDockerTasks):
         self.remove_obsolete_images()
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, tag=None, force=False, no_cache=False, *args, **kwargs):
+    def deploy(
+            self, tag=None, force=False, migrate=True, backup=False,
+            no_cache=False):
         """
         prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(self, tag=tag, force=force, *args, **kwargs)
+        DockerTasks.deploy(self, tag=tag, force=force, migrate=migrate, backup=backup)

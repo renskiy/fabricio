@@ -59,7 +59,7 @@ Type :code:`fab --list` in your terminal to see available Fabric commands:
         nginx.deploy    backup -> pull -> migrate -> update
         nginx.pull      pull Docker image from registry
         nginx.rollback  rollback container to previous version
-        nginx.update    recreate Docker container
+        nginx.update    start new Docker container if necessary
 
 Finally, to deploy such configuration you simply have to execute following bash command:
 
@@ -144,12 +144,12 @@ Here is the list of available commands:
         balancer.deploy     backup -> pull -> migrate -> update
         balancer.pull       pull Docker image from registry
         balancer.rollback   rollback container to previous version
-        balancer.update     recreate Docker container
+        balancer.update     start new Docker container if necessary
         web                 backup -> pull -> migrate -> update
         web.deploy          backup -> pull -> migrate -> update
         web.pull            pull Docker image from registry
         web.rollback        rollback container to previous version
-        web.update          recreate Docker container
+        web.update          start new Docker container if necessary
         
 'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 
