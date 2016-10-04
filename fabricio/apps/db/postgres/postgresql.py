@@ -1,11 +1,12 @@
 import os
 import time
+import warnings
 
 from datetime import datetime
 
 import six
 
-from fabric import api as fab, colors
+from fabric import api as fab
 from fabric.contrib import files
 
 import fabricio
@@ -21,8 +22,6 @@ class PostgresqlBackupMixin(docker.Container):
     (usually this requires `postgresql-client-common` package for Ubuntu/Debian)
     """
 
-    db_backup_enabled = False
-
     db_name = None
 
     db_user = 'postgres'
@@ -31,7 +30,25 @@ class PostgresqlBackupMixin(docker.Container):
 
     db_port = None
 
-    db_backup_folder = NotImplemented
+    db_backup_dir = None
+
+    @property
+    def db_backup_folder(self):
+        warnings.warn(
+            'db_backup_folder is deprecated and will be removed in ver. 0.4, '
+            'use db_backup_dir instead',
+            DeprecationWarning,
+        )
+        return None
+
+    @property
+    def db_backup_dir(self):
+        warnings.warn(
+            'db_backup_folder is deprecated and will be removed in ver. 0.4, '
+            'use db_backup_dir instead',
+            RuntimeWarning,
+        )
+        return self.db_backup_folder
 
     db_backup_format = 'c'
 
@@ -39,9 +56,25 @@ class PostgresqlBackupMixin(docker.Container):
 
     db_backup_workers = 1
 
-    db_backup_name = '{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump'
+    @property
+    def db_backup_name(self):
+        warnings.warn(
+            'db_backup_name is deprecated and will be removed in ver. 0.4, '
+            'use db_backup_filename instead',
+            DeprecationWarning,
+        )
+        return '{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump'
 
     db_restore_workers = 4
+
+    @property
+    def db_backup_filename(self):
+        warnings.warn(
+            'db_backup_name is deprecated and will be removed in ver. 0.4, '
+            'use db_backup_filename instead',
+            RuntimeWarning,
+        )
+        return self.db_backup_name
 
     @property
     def db_connection_options(self):
@@ -68,38 +101,32 @@ class PostgresqlBackupMixin(docker.Container):
             ('compress', self.db_backup_compress_level),
             ('jobs', self.db_backup_workers),
             ('file', os.path.join(
-                self.db_backup_folder,
-                self.db_backup_name.format(datetime=datetime.utcnow())
+                self.db_backup_dir,
+                self.db_backup_filename.format(datetime=datetime.utcnow())
             )),
         ])
         return 'pg_dump {options}'.format(options=options)
 
     def backup(self):
-        if not self.db_backup_enabled:
-            return
-        if self.db_backup_folder is NotImplemented:
-            fabricio.log(
-                'WARNING: db_backup_folder is not provided, DB backup skipped',
-                color=colors.red,
-            )
-            return
+        if self.db_backup_dir is None:
+            fab.abort('db_backup_dir not set, can\'t continue with backup')
         self.execute(self.make_backup_command(), quiet=False)
 
     @property
     def db_restore_options(self):
         return self.db_backup_options
 
-    def make_restore_command(self, backup_name):
+    def make_restore_command(self, backup_filename):
         options = Options(self.db_connection_options)
         options.update(self.db_restore_options)
         options.update([
             ('dbname', 'template1'),  # use any existing DB
             ('jobs', str(self.db_restore_workers)),
-            ('file', os.path.join(self.db_backup_folder, backup_name)),
+            ('file', os.path.join(self.db_backup_dir, backup_filename)),
         ])
         return 'pg_restore {options}'.format(options=options)
 
-    def restore(self, backup_name=None):
+    def restore(self, backup_filename=None):
         """
         Before run this method you have somehow to disable incoming connections,
         e.g. by stopping all database client containers:
@@ -108,23 +135,70 @@ class PostgresqlBackupMixin(docker.Container):
             pg_container.restore()
             client_container.start()
         """
-        if self.db_backup_folder is NotImplemented:
-            raise NotImplementedError('db_backup_folder is not provided')
+        if self.db_backup_dir is None:
+            fab.abort('db_backup_dir not set, can\'t continue with restore')
 
-        if backup_name is None:
-            # TODO choose last backup instead of raising ValueError
-            raise ValueError('You must provide backup_name to restore DB data')
+        if backup_filename is None:
+            raise ValueError('backup_filename not provided')
 
-        self.execute(self.make_restore_command(backup_name), quiet=False)
+        self.execute(self.make_restore_command(backup_filename), quiet=False)
 
 
 class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
 
-    postgresql_conf = NotImplemented  # type: str
+    @property
+    def postgresql_conf(self):
+        warnings.warn(
+            'postgresql_conf is deprecated and will be removed in ver. 0.4, '
+            'use pg_conf instead',
+            DeprecationWarning,
+        )
+        return NotImplemented
 
-    pg_hba_conf = NotImplemented  # type: str
+    @property
+    def pg_conf(self):
+        warnings.warn(
+            'postgresql_conf is deprecated and will be removed in ver. 0.4, '
+            'use pg_conf instead',
+            RuntimeWarning,
+        )
+        return self.postgresql_conf
 
-    data = NotImplemented  # type: str
+    @property
+    def pg_hba_conf(self):
+        warnings.warn(
+            'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
+            'use pg_hba instead',
+            DeprecationWarning,
+        )
+        return NotImplemented
+
+    @property
+    def pg_hba(self):
+        warnings.warn(
+            'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
+            'use pg_hba instead',
+            RuntimeWarning,
+        )
+        return self.pg_hba_conf
+
+    @property
+    def data(self):
+        warnings.warn(
+            'data is deprecated and will be removed in ver. 0.4, '
+            'use pg_data instead',
+            DeprecationWarning,
+        )
+        return NotImplemented
+
+    @property
+    def pg_data(self):
+        warnings.warn(
+            'data is deprecated and will be removed in ver. 0.4, '
+            'use pg_data instead',
+            RuntimeWarning,
+        )
+        return self.data
 
     stop_signal = 'INT'
 
@@ -147,7 +221,7 @@ class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
 
     def update(self, force=False, tag=None, registry=None):
         if not files.exists(
-            os.path.join(self.data, 'PG_VERSION'),
+            os.path.join(self.pg_data, 'PG_VERSION'),
             use_sudo=True,
         ):
             fabricio.log('PostgreSQL database not found, creating new...')
@@ -155,12 +229,12 @@ class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
             time.sleep(10)  # wait until all data prepared during first start
 
         main_config_changed = self.update_config(
-            content=open(self.postgresql_conf).read(),
-            path=os.path.join(self.data, 'postgresql.conf'),
+            content=open(self.pg_conf).read(),
+            path=os.path.join(self.pg_data, 'postgresql.conf'),
         )
         hba_config_changed = self.update_config(
-            content=open(self.pg_hba_conf).read(),
-            path=os.path.join(self.data, 'pg_hba.conf'),
+            content=open(self.pg_hba).read(),
+            path=os.path.join(self.pg_data, 'pg_hba.conf'),
         )
         force = force or main_config_changed
         updated = super(PostgresqlContainer, self).update(
@@ -173,8 +247,8 @@ class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
         return updated
 
     def revert(self):
-        main_conf = os.path.join(self.data, 'postgresql.conf')
-        hba_conf = os.path.join(self.data, 'pg_hba.conf')
+        main_conf = os.path.join(self.pg_data, 'postgresql.conf')
+        hba_conf = os.path.join(self.pg_data, 'pg_hba.conf')
         fabricio.run(
             'mv {path_from} {path_to}'.format(
                 path_from=main_conf + '.backup',

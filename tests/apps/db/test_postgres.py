@@ -1,3 +1,4 @@
+import sys
 import time
 
 import mock
@@ -17,11 +18,11 @@ class TestContainer(postgresql.PostgresqlContainer):
 
     image = docker.Image('image:tag')
 
-    postgresql_conf = 'postgresql.conf'
+    pg_conf = 'postgresql.conf'
 
-    pg_hba_conf = 'pg_hba.conf'
+    pg_hba = 'pg_hba.conf'
 
-    data = '/data'
+    pg_data = '/data'
 
 
 class PostgresqlContainerTestCase(unittest.TestCase):
@@ -30,10 +31,13 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         postgresql.open = mock.MagicMock()
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
+        self.stderr = sys.stderr
+        sys.stderr = six.BytesIO()
 
     def tearDown(self):
         postgresql.open = open
         self.fab_settings.__exit__(None, None, None)
+        sys.stderr = self.stderr
 
     @mock.patch.object(fab, 'get')
     @mock.patch.object(fab, 'put')
@@ -187,8 +191,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 postgresql.open.side_effect = (
-                    six.StringIO('postgresql.conf'),
-                    six.StringIO('pg_hba.conf'),
+                    six.BytesIO('postgresql.conf'),
+                    six.BytesIO('pg_hba.conf'),
                 )
                 container = TestContainer(name='name')
                 with mock.patch.object(
@@ -206,7 +210,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                             return_value=data['update_returns'],
                         ) as update:
                             with mock.patch.object(
-                                six.StringIO,
+                                six.BytesIO,
                                 'getvalue',
                                 side_effect=data['old_configs'],
                             ):
@@ -241,25 +245,13 @@ class PostgresqlContainerTestCase(unittest.TestCase):
 
     def test_backup(self):
         cases = dict(
-            not_implemented=dict(
-                expected_commands=[],
-                container_class_attributes=dict(db_backup_enabled=True),
-            ),
             default=dict(
                 expected_commands=[
                     mock.call('docker exec --tty --interactive name pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
                 container_class_attributes=dict(
-                    db_backup_folder='/data/backup/postgres',
-                    db_backup_name='backup.dump',
-                    db_backup_enabled=True,
-                ),
-            ),
-            disabled=dict(
-                expected_commands=[],
-                container_class_attributes=dict(
-                    db_backup_folder='/data/backup/postgres',
-                    db_backup_name='backup.dump',
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
                 ),
             ),
             regular=dict(
@@ -267,8 +259,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('docker exec --tty --interactive name pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
                 container_class_attributes=dict(
-                    db_backup_folder='/data/backup/postgres',
-                    db_backup_name='backup.dump',
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
                     db_user='user',
                     db_host='localhost',
                     db_port=5432,
@@ -276,18 +268,17 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     db_backup_format='t',
                     db_backup_compress_level=9,
                     db_backup_workers=2,
-                    db_backup_enabled=True,
                 ),
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                Container = type(
+                container_type = type(
                     'TestContainer',
                     (postgresql.PostgresqlBackupMixin, ),
                     data['container_class_attributes'],
                 )
-                container = Container(name='name')
+                container = container_type(name='name')
                 with mock.patch.object(fabricio, 'run') as run:
                     container.backup()
                     run.assert_has_calls(data['expected_commands'])
@@ -296,6 +287,14 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         run.call_count,
                     )
 
+    def test_backup_raises_error_if_db_backup_dir_not_set(self):
+        class AbortException(Exception):
+            pass
+        container = postgresql.PostgresqlBackupMixin(name='name')
+        with fab.settings(abort_exception=AbortException):
+            with self.assertRaises(AbortException):
+                container.backup()
+
     def test_restore(self):
         cases = dict(
             default=dict(
@@ -303,7 +302,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('docker exec --tty --interactive name pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
                 container_class_attributes=dict(
-                    db_backup_folder='/data/backup/postgres',
+                    db_backup_dir='/data/backup/postgres',
                 ),
             ),
             regular=dict(
@@ -311,8 +310,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('docker exec --tty --interactive name pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
                 ],
                 container_class_attributes=dict(
-                    db_backup_folder='/data/backup/postgres',
-                    db_backup_name='backup.dump',
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
                     db_user='user',
                     db_host='localhost',
                     db_port=5432,
@@ -324,28 +323,31 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                Container = type(
+                container_type = type(
                     'TestContainer',
                     (postgresql.PostgresqlBackupMixin, ),
                     data['container_class_attributes'],
                 )
-                container = Container(name='name')
+                container = container_type(name='name')
                 with mock.patch.object(fabricio, 'run') as run:
-                    container.restore(backup_name='backup.dump')
+                    container.restore(backup_filename='backup.dump')
                     run.assert_has_calls(data['expected_commands'])
                     self.assertEqual(
                         len(data['expected_commands']),
                         run.call_count,
                     )
 
-    def test_restore_raises_error_if_db_backup_folder_not_set(self):
+    def test_restore_raises_error_if_db_backup_dir_not_set(self):
+        class AbortException(Exception):
+            pass
         container = postgresql.PostgresqlBackupMixin(name='name')
-        with self.assertRaises(NotImplementedError):
-            container.restore(backup_name='backup.dump')
+        with fab.settings(abort_exception=AbortException):
+            with self.assertRaises(AbortException):
+                container.restore(backup_filename='backup.dump')
 
-    def test_restore_raises_error_if_backup_name_not_provided(self):
+    def test_restore_raises_error_if_backup_filename_not_provided(self):
         class Container(postgresql.PostgresqlBackupMixin):
-            db_backup_folder = '/data/backup/postgres'
+            db_backup_dir = '/data/backup/postgres'
 
         container = Container(name='name')
         with self.assertRaises(ValueError):
