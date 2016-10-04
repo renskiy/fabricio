@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.3.1
+-------------
+
+- Change: removed deprecated ``CronContainer``
+- Change: removed deprecated ``utils.yes()``
+
 Release 0.3
 -----------
 
