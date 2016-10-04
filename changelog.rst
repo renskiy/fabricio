@@ -7,6 +7,8 @@ Release 0.3.1
 - Change: Removed deprecated ``CronContainer``
 - Change: Removed deprecated ``utils.yes()``
 - Fix: Fixed Fabric's ``serial`` and ``parallel`` decorators usage in ``Tasks``
+- Change: ``PostgresqlContainer``: postgresql_conf => pg_conf, pg_hba_conf => pg_hba, data => pg_data
+- Change: ``PostgresqlBackupMixin``: db_backup_folder => db_backup_dir, db_backup_name => db_backup_filename
 
 Release 0.3
 -----------
