@@ -1,4 +1,3 @@
-import os
 import sys
 
 import mock
@@ -95,6 +94,16 @@ class TasksTestCase(unittest.TestCase):
             def task(self):
                 pass
 
+            @fab.task
+            @fab.serial
+            def serial(self):
+                pass
+
+            @fab.task
+            @fab.parallel
+            def parallel(self):
+                pass
+
         roles = ['role_1', 'role_2']
         hosts = ['host_1', 'host_2']
         tasks_list = TestTasks(roles=roles, hosts=hosts)
@@ -115,6 +124,12 @@ class TasksTestCase(unittest.TestCase):
         self.assertIn('name', new_style)
         self.assertDictEqual({}, classic)
         self.assertIs(tasks_list.default, default)
+
+        self.assertIn('serial', tasks_list.serial.wrapped.__dict__)
+        self.assertTrue(tasks_list.serial.wrapped.serial)
+
+        self.assertIn('parallel', tasks_list.parallel.wrapped.__dict__)
+        self.assertTrue(tasks_list.parallel.wrapped.parallel)
 
 
 class DockerTasksTestCase(unittest.TestCase):

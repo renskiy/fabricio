@@ -61,9 +61,15 @@ class Tasks(object):
                     aliases=attr_value.aliases,
                     task_class=attr_value.__class__,
                 )
-                task = task_decorator(functools.wraps(attr_value)(
-                    functools.partial(attr_value.wrapped, _self),
-                ))
+                bounded_task = functools.partial(attr_value.wrapped, _self)
+                task = task_decorator(functools.wraps(attr_value)(bounded_task))
+                for wrapped_attr in ['parallel', 'serial', 'pool_size']:
+                    if hasattr(attr_value.wrapped, wrapped_attr):
+                        setattr(
+                            task.wrapped,
+                            wrapped_attr,
+                            getattr(attr_value.wrapped, wrapped_attr),
+                        )
                 setattr(self, attr, task)
         return self
 
