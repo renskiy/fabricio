@@ -4,8 +4,9 @@ Changelog
 Release 0.3.1
 -------------
 
-- Change: removed deprecated ``CronContainer``
-- Change: removed deprecated ``utils.yes()``
+- Change: Removed deprecated ``CronContainer``
+- Change: Removed deprecated ``utils.yes()``
+- Fix: Fixed Fabric's ``serial`` and ``parallel`` decorators usage in ``Tasks``
 
 Release 0.3
 -----------
