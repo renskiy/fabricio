@@ -247,7 +247,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 expected_commands=[
-                    mock.call('docker exec --tty --interactive name pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
+                    mock.call(
+                        'docker exec --tty --interactive name pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump',
+                        ignore_errors=False, quiet=False, use_cache=True,
+                    ),
                 ],
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
@@ -256,7 +259,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             ),
             regular=dict(
                 expected_commands=[
-                    mock.call('docker exec --tty --interactive name pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
+                    mock.call(
+                        'docker exec --tty --interactive name pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump',
+                        ignore_errors=False, quiet=False, use_cache=True,
+                    ),
                 ],
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
@@ -299,7 +305,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 expected_commands=[
-                    mock.call('docker exec --tty --interactive name pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
+                    mock.call(
+                        'docker exec --tty --interactive name pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump',
+                        ignore_errors=False, quiet=False, use_cache=True,
+                    ),
                 ],
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
@@ -307,7 +316,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             ),
             regular=dict(
                 expected_commands=[
-                    mock.call('docker exec --tty --interactive name pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump', ignore_errors=False, quiet=False),
+                    mock.call(
+                        'docker exec --tty --interactive name pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump',
+                        ignore_errors=False, quiet=False, use_cache=True,
+                    ),
                 ],
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',

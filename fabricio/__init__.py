@@ -1,3 +1,4 @@
+import hashlib
 import sys
 
 from fabric import colors, api as fab
@@ -27,33 +28,53 @@ def _command(
     return result
 
 
-def run(command, sudo=False, stdout=sys.stdout, stderr=sys.stderr, **kwargs):
+def run(
+    command,
+    sudo=False,
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+    use_cache=False,
+    **kwargs
+):
+    if use_cache:
+        def from_cache(*args, **kwargs):
+            return run.cache[cache_key]
+        md5 = hashlib.md5()
+        md5.update(command)
+        md5.update(fab.env.get('infrastructure') or '')
+        cache_key = md5.digest()
+        if cache_key in run.cache:
+            return _command(fabric_method=from_cache, command=command, **kwargs)
     fabric_method = sudo and fab.sudo or fab.run
-    return _command(
+    result = _command(
         fabric_method=fabric_method,
         command=command,
         stdout=stdout,
         stderr=stderr,
         **kwargs
     )
+    if use_cache:
+        run.cache[cache_key] = result
+    return result
+run.cache = {}
 
 
 def local(command, use_cache=False, **kwargs):
-    if use_cache and command in local.cache:
+    if use_cache:
         def from_cache(*args, **kwargs):
-            return local.cache[command]
-        return _command(
-            fabric_method=from_cache,
-            command=command,
-            **kwargs
-        )
+            return local.cache[cache_key]
+        md5 = hashlib.md5()
+        md5.update(command)
+        cache_key = md5.digest()
+        if cache_key in local.cache:
+            return _command(fabric_method=from_cache, command=command, **kwargs)
     result = _command(
         fabric_method=fab.local,
         command=command,
         **kwargs
     )
     if use_cache:
-        local.cache[command] = result
+        local.cache[cache_key] = result
     return result
 local.cache = {}
 

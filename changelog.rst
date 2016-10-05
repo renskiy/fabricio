@@ -6,9 +6,11 @@ Release 0.3.1
 
 - Change: Removed deprecated ``CronContainer``
 - Change: Removed deprecated ``utils.yes()``
-- Fix: Fixed Fabric's ``serial`` and ``parallel`` decorators usage in ``Tasks``
+- Fix: Fixed Fabric's ``serial`` and ``parallel`` decorators usage within ``Tasks``
 - Change: ``PostgresqlContainer``: postgresql_conf => pg_conf, pg_hba_conf => pg_hba, data => pg_data
 - Change: ``PostgresqlBackupMixin``: db_backup_folder => db_backup_dir, db_backup_name => db_backup_filename
+- Enhancement: ``fabricio.run()``: added 'use_cache=False' option which enables shared cache incapsulated within single infrastructure
+- Enhancement: ``PostgresqlBackupMixin``: 'backup' and 'restore' cache result per infrastructure
 
 Release 0.3
 -----------

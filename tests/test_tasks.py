@@ -281,7 +281,6 @@ class DockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(run, 'run')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks.DockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
                 tasks_list = tasks.DockerTasks(
                     container=TestContainer('name'),
                     hosts=['host'],
@@ -418,7 +417,6 @@ class PullDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks.PullDockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
                 tasks_list = tasks.PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
                 tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
@@ -580,7 +578,6 @@ class BuildDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks.BuildDockerTasks.backup.wrapped.__dict__.pop('return_value', None)  # reset runs_once behavior
                 tasks_list = tasks.BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
                 tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)

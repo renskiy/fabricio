@@ -197,7 +197,7 @@ class DockerTasks(Tasks):
         fab.execute(self.revert)
 
     @fab.task
-    @fab.runs_once
+    @fab.serial
     @skip_unknown_host
     def backup(self):
         """
@@ -206,7 +206,7 @@ class DockerTasks(Tasks):
         self.container.backup()
 
     @fab.task
-    @fab.runs_once
+    @fab.serial
     @skip_unknown_host
     def restore(self, backup_filename=None):
         """

@@ -66,6 +66,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_command,
                 ignore_errors=False,
                 quiet=True,
+                use_cache=False
             )
             self.assertEqual('result', result)
 
