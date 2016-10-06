@@ -145,7 +145,7 @@ class PostgresqlBackupMixin(docker.Container):
         self.execute(command, quiet=False, use_cache=True)
 
 
-class PostgresqlContainer(PostgresqlBackupMixin, docker.Container):
+class PostgresqlContainer(docker.Container):
 
     @property
     def postgresql_conf(self):
