@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.2
+-------------
+
+- Change: ``PostgresqlContainer`` doesn't contain ``PostgresqlBackupMixin`` now
+
 Release 0.3.1
 -------------
 
