@@ -3,7 +3,6 @@ import functools
 import os
 import sys
 import types
-import weakref
 
 from fabric import api as fab, colors
 from fabric.contrib import console
@@ -50,8 +49,7 @@ class Tasks(object):
     __class__ = types.ModuleType
 
     def __new__(cls, *args, **kwargs):
-        self = object.__new__(cls)
-        _self = weakref.proxy(self)
+        self = super(Tasks, cls).__new__(cls)
         for attr in dir(cls):
             attr_value = getattr(cls, attr)
             if is_task_object(attr_value):
@@ -61,7 +59,7 @@ class Tasks(object):
                     aliases=attr_value.aliases,
                     task_class=attr_value.__class__,
                 )
-                bounded_task = functools.partial(attr_value.wrapped, _self)
+                bounded_task = functools.partial(attr_value.wrapped, self)
                 task = task_decorator(functools.wraps(attr_value)(bounded_task))
                 for wrapped_attr in ['parallel', 'serial', 'pool_size']:
                     if hasattr(attr_value.wrapped, wrapped_attr):
@@ -360,11 +358,22 @@ class BuildDockerTasks(PullDockerTasks):
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(
-            self, tag=None, force=False, migrate=True, backup=False,
-            no_cache=False):
+        self,
+        tag=None,
+        force=False,
+        migrate=True,
+        backup=False,
+        no_cache=False,
+    ):
         """
         prepare -> push -> backup -> pull -> migrate -> update
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(self, tag=tag, force=force, migrate=migrate, backup=backup)
+        DockerTasks.deploy(
+            self,
+            tag=tag,
+            force=force,
+            migrate=migrate,
+            backup=backup,
+        )
