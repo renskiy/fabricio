@@ -9,18 +9,19 @@ Release 0.3.2
 Release 0.3.1
 -------------
 
-- Change: Removed deprecated ``CronContainer``
-- Change: Removed deprecated ``utils.yes()``
-- Fix: Fixed Fabric's ``serial`` and ``parallel`` decorators usage within ``Tasks``
+- Change: removed deprecated ``CronContainer``
+- Change: removed deprecated ``utils.yes()``
+- Fix: fixed Fabric's ``serial`` and ``parallel`` decorators usage within ``Tasks``
 - Change: ``PostgresqlContainer``: postgresql_conf => pg_conf, pg_hba_conf => pg_hba, data => pg_data
-- Change: ``PostgresqlBackupMixin``: db_backup_folder => db_backup_dir, db_backup_name => db_backup_filename
+- Change: ``PostgresqlContainer``: postgresql_conf => pg_conf, pg_hba_conf => pg_hba, data => pg_data
+- Change: ``PostgresqlBackupMixin``: removed ``db_backup_enabled`` flag
 - Enhancement: ``fabricio.run()``: added 'use_cache=False' option which enables shared cache incapsulated within single infrastructure
 - Enhancement: ``PostgresqlBackupMixin``: 'backup' and 'restore' cache result per infrastructure
 
 Release 0.3
 -----------
 
-- Change: ``PostgresqlBackupMixin``: Do actual backup only if ``db_backup_enabled`` is True
+- Change: ``PostgresqlBackupMixin``: do actual backup only if ``db_backup_enabled`` is True
 - Change: modified ``DockerTasks`` commands params order: force, tag, registry => tag, registry, force(`#52`_)
 - Change: ``DockerTasks``: 'revert' command was removed from the list of available commands in favour of 'rollback'
 - Change: ``tasks.infrastructure`` decorator does not require special environ variable to be autoconfirmed, instead special command '<infrastructure>.confirm' can be used for this purpose
@@ -30,13 +31,13 @@ Release 0.3
 Release 0.2.17
 --------------
 
-- Fix: Fixed bug when Container.update() changed container name
+- Fix: fixed bug when Container.update() changed container name
 
 Release 0.2.16
 --------------
 
-- Fix: Fixed Django migrations plan
-- Fix: Fixed Django migrations change detection
+- Fix: fixed Django migrations plan
+- Fix: fixed Django migrations change detection
 
 Release 0.2.14
 --------------
@@ -59,8 +60,8 @@ Release 0.2.13
 Release 0.2.12
 --------------
 
-- Fix: Fixed Fabric's --display option (`#33`_)
-- Enhancement: Skip tasks which require host where last is not provided (`#45`_)
+- Fix: fixed Fabric's --display option (`#33`_)
+- Enhancement: skip tasks which require host where last is not provided (`#45`_)
 
 .. _#33: https://github.com/renskiy/fabricio/issues/33
 .. _#45: https://github.com/renskiy/fabricio/issues/45
