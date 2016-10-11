@@ -5,6 +5,7 @@ Release 0.3.2
 -------------
 
 - Change: ``PostgresqlContainer`` doesn't contain ``PostgresqlBackupMixin`` now
+- Change: reworked Docker container options, now they provided as kwargs
 
 Release 0.3.1
 -------------
@@ -12,8 +13,8 @@ Release 0.3.1
 - Change: removed deprecated ``CronContainer``
 - Change: removed deprecated ``utils.yes()``
 - Fix: fixed Fabric's ``serial`` and ``parallel`` decorators usage within ``Tasks``
-- Change: ``PostgresqlContainer``: postgresql_conf => pg_conf, pg_hba_conf => pg_hba, data => pg_data
-- Change: ``PostgresqlContainer``: postgresql_conf => pg_conf, pg_hba_conf => pg_hba, data => pg_data
+- Change: ``PostgresqlContainer``: deprecated 'postgresql_conf', 'pg_hba_conf' and 'data' properties in favour of new ones
+- Change: ``PostgresqlBackupMixin``: deprecated 'db_backup_folder' and 'db_backup_name' properties in favour of new ones
 - Change: ``PostgresqlBackupMixin``: removed ``db_backup_enabled`` flag
 - Enhancement: ``fabricio.run()``: added 'use_cache=False' option which enables shared cache incapsulated within single infrastructure
 - Enhancement: ``PostgresqlBackupMixin``: 'backup' and 'restore' cache result per infrastructure

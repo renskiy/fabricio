@@ -1,4 +1,8 @@
 import json
+import warnings
+
+from cached_property import cached_property
+from frozendict import frozendict
 
 import fabricio
 
@@ -11,39 +15,84 @@ class Container(object):
 
     cmd = None
 
-    user = None
-
-    ports = None
-
-    env = None
-
-    volumes = None
-
-    links = None
-
-    hosts = None
-
-    network = None
-
-    restart_policy = None
-
-    stop_signal = None
-
     stop_timeout = 10
 
-    def __init__(self, name, options=None):
+    # default options
+    user = None
+    ports = None
+    env = None
+    volumes = None
+    links = None
+    hosts = None
+    network = None
+    restart_policy = None
+    stop_signal = None
+
+    _options = {}
+
+    def __init__(self, name, options=None, **kwargs):
         self.name = name
-        self.options = options or {}
+        if options:
+            warnings.warn(
+                '`options` deprecated and will be removed in v0.4',
+                category=RuntimeWarning, stacklevel=2,
+            )
+        is_default_option = self.default_options.__contains__
+        self.options = options = options or {}
+        self.overridden_options = set()
+        for option, value in kwargs.items():
+            if is_default_option(option):
+                setattr(self, option, value)
+            else:
+                options[option] = value
+
+    def __setattr__(self, attr, value):
+        if attr in self.default_options:
+            self.overridden_options.add(attr)
+        super(Container, self).__setattr__(attr, value)
+
+    @cached_property
+    def default_options(self):
+        return self._get_options(all_options=False)
+
+    def fork(self, name=None, options=None, **kwargs):
+        if options:
+            warnings.warn(
+                '`options` deprecated and will be removed in v0.4',
+                category=RuntimeWarning, stacklevel=2,
+            )
+        if name is None:
+            name = self.name
+        deprecated_options = options or {}
+        options = self._options.copy()
+        options.update(deprecated_options)
+        for option in self.overridden_options:
+            options[option] = getattr(self, option)
+        options.update(kwargs)
+        return self.__class__(name, **options)
+
+    def _get_options(self, all_options=True):
+        initial = self._options if all_options else ()
+        return frozendict(
+            initial,
+            user=self.user,
+            ports=self.ports,
+            env=self.env,
+            volumes=self.volumes,
+            links=self.links,
+            hosts=self.hosts,
+            network=self.network,
+            restart_policy=self.restart_policy,
+            stop_signal=self.stop_signal,
+        )
+
+    def _set_options(self, options):
+        self._options = options
+
+    options = property(_get_options, _set_options)
 
     def __str__(self):
         return str(self.name)
-
-    def fork(self, name=None, options=None):
-        if name is None:
-            name = self.name
-        if options is None:
-            options = self.options.copy()
-        return self.__class__(name=name, options=options)
 
     def __copy__(self):
         return self.fork()
@@ -67,15 +116,6 @@ class Container(object):
             cmd=self.cmd,
             temporary=False,
             name=self.name,
-            user=self.user,
-            ports=self.ports,
-            env=self.env,
-            volumes=self.volumes,
-            links=self.links,
-            hosts=self.hosts,
-            network=self.network,
-            restart_policy=self.restart_policy,
-            stop_signal=self.stop_signal,
             options=self.options,
         )
 

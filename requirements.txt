@@ -1,6 +1,7 @@
 cached-property
 docker-py
 fabric
+frozendict
 mock
 ordereddict
 six

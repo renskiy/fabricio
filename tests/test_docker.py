@@ -13,6 +13,98 @@ class TestContainer(docker.Container):
 
 class ContainerTestCase(unittest.TestCase):
 
+    def test_options(self):
+        cases = dict(
+            default=dict(
+                kwargs=dict(),
+                expected={
+                    'network': None,
+                    'links': None,
+                    'stop_signal': None,
+                    'restart_policy': None,
+                    'hosts': None,
+                    'user': None,
+                    'env': None,
+                    'volumes': None,
+                    'ports': None,
+                },
+            ),
+            custom=dict(
+                kwargs=dict(foo='bar'),
+                expected={
+                    'network': None,
+                    'links': None,
+                    'stop_signal': None,
+                    'restart_policy': None,
+                    'hosts': None,
+                    'user': None,
+                    'env': None,
+                    'volumes': None,
+                    'ports': None,
+                    'foo': 'bar',
+                },
+            ),
+            collision=dict(
+                kwargs=dict(image='image'),
+                expected={
+                    'network': None,
+                    'links': None,
+                    'stop_signal': None,
+                    'restart_policy': None,
+                    'hosts': None,
+                    'user': None,
+                    'env': None,
+                    'volumes': None,
+                    'ports': None,
+                    'image': 'image',
+                },
+            ),
+            override=dict(
+                kwargs=dict(env='custom_env'),
+                expected={
+                    'network': None,
+                    'links': None,
+                    'stop_signal': None,
+                    'restart_policy': None,
+                    'hosts': None,
+                    'user': None,
+                    'env': 'custom_env',
+                    'volumes': None,
+                    'ports': None,
+                },
+            ),
+            complex=dict(
+                kwargs=dict(env='custom_env', foo='bar'),
+                expected={
+                    'network': None,
+                    'links': None,
+                    'stop_signal': None,
+                    'restart_policy': None,
+                    'hosts': None,
+                    'user': None,
+                    'env': 'custom_env',
+                    'volumes': None,
+                    'ports': None,
+                    'foo': 'bar',
+                },
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                container = TestContainer('name', **data['kwargs'])
+                self.assertDictEqual(data['expected'], dict(container.options))
+
+    def test_container_does_not_allow_modify_options(self):
+        container = TestContainer('name')
+
+        # default options allowed to be modified
+        container.user = 'user'
+        self.assertEqual('user', container.user)
+
+        # do not allow to modify additional options
+        with self.assertRaises(TypeError):
+            container.options['some-option'] = 'value'
+
     def test_info(self):
         return_value = '[{"Id": "123", "Image": "abc"}]'
         container = docker.Container(name='name')
@@ -145,7 +237,7 @@ class ContainerTestCase(unittest.TestCase):
                 class_kwargs=dict(image=docker.Image('image:tag')),
                 expected_command='docker run --name name --detach image:tag ',
             ),
-            complex=dict(
+            complex_deprecated=dict(
                 init_kwargs=dict(
                     name='name',
                     options=dict(foo='bar'),
@@ -165,8 +257,6 @@ class ContainerTestCase(unittest.TestCase):
                 ),
                 expected_command=(
                     'docker run '
-                    '--foo bar '
-                    '--name name '
                     '--user user '
                     '--publish 80:80 --publish 443:443 '
                     '--env FOO=foo --env BAR=bar '
@@ -176,7 +266,45 @@ class ContainerTestCase(unittest.TestCase):
                     '--net network '
                     '--restart restart_policy '
                     '--stop-signal stop_signal '
+                    '--name name '
                     '--detach '
+                    '--foo bar '
+                    'image:tag cmd'
+                ),
+            ),
+            complex=dict(
+                init_kwargs=dict(
+                    name='name',
+                    custom_option='foo',
+                    restart_policy='override',
+                ),
+                class_kwargs=dict(
+                    image=docker.Image('image:tag'),
+                    cmd='cmd',
+                    user='user',
+                    ports=['80:80', '443:443'],
+                    env=['FOO=foo', 'BAR=bar'],
+                    volumes=['/tmp:/tmp', '/root:/root:ro'],
+                    links=['db:db'],
+                    hosts=['host:192.168.0.1'],
+                    network='network',
+                    restart_policy='restart_policy',
+                    stop_signal='stop_signal',
+                ),
+                expected_command=(
+                    'docker run '
+                    '--user user '
+                    '--publish 80:80 --publish 443:443 '
+                    '--env FOO=foo --env BAR=bar '
+                    '--volume /tmp:/tmp --volume /root:/root:ro '
+                    '--link db:db '
+                    '--add-host host:192.168.0.1 '
+                    '--net network '
+                    '--restart override '
+                    '--stop-signal stop_signal '
+                    '--name name '
+                    '--detach '
+                    '--custom-option foo '
                     'image:tag cmd'
                 ),
             ),
@@ -198,6 +326,92 @@ class ContainerTestCase(unittest.TestCase):
                 ) as run:
                     container.run()
                     run.assert_called_once_with(expected_command, quiet=True)
+
+    def test_fork(self):
+        container = docker.Container('name', network='network', foo='bar')
+        cases = dict(
+            default=dict(
+                kwargs=dict(),
+                expected=dict(
+                    name='name',
+                    network='network',
+                    options={
+                        'network': 'network',
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'bar',
+                    },
+                ),
+            ),
+            deprecated_complex=dict(
+                kwargs=dict(name='fabricio', options=dict(foo='baz')),
+                expected=dict(
+                    name='fabricio',
+                    network='network',
+                    options={
+                        'network': 'network',
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'baz',
+                    },
+                ),
+            ),
+            complex=dict(
+                kwargs=dict(name='fabricio', foo='baz'),
+                expected=dict(
+                    name='fabricio',
+                    network='network',
+                    options={
+                        'network': 'network',
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'baz',
+                    },
+                ),
+            ),
+            double_override=dict(
+                kwargs=dict(name='fabricio', foo='baz', network='net'),
+                expected=dict(
+                    name='fabricio',
+                    network='net',
+                    options={
+                        'network': 'net',
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'baz',
+                    },
+                ),
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                forked_container = container.fork(**data['kwargs'])
+                for attr, value in data['expected'].items():
+                    self.assertEqual(value, getattr(forked_container, attr))
 
     @mock.patch.object(fabricio, 'log')
     def test_update(self, *args):
@@ -559,3 +773,45 @@ class ImageTestCase(unittest.TestCase):
                 new_image = image[data['start']:data['stop']]
                 self.assertEqual(data['expected_tag'], new_image.tag)
                 self.assertEqual(data['expected_registry'], new_image.registry)
+
+    def test_run(self):
+        image = docker.Image('image')
+        cases = dict(
+            default=dict(
+                kwargs=dict(),
+                expected_command='docker run --rm --tty image:latest ',
+            ),
+            with_mapping_option=dict(
+                kwargs=dict(options=dict(ports='80:80')),
+                expected_command='docker run --publish 80:80 --rm --tty image:latest ',
+            ),
+            with_unknown_option=dict(
+                kwargs=dict(options=dict(foo='bar')),
+                expected_command='docker run --rm --tty --foo bar image:latest ',
+            ),
+            with_mapping_option_deprecated=dict(
+                kwargs=dict(ports='80:80'),
+                expected_command='docker run --publish 80:80 --rm --tty image:latest ',
+            ),
+            with_unknown_option_deprecated=dict(
+                kwargs=dict(foo='bar'),
+                expected_command='docker run --rm --tty --foo bar image:latest ',
+            ),
+            with_cmd=dict(
+                kwargs=dict(cmd='cmd'),
+                expected_command='docker run --rm --tty image:latest cmd',
+            ),
+            service=dict(
+                kwargs=dict(temporary=False),
+                expected_command='docker run --detach image:latest ',
+            ),
+            with_name=dict(
+                kwargs=dict(name='name'),
+                expected_command='docker run --name name --rm --tty image:latest ',
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                with mock.patch.object(fabricio, 'run') as run:
+                    image.run(**data['kwargs'])
+                    run.assert_called_once_with(data['expected_command'], quiet=True)

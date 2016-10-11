@@ -12,6 +12,10 @@ class OptionsTestCase(unittest.TestCase):
                 options=OrderedDict(),
                 expected_str_version='',
             ),
+            with_underscore=dict(
+                options=OrderedDict(foo_baz='bar'),
+                expected_str_version='--foo-baz bar',
+            ),
             single_length=dict(
                 options=OrderedDict(foo='bar'),
                 expected_str_version='--foo bar',

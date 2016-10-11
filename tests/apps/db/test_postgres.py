@@ -164,7 +164,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('docker run --name name --stop-signal INT --detach image:tag ', quiet=True),
+                    mock.call('docker run --stop-signal INT --name name --detach image:tag ', quiet=True),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],
@@ -179,7 +179,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('docker run --name name --stop-signal INT --detach registry/image:foo ', quiet=True),
+                    mock.call('docker run --stop-signal INT --name name --detach registry/image:foo ', quiet=True),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                 ],

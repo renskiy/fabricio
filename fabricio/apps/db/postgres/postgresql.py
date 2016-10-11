@@ -36,8 +36,7 @@ class PostgresqlBackupMixin(docker.Container):
     def db_backup_folder(self):
         warnings.warn(
             'db_backup_folder is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_dir instead',
-            DeprecationWarning,
+            'use db_backup_dir instead', DeprecationWarning,
         )
         return None
 
@@ -45,8 +44,7 @@ class PostgresqlBackupMixin(docker.Container):
     def db_backup_dir(self):
         warnings.warn(
             'db_backup_folder is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_dir instead',
-            RuntimeWarning,
+            'use db_backup_dir instead', RuntimeWarning,
         )
         return self.db_backup_folder
 
@@ -60,8 +58,7 @@ class PostgresqlBackupMixin(docker.Container):
     def db_backup_name(self):
         warnings.warn(
             'db_backup_name is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_filename instead',
-            DeprecationWarning,
+            'use db_backup_filename instead', DeprecationWarning,
         )
         return '{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump'
 
@@ -71,8 +68,7 @@ class PostgresqlBackupMixin(docker.Container):
     def db_backup_filename(self):
         warnings.warn(
             'db_backup_name is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_filename instead',
-            RuntimeWarning,
+            'use db_backup_filename instead', RuntimeWarning,
         )
         return self.db_backup_name
 
@@ -151,8 +147,7 @@ class PostgresqlContainer(docker.Container):
     def postgresql_conf(self):
         warnings.warn(
             'postgresql_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_conf instead',
-            DeprecationWarning,
+            'use pg_conf instead', DeprecationWarning,
         )
         return NotImplemented
 
@@ -160,8 +155,7 @@ class PostgresqlContainer(docker.Container):
     def pg_conf(self):
         warnings.warn(
             'postgresql_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_conf instead',
-            RuntimeWarning,
+            'use pg_conf instead', RuntimeWarning,
         )
         return self.postgresql_conf
 
@@ -169,8 +163,7 @@ class PostgresqlContainer(docker.Container):
     def pg_hba_conf(self):
         warnings.warn(
             'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_hba instead',
-            DeprecationWarning,
+            'use pg_hba instead', DeprecationWarning,
         )
         return NotImplemented
 
@@ -178,8 +171,7 @@ class PostgresqlContainer(docker.Container):
     def pg_hba(self):
         warnings.warn(
             'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_hba instead',
-            RuntimeWarning,
+            'use pg_hba instead', RuntimeWarning,
         )
         return self.pg_hba_conf
 
@@ -187,8 +179,7 @@ class PostgresqlContainer(docker.Container):
     def data(self):
         warnings.warn(
             'data is deprecated and will be removed in ver. 0.4, '
-            'use pg_data instead',
-            DeprecationWarning,
+            'use pg_data instead', DeprecationWarning,
         )
         return NotImplemented
 
@@ -196,8 +187,7 @@ class PostgresqlContainer(docker.Container):
     def pg_data(self):
         warnings.warn(
             'data is deprecated and will be removed in ver. 0.4, '
-            'use pg_data instead',
-            RuntimeWarning,
+            'use pg_data instead', RuntimeWarning,
         )
         return self.data
 

@@ -45,7 +45,7 @@ class DjangoContainer(docker.Container):
 
         unapplied_migrations = image.run(
             'python manage.py showmigrations --plan | egrep "^\[ \]"; true',
-            **self.migration_options
+            options=self.migration_options
         )
 
         if not unapplied_migrations:
@@ -57,7 +57,7 @@ class DjangoContainer(docker.Container):
         image.run(
             'python manage.py migrate --noinput',
             quiet=False,
-            **self.migration_options
+            options=self.migration_options
         )
 
     @staticmethod
@@ -102,11 +102,11 @@ class DjangoContainer(docker.Container):
         try:
             current_migrations = self.image.run(
                 cmd=migrations_cmd,
-                **self.migration_options
+                options=self.migration_options
             )
             backup_migrations = self.get_backup_container().image.run(
                 cmd=migrations_cmd,
-                **self.migration_options
+                options=self.migration_options
             )
         except RuntimeError:  # either current or backup container not found
             return
@@ -120,4 +120,4 @@ class DjangoContainer(docker.Container):
                 app=migration.app,
                 migration=migration.name,
             )
-            self.image.run(cmd=cmd, quiet=False, **self.migration_options)
+            self.image.run(cmd=cmd, quiet=False, options=self.migration_options)

@@ -1,4 +1,5 @@
 import json
+import warnings
 
 from docker import utils as docker_utils, auth as docker_auth
 
@@ -8,6 +9,18 @@ from fabricio.utils import default_property, Options
 
 
 class Image(object):
+
+    container_options_mapping = (
+        ('user', 'user'),
+        ('publish', 'ports'),
+        ('env', 'env'),
+        ('volume', 'volumes'),
+        ('link', 'links'),
+        ('add-host', 'hosts'),
+        ('net', 'network'),
+        ('restart', 'restart_policy'),
+        ('stop-signal', 'stop_signal'),
+    )
 
     def __init__(self, name, tag=None, registry=None):
         parsed_registry, parsed_name, parsed_tag = self._parse_image_name(name)
@@ -61,38 +74,22 @@ class Image(object):
             registry = ''
         return registry, name, tag
 
-    @staticmethod
-    def make_container_options(
-        temporary=None,
-        name=None,
-        user=None,
-        ports=None,
-        env=None,
-        volumes=None,
-        links=None,
-        hosts=None,
-        network=None,
-        restart_policy=None,
-        stop_signal=None,
-        options=None,
-    ):
-        options = Options(options or ())
-        options.update((
-            ('name', name),
-            ('user', user),
-            ('publish', ports),
-            ('env', env),
-            ('volume', volumes),
-            ('link', links),
-            ('add-host', hosts),
-            ('net', network),
-            ('restart', restart_policy),
-            ('stop-signal', stop_signal),
-            ('rm', temporary),
-            ('tty', temporary),
-            ('detach', temporary is not None and not temporary),
-        ))
-        return options
+    @classmethod
+    def make_container_options(cls, temporary=None, name=None, options=()):
+        options = dict(options)
+        container_options = Options()
+        for remap, option in cls.container_options_mapping:
+            container_options[remap] = options.pop(option, None)
+        container_options.update(
+            (
+                ('name', name),
+                ('rm', temporary),
+                ('tty', temporary),
+                ('detach', temporary is not None and not temporary),
+            ),
+            **options
+        )
+        return container_options
 
     @property
     def info(self):
@@ -118,17 +115,16 @@ class Image(object):
         temporary=True,
         quiet=True,
         name=None,
-        user=None,
-        ports=None,
-        env=None,
-        volumes=None,
-        links=None,
-        hosts=None,
-        network=None,
-        restart_policy=None,
-        stop_signal=None,
-        options=None,
+        options=(),
+        **kwargs
     ):
+        if kwargs:
+            warnings.warn(
+                'Container options must be provided in `options` arg, '
+                'kwargs behavior will be removed in v0.4',
+                category=RuntimeWarning, stacklevel=2,
+            )
+            options = dict(options, **kwargs)
         command = 'docker run {options} {image} {cmd}'
         return fabricio.run(
             command.format(
@@ -137,15 +133,6 @@ class Image(object):
                 options=self.make_container_options(
                     temporary=temporary,
                     name=name,
-                    user=user,
-                    ports=ports,
-                    env=env,
-                    volumes=volumes,
-                    links=links,
-                    hosts=hosts,
-                    network=network,
-                    restart_policy=restart_policy,
-                    stop_signal=stop_signal,
                     options=options,
                 ),
             ),
