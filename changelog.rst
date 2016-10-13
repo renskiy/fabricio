@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.5
+-------------
+
+- Fix: fixed container name assignment
+
 Release 0.3.3
 -------------
 
