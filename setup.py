@@ -8,6 +8,7 @@ with open('README.rst') as description:
 
 install_requires = [
     'Fabric>=1.1,<2.0',
+    'frozendict>=1.2,<2.0',
     'cached-property>=1.3',
     'docker-py>=1.8.1,<2.0',
     'six>=1.4.0',
@@ -20,7 +21,7 @@ if sys.version_info < (2,7):
 
 setup(
     name='fabricio',
-    version='0.3.2',
+    version='0.3.3',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],

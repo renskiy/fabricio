@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.3
+-------------
+
+- Fix: fixed missed requirements
+
 Release 0.3.2
 -------------
 
