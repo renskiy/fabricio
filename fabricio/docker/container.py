@@ -29,6 +29,7 @@ class Container(object):
     stop_signal = None
 
     _options = {}
+    name = None
 
     def __init__(self, name, options=None, **kwargs):
         self.name = name
