@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.6
+-------------
+
+- Fix: set default env.infrastructure at the very first time
+
 Release 0.3.5
 -------------
 
