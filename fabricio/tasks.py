@@ -108,7 +108,6 @@ class Infrastructure(Tasks):
             (('default', self.default), ),
             **self.__dict__
         )
-        fab.env.setdefault('infrastructure', None)
 
     @fab.task(default=True, name='confirm')
     def default(self, *args, **kwargs):

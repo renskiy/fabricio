@@ -13,7 +13,7 @@ class FabricioTestCase(unittest.TestCase):
     def setUp(self):
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
-        fab.env.pop('infrastructure', None)
+        fab.env.infrastructure = None
 
     def tearDown(self):
         self.fab_settings.__exit__(None, None, None)
@@ -118,14 +118,14 @@ class FabricioTestCase(unittest.TestCase):
         @tasks.infrastructure
         def inf2(): pass
 
-        fabricio.run.cache.clear()
-        fabricio.run('command', ignore_errors=True, use_cache=True)
         fab.execute(inf1.confirm)
+        fabricio.run('command', ignore_errors=True, use_cache=True)
         fabricio.run('command', ignore_errors=True, use_cache=True)
         fab.execute(inf2.confirm)
         fabricio.run('command', ignore_errors=True, use_cache=True)
-        self.assertEqual(3, run.call_count)
+        fabricio.run('command', ignore_errors=True, use_cache=True)
+        self.assertEqual(run.call_count, 2)
         run.assert_has_calls([
             mock.call('command', stdout=mock.ANY, stderr=mock.ANY),
-        ] * 3)
+        ] * 2)
         run.reset_mock()

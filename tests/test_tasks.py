@@ -57,11 +57,7 @@ class TestCase(unittest.TestCase):
         with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
             for case, decorator in cases.items():
                 with self.subTest(case=case):
-                    fab.env.pop('infrastructure', None)
-
                     infrastructure = decorator(task)
-
-                    self.assertIsNone(fab.env.infrastructure)
 
                     self.assertTrue(is_task_object(infrastructure.confirm))
                     self.assertTrue(is_task_object(infrastructure.default))
@@ -72,8 +68,7 @@ class TestCase(unittest.TestCase):
                     fab.execute(infrastructure.confirm)
                     self.assertEqual('task', fab.env.infrastructure)
 
-                    fab.env.pop('infrastructure', None)
-
+                    fab.env.infrastructure = None
                     with mock.patch.object(console, 'confirm', side_effect=(True, False)):
                         fab.execute(infrastructure.default)
                         self.assertEqual('task', fab.env.infrastructure)
