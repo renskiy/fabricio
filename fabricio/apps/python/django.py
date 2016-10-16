@@ -52,8 +52,6 @@ class DjangoContainer(docker.Container):
             log('No new migrations detected')
             return
 
-        self.backup()  # make backup before applying migrations
-
         image.run(
             'python manage.py migrate --noinput',
             quiet=False,
