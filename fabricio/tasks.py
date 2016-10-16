@@ -259,10 +259,37 @@ class PullDockerTasks(DockerTasks):
         self,
         registry='localhost:5000',
         local_registry='localhost:5000',
+        use_ssh_tunnel=True,
         **kwargs
     ):
         super(PullDockerTasks, self).__init__(registry=registry, **kwargs)
         self.local_registry = docker.Registry(local_registry)
+        self.use_ssh_tunnel = use_ssh_tunnel
+
+    @property
+    def tunnel_required(self):
+        if not self.use_ssh_tunnel:
+            return False
+        if self.registry.host in ['localhost', '127.0.0.1']:
+            return True
+        cmd = (
+            'getent -V > /dev/null '
+            '&& getent hosts {host} '
+            '| head -1 '
+            '| awk \'{{ print $1 }}\''
+        ).format(
+            host=self.registry.host,
+        )
+        try:
+            result = fabricio.run(cmd, use_cache=True)
+            return result in ['127.0.0.1', '::1']
+        except RuntimeError:
+            fab.abort(
+                'It seems that \'{host}\' host misses `getent` command, '
+                'please install it and try again'.format(
+                    host=fab.env.host,
+                )
+            )
 
     @fab.task(task_class=IgnoreHostsTask)
     def push(self, tag=None):
@@ -293,17 +320,20 @@ class PullDockerTasks(DockerTasks):
         """
         pull Docker image from registry
         """
-        with contextlib.closing(open(os.devnull, 'w')) as output:
-            with patch(sys, 'stdout', output):
-                # forward sys.stdout to os.devnull to prevent
-                # printing debug messages by fab.remote_tunnel
+        if self.tunnel_required:
+            with contextlib.closing(open(os.devnull, 'w')) as output:
+                with patch(sys, 'stdout', output):
+                    # forward sys.stdout to os.devnull to prevent
+                    # printing debug messages by fab.remote_tunnel
 
-                with fab.remote_tunnel(
-                    remote_port=self.registry.port,
-                    local_port=self.local_registry.port,
-                    local_host=self.local_registry.host,
-                ):
-                    DockerTasks.pull(self, tag=tag)
+                    with fab.remote_tunnel(
+                        remote_port=self.registry.port,
+                        local_port=self.local_registry.port,
+                        local_host=self.local_registry.host,
+                    ):
+                        DockerTasks.pull(self, tag=tag)
+        else:
+            DockerTasks.pull(self, tag=tag)
 
     @fab.task(task_class=IgnoreHostsTask)
     def prepare(self, tag=None):

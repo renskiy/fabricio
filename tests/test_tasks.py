@@ -382,7 +382,7 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.update(force=False, tag=None, registry='localhost:5000'),
                 ],
             ),
-            custom_registry=dict(
+            tunnel_disabled=dict(
                 deploy_kwargs=dict(),
                 expected_calls=[
                     mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
@@ -390,11 +390,60 @@ class PullDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run('docker pull localhost:5000/test:latest', quiet=False),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+                init_kwargs=dict(use_ssh_tunnel=False),
+            ),
+            custom_registry_external=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run("getent -V > /dev/null && getent hosts host | head -1 | awk '{ print $1 }'", use_cache=True),
+                    mock.call.run('docker pull host:1234/test:latest', quiet=False),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                registry_ip='1.2.3.4',
+                init_kwargs=dict(registry='host:1234'),
+            ),
+            custom_registry_local_ipv4=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run("getent -V > /dev/null && getent hosts host | head -1 | awk '{ print $1 }'", use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull host:1234/test:latest', quiet=False),
                     mock.call.migrate(tag=None, registry='host:1234'),
                     mock.call.update(force=False, tag=None, registry='host:1234'),
                 ],
+                registry_ip='127.0.0.1',
+                init_kwargs=dict(registry='host:1234'),
+            ),
+            custom_registry_local_ipv6=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run("getent -V > /dev/null && getent hosts host | head -1 | awk '{ print $1 }'", use_cache=True),
+                    mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull host:1234/test:latest', quiet=False),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                registry_ip='::1',
                 init_kwargs=dict(registry='host:1234'),
             ),
             custom_local_registry=dict(
@@ -478,6 +527,7 @@ class PullDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
+                run.return_value = data.get('registry_ip')
                 tasks_list = tasks.PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
                 tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
@@ -514,6 +564,20 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.update(force=False, tag=None, registry='localhost:5000'),
                 ],
             ),
+            tunnel_disabled=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest --pull .', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run('docker pull localhost:5000/test:latest', quiet=False),
+                    mock.call.migrate(tag=None, registry='localhost:5000'),
+                    mock.call.update(force=False, tag=None, registry='localhost:5000'),
+                ],
+                init_kwargs=dict(use_ssh_tunnel=False),
+            ),
             no_cache=dict(
                 deploy_kwargs=dict(no_cache=True),
                 expected_calls=[
@@ -543,7 +607,7 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                 ],
                 init_kwargs=dict(build_path='build/path'),
             ),
-            custom_registry=dict(
+            custom_registry_external=dict(
                 deploy_kwargs=dict(),
                 expected_calls=[
                     mock.call.local('docker build --tag test:latest --pull .', quiet=False, use_cache=True),
@@ -551,12 +615,47 @@ class BuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
                     mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run("getent -V > /dev/null && getent hosts host | head -1 | awk '{ print $1 }'", use_cache=True),
+                    mock.call.run('docker pull host:1234/test:latest', quiet=False),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                init_kwargs=dict(registry='host:1234'),
+                registry_ip='1.2.3.4',
+            ),
+            custom_registry_local_ipv4=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest --pull .', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run("getent -V > /dev/null && getent hosts host | head -1 | awk '{ print $1 }'", use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
                     mock.call.run('docker pull host:1234/test:latest', quiet=False),
                     mock.call.migrate(tag=None, registry='host:1234'),
                     mock.call.update(force=False, tag=None, registry='host:1234'),
                 ],
                 init_kwargs=dict(registry='host:1234'),
+                registry_ip='127.0.0.1',
+            ),
+            custom_registry_local_ipv6=dict(
+                deploy_kwargs=dict(),
+                expected_calls=[
+                    mock.call.local('docker build --tag test:latest --pull .', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi $(docker images --filter "dangling=true" --quiet)', ignore_errors=True),
+                    mock.call.local('docker tag test:latest localhost:5000/test:latest', use_cache=True),
+                    mock.call.local('docker push localhost:5000/test:latest', quiet=False, use_cache=True),
+                    mock.call.local('docker rmi localhost:5000/test:latest', use_cache=True),
+                    mock.call.run("getent -V > /dev/null && getent hosts host | head -1 | awk '{ print $1 }'", use_cache=True),
+                    mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='localhost'),
+                    mock.call.run('docker pull host:1234/test:latest', quiet=False),
+                    mock.call.migrate(tag=None, registry='host:1234'),
+                    mock.call.update(force=False, tag=None, registry='host:1234'),
+                ],
+                init_kwargs=dict(registry='host:1234'),
+                registry_ip='::1',
             ),
             custom_local_registry=dict(
                 deploy_kwargs=dict(),
@@ -639,6 +738,7 @@ class BuildDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
         for case, data in cases.items():
             with self.subTest(case=case):
+                run.return_value = data.get('registry_ip')
                 tasks_list = tasks.BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
                 tasks_list.deploy(**data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
