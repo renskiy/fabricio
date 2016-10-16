@@ -9,6 +9,22 @@ import fabricio
 from . import Image
 
 
+class Option(object):
+
+    def __init__(self, func=None, value=None):
+        self.func = func
+        if func is not None:
+            self.__doc__ = func.__doc__
+        self.value = value
+
+    def __get__(self, instance, owner):
+        if instance is None:
+            return self
+        if self.func is None:
+            return self.value
+        return self.func(instance)
+
+
 class Container(object):
 
     image = None  # type: Image
@@ -17,19 +33,15 @@ class Container(object):
 
     stop_timeout = 10
 
-    # default options
-    user = None
-    ports = None
-    env = None
-    volumes = None
-    links = None
-    hosts = None
-    network = None
-    restart_policy = None
-    stop_signal = None
-
-    _options = {}
-    name = None
+    user = Option()
+    ports = Option()
+    env = Option()
+    volumes = Option()
+    links = Option()
+    hosts = Option()
+    network = Option()
+    restart_policy = Option()
+    stop_signal = Option()
 
     def __init__(self, name, options=None, **kwargs):
         self.name = name
@@ -38,10 +50,11 @@ class Container(object):
                 '`options` deprecated and will be removed in v0.4',
                 category=RuntimeWarning, stacklevel=2,
             )
-        is_default_option = self.default_options.__contains__
-        self.options = options = options or {}
+        deprecated_options = options or {}
         self.overridden_options = set()
-        for option, value in kwargs.items():
+        is_default_option = self.default_options.__contains__
+        self.options = options = {}
+        for option, value in dict(deprecated_options, **kwargs).items():
             if is_default_option(option):
                 setattr(self, option, value)
             else:
@@ -52,9 +65,26 @@ class Container(object):
             self.overridden_options.add(attr)
         super(Container, self).__setattr__(attr, value)
 
+    def _get_options(self):
+        default_options_values = dict(
+            (option, getattr(self, option))
+            for option in self.default_options
+        )
+        return frozendict(self._options, **default_options_values)
+
+    def _set_options(self, options):
+        self._options = options
+
+    options = property(_get_options, _set_options)
+
     @cached_property
     def default_options(self):
-        return self._get_options(all_options=False)
+        return set(
+            attr
+            for cls in type(self).__mro__
+            for attr, value in vars(cls).items()
+            if isinstance(value, Option)
+        )
 
     def fork(self, name=None, options=None, **kwargs):
         if options:
@@ -65,32 +95,14 @@ class Container(object):
         if name is None:
             name = self.name
         deprecated_options = options or {}
-        options = self._options.copy()
+
+        options = dict(self.options)
+        for option in (self.default_options - self.overridden_options):
+            del options[option]
+
         options.update(deprecated_options)
-        for option in self.overridden_options:
-            options[option] = getattr(self, option)
         options.update(kwargs)
         return self.__class__(name, **options)
-
-    def _get_options(self, all_options=True):
-        initial = self._options if all_options else ()
-        return frozendict(
-            initial,
-            user=self.user,
-            ports=self.ports,
-            env=self.env,
-            volumes=self.volumes,
-            links=self.links,
-            hosts=self.hosts,
-            network=self.network,
-            restart_policy=self.restart_policy,
-            stop_signal=self.stop_signal,
-        )
-
-    def _set_options(self, options):
-        self._options = options
-
-    options = property(_get_options, _set_options)
 
     def __str__(self):
         return str(self.name)

@@ -4,6 +4,7 @@ import unittest2 as unittest
 import fabricio
 
 from fabricio import docker
+from fabricio.docker.container import Option
 
 
 class TestContainer(docker.Container):
@@ -93,6 +94,48 @@ class ContainerTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 container = TestContainer('name', **data['kwargs'])
                 self.assertDictEqual(data['expected'], dict(container.options))
+
+    def test_options_inheritance(self):
+
+        class Container(docker.Container):
+            user = 'user'  # overridden property (simple)
+
+            @property  # overridden property (dynamic)
+            def ports(self):
+                return 'ports'
+
+            baz = Option(value=42)  # new property
+
+            @Option  # new dynamic property
+            def foo(self):
+                return 'bar'
+
+            null = Option()  # new empty property
+
+        container = Container('name')
+
+        self.assertIn('user', container.options)
+        self.assertEqual(container.options['user'], 'user')
+        container.user = 'fabricio'
+        self.assertEqual(container.options['user'], 'fabricio')
+
+        self.assertIn('ports', container.options)
+        self.assertEqual(container.options['ports'], 'ports')
+
+        self.assertIn('baz', container.options)
+        self.assertEqual(container.options['baz'], 42)
+        container.baz = 101
+        self.assertEqual(container.options['baz'], 101)
+
+        self.assertIn('foo', container.options)
+        self.assertEqual(container.options['foo'], 'bar')
+        container.foo = 'baz'
+        self.assertEqual(container.options['foo'], 'baz')
+
+        self.assertIn('null', container.options)
+        self.assertIsNone(container.options['null'])
+        container.null = 'value'
+        self.assertEqual(container.options['null'], 'value')
 
     def test_container_does_not_allow_modify_options(self):
         container = TestContainer('name')
