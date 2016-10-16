@@ -8,6 +8,7 @@ Release 0.3.6
 - Enhancement: added special ``Option`` type which can be used as Docker container option descriptor
 - Change: ``fabricio.run()`` use current host (instead of current infrastructure) to generate cache key
 - Change: ``DjangoContainer`` doesn't call ``backup()`` now
+- Enhancement: use ``remote_tunnel`` only if registry hostname is IP or alias of the remote host itself
 
 Release 0.3.5
 -------------
