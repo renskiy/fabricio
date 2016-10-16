@@ -43,7 +43,7 @@ def run(
             return run.cache[cache_key]
         md5 = hashlib.md5()
         md5.update(command)
-        md5.update(fab.env.infrastructure or '')
+        md5.update(fab.env.host or '')
         cache_key = md5.digest()
         if cache_key in run.cache:
             return _command(fabric_method=from_cache, command=command, **kwargs)

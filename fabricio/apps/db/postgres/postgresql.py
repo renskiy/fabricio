@@ -106,7 +106,7 @@ class PostgresqlBackupMixin(docker.Container):
     def backup(self):
         if self.db_backup_dir is None:
             fab.abort('db_backup_dir not set, can\'t continue with backup')
-        self.execute(self.make_backup_command(), quiet=False, use_cache=True)
+        self.execute(self.make_backup_command(), quiet=False)
 
     @property
     def db_restore_options(self):
@@ -138,7 +138,7 @@ class PostgresqlBackupMixin(docker.Container):
             raise ValueError('backup_filename not provided')
 
         command = self.make_restore_command(backup_filename)
-        self.execute(command, quiet=False, use_cache=True)
+        self.execute(command, quiet=False)
 
 
 class PostgresqlContainer(docker.Container):

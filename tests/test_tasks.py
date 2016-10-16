@@ -285,6 +285,72 @@ class DockerTasksTestCase(unittest.TestCase):
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
                 deploy.reset_mock()
 
+    @mock.patch.object(docker.Container, 'backup')
+    def test_backup_runs_once_per_infrastructure(self, backup):
+        @tasks.infrastructure
+        def inf1():
+            pass
+
+        @tasks.infrastructure
+        def inf2():
+            pass
+
+        cases = [
+            ('no_infrastructure', dict(
+                infrastructure=None,
+            )),
+            ('infrastructure1', dict(
+                infrastructure=inf1,
+            )),
+            ('infrastructure2', dict(
+                infrastructure=inf2,
+            )),
+        ]
+        for case, data in cases:
+            with self.subTest(case=case):
+                if data['infrastructure']:
+                    fab.execute(data['infrastructure'].confirm)
+                backup.reset_mock()
+                container = docker.Container('name')
+                commands = tasks.DockerTasks(container=container, hosts=['host'])
+                fab.execute(commands.backup)
+                backup.assert_called_once()
+                fab.execute(commands.backup)
+                backup.assert_called_once()
+
+    @mock.patch.object(docker.Container, 'restore')
+    def test_restore_runs_once_per_infrastructure(self, restore):
+        @tasks.infrastructure
+        def inf1():
+            pass
+
+        @tasks.infrastructure
+        def inf2():
+            pass
+
+        cases = [
+            ('no_infrastructure', dict(
+                infrastructure=None,
+            )),
+            ('infrastructure1', dict(
+                infrastructure=inf1,
+            )),
+            ('infrastructure2', dict(
+                infrastructure=inf2,
+            )),
+        ]
+        for case, data in cases:
+            with self.subTest(case=case):
+                if data['infrastructure']:
+                    fab.execute(data['infrastructure'].confirm)
+                restore.reset_mock()
+                container = docker.Container('name')
+                commands = tasks.DockerTasks(container=container, hosts=['host'])
+                fab.execute(commands.restore)
+                restore.assert_called_once()
+                fab.execute(commands.restore)
+                restore.assert_called_once()
+
 
 class PullDockerTasksTestCase(unittest.TestCase):
 

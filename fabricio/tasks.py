@@ -153,6 +153,8 @@ class DockerTasks(Tasks):
         self.migrate.use_task_objects = migrate_commands
         self.migrate_back.use_task_objects = migrate_commands
         self.revert.use_task_objects = False  # disabled in favour of rollback
+        self._backup_done = set()
+        self._restore_done = set()
 
     @property
     def image(self):
@@ -200,7 +202,9 @@ class DockerTasks(Tasks):
         """
         backup data
         """
-        self.container.backup()
+        if fab.env.infrastructure not in self._backup_done:
+            self._backup_done.add(fab.env.infrastructure)
+            self.container.backup()
 
     @fab.task
     @fab.serial
@@ -209,7 +213,9 @@ class DockerTasks(Tasks):
         """
         restore data
         """
-        self.container.restore(backup_name=backup_filename)
+        if fab.env.infrastructure not in self._restore_done:
+            self._restore_done.add(fab.env.infrastructure)
+            self.container.restore(backup_name=backup_filename)
 
     @fab.task
     @skip_unknown_host

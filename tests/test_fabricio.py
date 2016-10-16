@@ -18,114 +18,71 @@ class FabricioTestCase(unittest.TestCase):
     def tearDown(self):
         self.fab_settings.__exit__(None, None, None)
 
-    @mock.patch.object(fab, 'local', return_value=type('', (), {'failed': True}))
-    def test_local(self, local):
-        local.__name__ = 'mock'
-
-        with self.assertRaises(RuntimeError):
-            fabricio.local('command', use_cache=True)
-
-        with self.assertRaises(RuntimeError):
-            fabricio.local('command', use_cache=True)
-
-        local.assert_has_calls([
-            mock.call('command'),
-            mock.call('command'),
-        ])
-        self.assertEqual(2, local.call_count)
-        local.reset_mock()
-
-        fabricio.local('command', ignore_errors=True)
-        fabricio.local('command', ignore_errors=True)
-        local.assert_has_calls([
-            mock.call('command'),
-            mock.call('command'),
-        ])
-        self.assertEqual(2, local.call_count)
-        local.reset_mock()
-
-        fabricio.local('command', ignore_errors=True, use_cache=True)
-        fabricio.local('command', ignore_errors=True, use_cache=True)
-        local.assert_called_once_with('command')
-        local.reset_mock()
-
-        fabricio.local('command1', ignore_errors=True, use_cache=True)
-        fabricio.local('command2', ignore_errors=True, use_cache=True)
-        local.assert_has_calls([
-            mock.call('command1'),
-            mock.call('command2'),
-        ])
-        self.assertEqual(2, local.call_count)
-        local.reset_mock()
-        fabricio.local.cache.clear()
-
-        @tasks.infrastructure
-        def inf1(): pass
-
-        @tasks.infrastructure
-        def inf2(): pass
-
-        fab.execute(inf1.confirm)
-        fabricio.local('command', ignore_errors=True, use_cache=True)
-        fab.execute(inf2.confirm)
-        fabricio.local('command', ignore_errors=True, use_cache=True)
-        local.assert_called_once_with('command')
-        local.reset_mock()
-
     @mock.patch.object(fab, 'run', return_value=type('', (), {'failed': True}))
-    def test_run(self, run):
-        run.__name__ = 'mock'
+    @mock.patch.object(fab, 'local', return_value=type('', (), {'failed': True}))
+    def test_local_and_run(self, local, run):
+        cases = dict(
+            local=dict(
+                mock=local,
+                callback=fabricio.local,
+            ),
+            run=dict(
+                mock=run,
+                callback=fabricio.run,
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                mocked_method = data['mock']
+                callback = data['callback']
+                mocked_method.__name__ = 'mock'
 
-        with self.assertRaises(RuntimeError):
-            fabricio.run('command', use_cache=True)
+                callback.cache.clear()
+        
+                with self.assertRaises(RuntimeError):
+                    callback('command', use_cache=True)
+        
+                with self.assertRaises(RuntimeError):
+                    callback('command', use_cache=True)
+        
+                self.assertEqual(2, mocked_method.call_count)
+                mocked_method.reset_mock()
+        
+                callback('command', ignore_errors=True)
+                callback('command', ignore_errors=True)
+                self.assertEqual(2, mocked_method.call_count)
+                mocked_method.reset_mock()
+        
+                callback('command', ignore_errors=True, use_cache=True)
+                callback('command', ignore_errors=True, use_cache=True)
+                mocked_method.assert_called_once()
+                mocked_method.reset_mock()
+        
+                callback('command1', ignore_errors=True, use_cache=True)
+                callback('command2', ignore_errors=True, use_cache=True)
+                self.assertEqual(2, mocked_method.call_count)
+                mocked_method.reset_mock()
+                callback.cache.clear()
+        
+                @tasks.infrastructure
+                def inf1(): pass
+        
+                @tasks.infrastructure
+                def inf2(): pass
+        
+                fab.execute(inf1.confirm)
+                callback('command', ignore_errors=True, use_cache=True)
+                fab.execute(inf2.confirm)
+                callback('command', ignore_errors=True, use_cache=True)
+                mocked_method.assert_called_once()
+                mocked_method.reset_mock()
 
-        with self.assertRaises(RuntimeError):
-            fabricio.run('command', use_cache=True)
-
-        run.assert_has_calls([
-            mock.call('command', stdout=mock.ANY, stderr=mock.ANY),
-            mock.call('command', stdout=mock.ANY, stderr=mock.ANY),
-        ])
+        fab.env.host = 'host1'
+        fabricio.run('command', ignore_errors=True, use_cache=True)
+        fabricio.run('command', ignore_errors=True, use_cache=True)
+        self.assertEqual(1, run.call_count)
+        fab.env.host = 'host2'
+        fabricio.run('command', ignore_errors=True, use_cache=True)
+        fabricio.run('command', ignore_errors=True, use_cache=True)
         self.assertEqual(2, run.call_count)
-        run.reset_mock()
-
-        fabricio.run('command', ignore_errors=True)
-        fabricio.run('command', ignore_errors=True)
-        run.assert_has_calls([
-            mock.call('command', stdout=mock.ANY, stderr=mock.ANY),
-            mock.call('command', stdout=mock.ANY, stderr=mock.ANY),
-        ])
-        self.assertEqual(2, run.call_count)
-        run.reset_mock()
-
-        fabricio.run('command', ignore_errors=True, use_cache=True)
-        fabricio.run('command', ignore_errors=True, use_cache=True)
-        run.assert_called_once_with('command', stdout=mock.ANY, stderr=mock.ANY)
-        run.reset_mock()
-
-        fabricio.run('command1', ignore_errors=True, use_cache=True)
-        fabricio.run('command2', ignore_errors=True, use_cache=True)
-        run.assert_has_calls([
-            mock.call('command1', stdout=mock.ANY, stderr=mock.ANY),
-            mock.call('command2', stdout=mock.ANY, stderr=mock.ANY),
-        ])
-        self.assertEqual(2, run.call_count)
-        run.reset_mock()
-
-        @tasks.infrastructure
-        def inf1(): pass
-
-        @tasks.infrastructure
-        def inf2(): pass
-
-        fab.execute(inf1.confirm)
-        fabricio.run('command', ignore_errors=True, use_cache=True)
-        fabricio.run('command', ignore_errors=True, use_cache=True)
-        fab.execute(inf2.confirm)
-        fabricio.run('command', ignore_errors=True, use_cache=True)
-        fabricio.run('command', ignore_errors=True, use_cache=True)
-        self.assertEqual(run.call_count, 2)
-        run.assert_has_calls([
-            mock.call('command', stdout=mock.ANY, stderr=mock.ANY),
-        ] * 2)
         run.reset_mock()
