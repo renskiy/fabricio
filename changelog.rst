@@ -7,6 +7,7 @@ Release 0.3.6
 - Fix: set default env.infrastructure at the very first time
 - Enhancement: added special ``Option`` type which can be used as Docker container option descriptor
 - Change: ``fabricio.run()`` use current host (instead of current infrastructure) to generate cache key
+- Change: ``DjangoContainer`` doesn't call ``backup()`` now
 
 Release 0.3.5
 -------------
