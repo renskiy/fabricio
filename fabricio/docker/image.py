@@ -1,7 +1,6 @@
 import functools
 import json
 import warnings
-import weakref
 
 from cached_property import cached_property
 from docker import utils as docker_utils, auth as docker_auth
@@ -63,7 +62,9 @@ class Image(object):
                 tag=self.tag,
                 registry=self.registry,
             )
-        image.container = weakref.proxy(container)  # TODO maybe this is unnecessary
+        # this cause circular reference between container and image, but it's
+        # not a problem due to temporary nature of Fabric runtime
+        image.container = container
         return image
 
     def __set__(self, container, image):
@@ -135,14 +136,7 @@ class Image(object):
     def id(self):
         if self.container is None:
             return self.info.get('Id')
-        try:
-            return self.container.info['Image']
-        except ReferenceError:
-            raise ReferenceError(
-                'weakly-referenced property `container` no longer exists, '
-                'usually this happens when accessing container\'s image w/o '
-                'storing container in variable, e.g. when using method chaining'
-            )
+        return self.container.info['Image']
 
     def delete(self, force=False, ignore_errors=False, deferred=False):
         command = 'docker rmi {force}{image}'
