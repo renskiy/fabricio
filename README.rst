@@ -2,9 +2,10 @@
 Fabricio
 ========
 
-Fabricio is a Docker deploy automation tool used along with the `Fabric`_.
+Fabricio is a `Docker`_ deploy automation tool used along with the `Fabric`_.
 
 .. _Fabric: http://www.fabfile.org
+.. _Docker: https://www.docker.com
 
 .. image:: https://travis-ci.org/renskiy/fabricio.svg?branch=master
     :target: https://travis-ci.org/renskiy/fabricio
@@ -38,14 +39,14 @@ The most basic :code:`fabfile.py` you can use with the Fabricio is something lik
     from fabricio import docker, tasks
     
     
-    class NginxContainer(docker.Container):
-    
-        image = docker.Image('nginx:stable')
-        
-        ports = '80:80'
-    
     nginx = tasks.DockerTasks(
-        container=NginxContainer('nginx'),
+        container=docker.Container(
+            name='nginx',
+            image='nginx:stable',
+            options={
+                'ports': '80:80',
+            },
+        ),
         hosts=['user@example.com'],
     )
     
@@ -85,48 +86,44 @@ You can define as many roles and infrastructures as you need. The following exam
 
     from fabric import colors, api as fab
     from fabricio import docker, tasks
-    
-    
+
+
     @tasks.infrastructure
     def staging():
         fab.env.roledefs.update(
             balancer=['user@staging.example.com'],
             web=['user@staging.example.com'],
         )
-    
-    
-    @tasks.infrastructure
+
+
+    @tasks.infrastructure(color=colors.red)
     def production():
         fab.env.roledefs.update(
             balancer=['user@balancer.example.com'],
             web=['user@web1.example.com', 'user@web2.example.com'],
         )
-    
-    
-    class BalancerContainer(docker.Container):
-    
-        image = docker.Image('registry.example.com/nginx:balancer')
-    
-        ports = ['80:80', '443:443']
-    
-        volumes = '/etc/cert:/etc/cert:ro'
-    
-    
-    class WebContainer(docker.Container):
-    
-        image = docker.Image('registry.example.com/nginx:cdn')
-    
-        ports = '80:80'
-    
-        volumes = '/media:/media'
-    
+
     balancer = tasks.DockerTasks(
-        container=BalancerContainer('balancer'),
+        container=docker.Container(
+            name='balancer',
+            image='registry.example.com/nginx:balancer',
+            options={
+                'ports': ['80:80', '443:443'],
+                'volumes': '/etc/cert:/etc/cert:ro',
+            },
+        ),
         roles=['balancer'],
     )
-    
+
     web = tasks.DockerTasks(
-        container=BalancerContainer('web'),
+        container=docker.Container(
+            name='web',
+            image='registry.example.com/nginx:web',
+            options={
+                'ports': '80:80',
+                'volumes': '/media:/media',
+            },
+        ),
         roles=['web'],
     )
 
@@ -196,16 +193,15 @@ When your local Docker registry is up and run you can use special tasks class to
 .. code:: python
 
     from fabricio import docker, tasks
-    
-    
-    class NginxContainer(docker.Container):
-    
-        image = docker.Image('nginx:stable')
-    
-        ports = '80:80'
-    
+
     nginx = tasks.PullDockerTasks(
-        container=NginxContainer('nginx'),
+        container=docker.Container(
+            name='nginx',
+            image='nginx:stable',
+            options={
+                'ports': '80:80',
+            },
+        ),
         hosts=['user@example.com'],
     )
 
@@ -226,14 +222,12 @@ Using local Docker registry you can also build Docker images from local sources.
 .. code:: python
 
     from fabricio import docker, tasks
-    
-    
-    class AppContainer(docker.Container):
-    
-        image = docker.Image('app')
-    
+
     app = tasks.BuildDockerTasks(
-        container=AppContainer('app'),
+        container=docker.Container(
+            name='app',
+            image='app',
+        ),
         hosts=['user@example.com'],
         build_path='src',
     )
