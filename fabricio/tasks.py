@@ -158,7 +158,7 @@ class DockerTasks(Tasks):
 
     @property
     def image(self):
-        return self.container.__class__.image
+        return self.container.image
 
     @fab.task
     @skip_unknown_host

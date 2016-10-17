@@ -1,4 +1,5 @@
 import contextlib
+import warnings
 
 try:
     from collections import OrderedDict
@@ -21,6 +22,14 @@ def patch(obj, attr, value, default=None):
 class default_property(object):
 
     def __init__(self, func):
+        warnings.warn(
+            'default_property is deprecated and will be removed in v0.4',
+            DeprecationWarning,
+        )
+        warnings.warn(
+            'default_property is deprecated and will be removed in v0.4',
+            category=RuntimeWarning, stacklevel=2,
+        )
         self.__doc__ = getattr(func, '__doc__')
         self.func = func
 

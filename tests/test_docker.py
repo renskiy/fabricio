@@ -4,7 +4,7 @@ import unittest2 as unittest
 import fabricio
 
 from fabricio import docker
-from fabricio.docker.container import Option
+from fabricio.docker.container import Option, Attribute
 
 
 class TestContainer(docker.Container):
@@ -31,7 +31,7 @@ class ContainerTestCase(unittest.TestCase):
                 },
             ),
             custom=dict(
-                kwargs=dict(foo='bar'),
+                kwargs=dict(options=dict(foo='bar')),
                 expected={
                     'network': None,
                     'links': None,
@@ -46,7 +46,7 @@ class ContainerTestCase(unittest.TestCase):
                 },
             ),
             collision=dict(
-                kwargs=dict(image='image'),
+                kwargs=dict(options=dict(execute='execute')),
                 expected={
                     'network': None,
                     'links': None,
@@ -57,11 +57,11 @@ class ContainerTestCase(unittest.TestCase):
                     'env': None,
                     'volumes': None,
                     'ports': None,
-                    'image': 'image',
+                    'execute': 'execute',
                 },
             ),
             override=dict(
-                kwargs=dict(env='custom_env'),
+                kwargs=dict(options=dict(env='custom_env')),
                 expected={
                     'network': None,
                     'links': None,
@@ -75,7 +75,7 @@ class ContainerTestCase(unittest.TestCase):
                 },
             ),
             complex=dict(
-                kwargs=dict(env='custom_env', foo='bar'),
+                kwargs=dict(options=dict(env='custom_env', foo='bar')),
                 expected={
                     'network': None,
                     'links': None,
@@ -104,7 +104,7 @@ class ContainerTestCase(unittest.TestCase):
             def ports(self):
                 return 'ports'
 
-            baz = Option(value=42)  # new property
+            baz = Option(default=42)  # new property
 
             @Option  # new dynamic property
             def foo(self):
@@ -136,6 +136,43 @@ class ContainerTestCase(unittest.TestCase):
         self.assertIsNone(container.options['null'])
         container.null = 'value'
         self.assertEqual(container.options['null'], 'value')
+
+    def test_attributes_inheritance(self):
+
+        class Container(docker.Container):
+            cmd = 'cmd'  # overridden property (simple)
+
+            @property  # overridden property (dynamic)
+            def stop_timeout(self):
+                return 1001
+
+            baz = Attribute(default=42)  # new property
+
+            @Attribute  # new dynamic property
+            def foo(self):
+                return 'bar'
+
+            null = Attribute()  # new empty property
+
+        container = Container('name')
+
+        self.assertEqual(container.cmd, 'cmd')
+        container.cmd = 'command'
+        self.assertEqual(container.cmd, 'command')
+
+        self.assertEqual(container.stop_timeout, 1001)
+
+        self.assertEqual(container.baz, 42)
+        container.baz = 101
+        self.assertEqual(container.baz, 101)
+
+        self.assertEqual(container.foo, 'bar')
+        container.foo = 'baz'
+        self.assertEqual(container.foo, 'baz')
+
+        self.assertIsNone(container.null)
+        container.null = 'value'
+        self.assertEqual(container.null, 'value')
 
     def test_container_does_not_allow_modify_options(self):
         container = TestContainer('name')
@@ -280,46 +317,10 @@ class ContainerTestCase(unittest.TestCase):
                 class_kwargs=dict(image=docker.Image('image:tag')),
                 expected_command='docker run --name name --detach image:tag ',
             ),
-            complex_deprecated=dict(
-                init_kwargs=dict(
-                    name='name',
-                    options=dict(foo='bar'),
-                ),
-                class_kwargs=dict(
-                    image=docker.Image('image:tag'),
-                    cmd='cmd',
-                    user='user',
-                    ports=['80:80', '443:443'],
-                    env=['FOO=foo', 'BAR=bar'],
-                    volumes=['/tmp:/tmp', '/root:/root:ro'],
-                    links=['db:db'],
-                    hosts=['host:192.168.0.1'],
-                    network='network',
-                    restart_policy='restart_policy',
-                    stop_signal='stop_signal',
-                ),
-                expected_command=(
-                    'docker run '
-                    '--user user '
-                    '--publish 80:80 --publish 443:443 '
-                    '--env FOO=foo --env BAR=bar '
-                    '--volume /tmp:/tmp --volume /root:/root:ro '
-                    '--link db:db '
-                    '--add-host host:192.168.0.1 '
-                    '--net network '
-                    '--restart restart_policy '
-                    '--stop-signal stop_signal '
-                    '--name name '
-                    '--detach '
-                    '--foo bar '
-                    'image:tag cmd'
-                ),
-            ),
             complex=dict(
                 init_kwargs=dict(
                     name='name',
-                    custom_option='foo',
-                    restart_policy='override',
+                    options=dict(custom_option='foo', restart_policy='override'),
                 ),
                 class_kwargs=dict(
                     image=docker.Image('image:tag'),
@@ -371,15 +372,157 @@ class ContainerTestCase(unittest.TestCase):
                     run.assert_called_once_with(expected_command, quiet=True)
 
     def test_fork(self):
-        container = docker.Container('name', network='network', foo='bar')
         cases = dict(
             default=dict(
-                kwargs=dict(),
-                expected=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(),
+                expected_properties=dict(
                     name='name',
-                    network='network',
+                    cmd=None,
                     options={
-                        'network': 'network',
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                    },
+                ),
+            ),
+            predefined_default=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz'),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(),
+                expected_properties=dict(
+                    name='name',
+                    cmd='fab',
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': 'fabricio',
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'baz',
+                    },
+                ),
+                expected_image='image:tag',
+            ),
+            override_name=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(name='another_name'),
+                expected_properties=dict(
+                    name='another_name',
+                    cmd=None,
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                    },
+                ),
+            ),
+            override_cmd=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(cmd='command'),
+                expected_properties=dict(
+                    name='name',
+                    cmd='command',
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                    },
+                ),
+            ),
+            override_image_str=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(image='image'),
+                expected_properties=dict(
+                    name='name',
+                    cmd=None,
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                    },
+                ),
+                expected_image='image:latest',
+            ),
+            override_image_instance=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(image=docker.Image('image')),
+                expected_properties=dict(
+                    name='name',
+                    cmd=None,
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': None,
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                    },
+                ),
+                expected_image='image:latest',
+            ),
+            override_default_option=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(options=dict(user='user')),
+                expected_properties=dict(
+                    name='name',
+                    cmd=None,
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': 'user',
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                    },
+                ),
+            ),
+            override_custom_option=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(options=dict(foo='bar')),
+                expected_properties=dict(
+                    name='name',
+                    cmd=None,
+                    options={
+                        'network': None,
                         'links': None,
                         'stop_signal': None,
                         'restart_policy': None,
@@ -392,69 +535,204 @@ class ContainerTestCase(unittest.TestCase):
                     },
                 ),
             ),
-            deprecated_complex=dict(
-                kwargs=dict(name='fabricio', options=dict(foo='baz')),
-                expected=dict(
-                    name='fabricio',
-                    network='network',
+            overrride_complex=dict(
+                init_kwargs=dict(name='name'),
+                fork_kwargs=dict(
+                    options=dict(foo='bar', user='user'),
+                    image='image',
+                    cmd='command',
+                    name='another_name',
+                ),
+                expected_properties=dict(
+                    name='another_name',
+                    cmd='command',
                     options={
-                        'network': 'network',
+                        'network': None,
                         'links': None,
                         'stop_signal': None,
                         'restart_policy': None,
                         'hosts': None,
-                        'user': None,
+                        'user': 'user',
                         'env': None,
                         'volumes': None,
                         'ports': None,
-                        'foo': 'baz',
+                        'foo': 'bar',
                     },
                 ),
+                expected_image='image:latest',
             ),
-            complex=dict(
-                kwargs=dict(name='fabricio', foo='baz'),
-                expected=dict(
-                    name='fabricio',
-                    network='network',
+            predefined_override_cmd=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz'),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(cmd='command'),
+                expected_properties=dict(
+                    name='name',
+                    cmd='command',
                     options={
-                        'network': 'network',
+                        'network': None,
                         'links': None,
                         'stop_signal': None,
                         'restart_policy': None,
                         'hosts': None,
-                        'user': None,
+                        'user': 'fabricio',
                         'env': None,
                         'volumes': None,
                         'ports': None,
                         'foo': 'baz',
                     },
                 ),
+                expected_image='image:tag',
             ),
-            double_override=dict(
-                kwargs=dict(name='fabricio', foo='baz', network='net'),
-                expected=dict(
-                    name='fabricio',
-                    network='net',
+            predefined_override_image_str=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz'),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(image='image'),
+                expected_properties=dict(
+                    name='name',
+                    cmd='fab',
                     options={
-                        'network': 'net',
+                        'network': None,
                         'links': None,
                         'stop_signal': None,
                         'restart_policy': None,
                         'hosts': None,
-                        'user': None,
+                        'user': 'fabricio',
                         'env': None,
                         'volumes': None,
                         'ports': None,
                         'foo': 'baz',
                     },
                 ),
+                expected_image='image:latest',
+            ),
+            predefined_override_image_instance=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz'),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(image=docker.Image('image')),
+                expected_properties=dict(
+                    name='name',
+                    cmd='fab',
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': 'fabricio',
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'baz',
+                    },
+                ),
+                expected_image='image:latest',
+            ),
+            predefined_override_default_option=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz'),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(options=dict(user='user')),
+                expected_properties=dict(
+                    name='name',
+                    cmd='fab',
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': 'user',
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'baz',
+                    },
+                ),
+                expected_image='image:tag',
+            ),
+            predefined_override_custom_option=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz'),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(options=dict(foo='bar')),
+                expected_properties=dict(
+                    name='name',
+                    cmd='fab',
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': 'fabricio',
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'bar',
+                    },
+                ),
+                expected_image='image:tag',
+            ),
+            predefined_overrride_complex=dict(
+                init_kwargs=dict(
+                    name='name',
+                    options=dict(user='fabricio', foo='baz', hello=42),
+                    image='image:tag',
+                    cmd='fab',
+                ),
+                fork_kwargs=dict(
+                    options=dict(foo='bar', user='user'),
+                    image='image',
+                    cmd='command',
+                    name='another_name',
+                ),
+                expected_properties=dict(
+                    name='another_name',
+                    cmd='command',
+                    options={
+                        'network': None,
+                        'links': None,
+                        'stop_signal': None,
+                        'restart_policy': None,
+                        'hosts': None,
+                        'user': 'user',
+                        'env': None,
+                        'volumes': None,
+                        'ports': None,
+                        'foo': 'bar',
+                        'hello': 42,
+                    },
+                ),
+                expected_image='image:latest',
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                forked_container = container.fork(**data['kwargs'])
-                for attr, value in data['expected'].items():
-                    self.assertEqual(value, getattr(forked_container, attr))
+                container = docker.Container(**data['init_kwargs'])
+                forked_container = container.fork(**data['fork_kwargs'])
+                expected_image = data.get('expected_image')
+                if expected_image:
+                    self.assertEqual(repr(forked_container.image), expected_image)
+                for prop, value in data['expected_properties'].items():
+                    self.assertEqual(value, getattr(forked_container, prop))
 
     @mock.patch.object(fabricio, 'log')
     def test_update(self, *args):
@@ -498,7 +776,7 @@ class ContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker rm name_backup', ignore_errors=False),
+                    mock.call('docker rm name_backup', ignore_errors=True),
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -522,7 +800,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type image image:tag'),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker rm name_backup', ignore_errors=False),
+                    mock.call('docker rm name_backup', ignore_errors=True),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -546,7 +824,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type image image:foo'),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker rm name_backup', ignore_errors=False),
+                    mock.call('docker rm name_backup', ignore_errors=True),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -615,16 +893,16 @@ class ContainerTestCase(unittest.TestCase):
 
     def test_revert(self):
         side_effect = (
-            '[{"Image": "failed_image_id"}]',  # current container info
             '',  # stop current container
+            '[{"Image": "failed_image_id"}]',  # current container info
             '',  # delete current container
             '',  # delete current container image
             '',  # start backup container
             '',  # rename backup container
         )
         expected_commands = [
-            mock.call('docker inspect --type container name'),
             mock.call('docker stop --time 10 name'),
+            mock.call('docker inspect --type container name'),
             mock.call('docker rm name', ignore_errors=False),
             mock.call('docker rmi failed_image_id', ignore_errors=True),
             mock.call('docker start name_backup'),
@@ -858,3 +1136,107 @@ class ImageTestCase(unittest.TestCase):
                 with mock.patch.object(fabricio, 'run') as run:
                     image.run(**data['kwargs'])
                     run.assert_called_once_with(data['expected_command'], quiet=True)
+
+    def test_image_as_descriptor(self):
+        class Container(docker.Container):
+            info = dict(Image='image_id')
+        cases = dict(
+            none=dict(
+                image=None,
+                expected_name=None,
+                expected_registry=None,
+                expected_tag=None,
+            ),
+            name=dict(
+                image='image',
+                expected_name='image',
+                expected_registry='',
+                expected_tag='latest',
+            ),
+            name_and_tag=dict(
+                image='image:tag',
+                expected_name='image',
+                expected_registry='',
+                expected_tag='tag',
+            ),
+            name_and_registry=dict(
+                image='host:5000/image',
+                expected_name='image',
+                expected_registry='host:5000',
+                expected_tag='latest',
+            ),
+            complex=dict(
+                image='host:5000/user/image:tag',
+                expected_name='user/image',
+                expected_registry='host:5000',
+                expected_tag='tag',
+            ),
+        )
+        image = Container.image
+        self.assertIsInstance(image, docker.Image)
+        self.assertIsNone(image.name)
+        self.assertIsNone(image.registry)
+        self.assertIsNone(image.tag)
+        self.assertIs(Container.image, image)
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                container = Container('name', image=data['image'])
+                self.assertIs(container.image, container.image)
+                self.assertIsInstance(container.image, docker.Image)
+                self.assertEqual(container.image.name, data['expected_name'])
+                self.assertEqual(container.image.registry, data['expected_registry'])
+                self.assertEqual(container.image.tag, data['expected_tag'])
+                self.assertEqual(container.image.id, 'image_id')
+
+                container.image = old_image = container.image
+                self.assertIsNot(container.image, old_image)
+                self.assertIsInstance(container.image, docker.Image)
+                self.assertEqual(container.image.name, data['expected_name'])
+                self.assertEqual(container.image.registry, data['expected_registry'])
+                self.assertEqual(container.image.tag, data['expected_tag'])
+                self.assertEqual(container.image.id, 'image_id')
+
+        for case, data in cases.items():
+            with self.subTest(case='redefine_' + case):
+                container = Container('name')
+                container.image = data['image']
+                self.assertIs(container.image, container.image)
+                self.assertIsInstance(container.image, docker.Image)
+                self.assertEqual(container.image.name, data['expected_name'])
+                self.assertEqual(container.image.registry, data['expected_registry'])
+                self.assertEqual(container.image.tag, data['expected_tag'])
+                self.assertEqual(container.image.id, 'image_id')
+
+                container.image = old_image = container.image
+                self.assertIsNot(container.image, old_image)
+                self.assertIsInstance(container.image, docker.Image)
+                self.assertEqual(container.image.name, data['expected_name'])
+                self.assertEqual(container.image.registry, data['expected_registry'])
+                self.assertEqual(container.image.tag, data['expected_tag'])
+                self.assertEqual(container.image.id, 'image_id')
+
+        for case, data in cases.items():
+            with self.subTest(case='predefined_' + case):
+                Container.image = docker.Image(data['image'])
+                container = Container('name')
+                self.assertIs(container.image, container.image)
+                self.assertIsInstance(container.image, docker.Image)
+                self.assertEqual(container.image.name, data['expected_name'])
+                self.assertEqual(container.image.registry, data['expected_registry'])
+                self.assertEqual(container.image.tag, data['expected_tag'])
+                self.assertEqual(container.image.id, 'image_id')
+
+                container.image = old_image = container.image
+                self.assertIsNot(container.image, old_image)
+                self.assertIsInstance(container.image, docker.Image)
+                self.assertEqual(container.image.name, data['expected_name'])
+                self.assertEqual(container.image.registry, data['expected_registry'])
+                self.assertEqual(container.image.tag, data['expected_tag'])
+                self.assertEqual(container.image.id, 'image_id')
+
+    def test_get_field_name_raises_error_on_collision(self):
+        class Container(docker.Container):
+            image2 = docker.Container.image
+        container = Container('name')
+        with self.assertRaises(ValueError):
+            _ = container.image

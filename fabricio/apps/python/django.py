@@ -41,7 +41,7 @@ class DjangoContainer(docker.Container):
         )
 
     def migrate(self, tag=None, registry=None):
-        image = self.__class__.image[registry:tag]
+        image = self.image[registry:tag]
 
         unapplied_migrations = image.run(
             'python manage.py showmigrations --plan | egrep "^\[ \]"; true',
@@ -102,7 +102,8 @@ class DjangoContainer(docker.Container):
                 cmd=migrations_cmd,
                 options=self.migration_options
             )
-            backup_migrations = self.get_backup_container().image.run(
+            backup_container = self.get_backup_container()
+            backup_migrations = backup_container.image.run(
                 cmd=migrations_cmd,
                 options=self.migration_options
             )

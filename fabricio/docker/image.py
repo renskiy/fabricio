@@ -1,11 +1,14 @@
+import functools
 import json
 import warnings
+import weakref
 
+from cached_property import cached_property
 from docker import utils as docker_utils, auth as docker_auth
 
 import fabricio
 
-from fabricio.utils import default_property, Options
+from fabricio.utils import Options
 
 
 class Image(object):
@@ -22,15 +25,25 @@ class Image(object):
         ('stop-signal', 'stop_signal'),
     )
 
-    def __init__(self, name, tag=None, registry=None):
-        parsed_registry, parsed_name, parsed_tag = self._parse_image_name(name)
-        self.name = parsed_name
-        self.tag = tag or parsed_tag or 'latest'
-        self.registry = registry or parsed_registry
+    def __init__(self, name=None, tag=None, registry=None):
+        if name:
+            _registry, _name, _tag = self.parse_image_name(name)
+            self.name = _name
+            self.tag = tag or _tag or 'latest'  # TODO 'latest' is unnecessary
+            self.registry = registry or _registry
+        else:
+            self.name = name
+            self.tag = tag
+            self.registry = registry
+        self.field_names = {}
+        self.container = None
 
     def __str__(self):
-        if 'id' in vars(self):
-            return str(self.id)
+        if self.container is not None:
+            return self.id
+        return repr(self)
+
+    def __repr__(self):
         if self.registry:
             return '{registry}/{name}:{tag}'.format(
                 registry=self.registry,
@@ -39,16 +52,27 @@ class Image(object):
             )
         return '{name}:{tag}'.format(name=self.name, tag=self.tag)
 
-    def __get__(self, container, container_cls):
+    def __get__(self, container, owner_cls):
         if container is None:
             return self
-        field_name = self._get_field_name(container_cls)
-        image = container.__dict__[field_name] = self.__class__(
-            name=self.name,
-            tag=self.tag,
-        )
-        image.id = container.info['Image']
+        field_name = self.get_field_name(owner_cls)
+        image = container.__dict__.get(field_name)
+        if image is None:
+            image = container.__dict__[field_name] = self.__class__(
+                name=self.name,
+                tag=self.tag,
+                registry=self.registry,
+            )
+        image.container = weakref.proxy(container)  # TODO maybe this is unnecessary
         return image
+
+    def __set__(self, container, image):
+        field_name = self.get_field_name(type(container))
+        container.__dict__[field_name] = (
+            image[:]  # actually this means copy of image
+            if isinstance(image, Image) else
+            self.__class__(name=image)
+        )
 
     def __getitem__(self, item):
         if isinstance(item, slice):
@@ -61,13 +85,23 @@ class Image(object):
             registry=registry or self.registry,
         )
 
-    def _get_field_name(self, container_cls):
-        for attr in dir(container_cls):
-            if getattr(container_cls, attr) is self:
-                return attr
+    def get_field_name(self, owner_cls):
+        field_name = self.field_names.get(owner_cls)
+        if field_name is None:
+            for attr in dir(owner_cls):
+                if getattr(owner_cls, attr) is self:
+                    if field_name is not None:
+                        raise ValueError(
+                            'Same instance of Image used for more than one '
+                            'attributes of class {cls}'.format(
+                                cls=owner_cls.__name__,
+                            )
+                        )
+                    self.field_names[owner_cls] = field_name = attr
+        return field_name
 
     @staticmethod
-    def _parse_image_name(image):
+    def parse_image_name(image):
         repository, tag = docker_utils.parse_repository_tag(image)
         registry, name = docker_auth.resolve_repository_name(repository)
         if registry == docker_auth.INDEX_NAME:
@@ -97,17 +131,30 @@ class Image(object):
         info = fabricio.run(command.format(image=self))
         return json.loads(str(info))[0]
 
-    @default_property
+    @cached_property
     def id(self):
-        return self.info.get('Id')
+        if self.container is None:
+            return self.info.get('Id')
+        try:
+            return self.container.info['Image']
+        except ReferenceError:
+            raise ReferenceError(
+                'weakly-referenced property `container` no longer exists, '
+                'usually this happens when accessing container\'s image w/o '
+                'storing container in variable, e.g. when using method chaining'
+            )
 
-    def delete(self, force=False, ignore_errors=False):
+    def delete(self, force=False, ignore_errors=False, deferred=False):
         command = 'docker rmi {force}{image}'
         force = force and '--force ' or ''
-        fabricio.run(
-            command.format(image=self.id, force=force),
+        callback = functools.partial(
+            fabricio.run,
+            command.format(image=self, force=force),
             ignore_errors=ignore_errors,
         )
+        if deferred:
+            return callback
+        callback()
 
     def run(
         self,

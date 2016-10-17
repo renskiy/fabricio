@@ -5,33 +5,20 @@ Release 0.3.6
 -------------
 
 - Fix: set default env.infrastructure at the very first time
-- Enhancement: added special ``Option`` type which can be used as Docker container option descriptor
 - Change: ``fabricio.run()`` use current host (instead of current infrastructure) to generate cache key
-- Change: ``DjangoContainer`` doesn't call ``backup()`` now
-- Enhancement: use ``remote_tunnel`` only if registry hostname is IP or alias of the remote host itself
-
-Release 0.3.5
--------------
-
-- Fix: fixed container name assignment
-
-Release 0.3.3
--------------
-
-- Fix: fixed missed requirements
-
-Release 0.3.2
--------------
-
+- Change: ``DjangoContainer`` doesn't call ``backup()`` before applying migrations now
 - Change: ``PostgresqlContainer`` doesn't contain ``PostgresqlBackupMixin`` now
-- Change: reworked Docker container options, now they provided as kwargs
+- Enhancement: use ``remote_tunnel`` only if registry hostname is IP or alias of the remote host itself (`#66`_)
+- Enhancement: image, options and other container attributes now can be passed to the ``Container`` upon initialization
+
+.. _#66: https://github.com/renskiy/fabricio/issues/66
 
 Release 0.3.1
 -------------
 
+- Fix: fixed Fabric's ``serial`` and ``parallel`` decorators usage within ``Tasks``
 - Change: removed deprecated ``CronContainer``
 - Change: removed deprecated ``utils.yes()``
-- Fix: fixed Fabric's ``serial`` and ``parallel`` decorators usage within ``Tasks``
 - Change: ``PostgresqlContainer``: deprecated 'postgresql_conf', 'pg_hba_conf' and 'data' properties in favour of new ones
 - Change: ``PostgresqlBackupMixin``: deprecated 'db_backup_folder' and 'db_backup_name' properties in favour of new ones
 - Change: ``PostgresqlBackupMixin``: removed ``db_backup_enabled`` flag
@@ -42,7 +29,7 @@ Release 0.3
 -----------
 
 - Change: ``PostgresqlBackupMixin``: do actual backup only if ``db_backup_enabled`` is True
-- Change: modified ``DockerTasks`` commands params order: force, tag, registry => tag, registry, force(`#52`_)
+- Change: modified ``DockerTasks`` commands params order: force, tag, registry => tag, registry, force (`#52`_)
 - Change: ``DockerTasks``: 'revert' command was removed from the list of available commands in favour of 'rollback'
 - Change: ``tasks.infrastructure`` decorator does not require special environ variable to be autoconfirmed, instead special command '<infrastructure>.confirm' can be used for this purpose
 
@@ -62,10 +49,10 @@ Release 0.2.16
 Release 0.2.14
 --------------
 
+- Change: ``tasks.DockerTasks.deploy()`` does not run ``backup`` task by default
 - Enhancement: ``docker.Container.update()`` forces starting container if no changes detected
 - Enhancement: ``apps.python.django.DjangoContainer.migrate()`` does not run ``migrate`` if actually no changes detected
 - Enhancement: ``apps.python.django.DjangoContainer.migrate()`` calls ``backup()`` before applying migrations
-- Change: ``tasks.DockerTasks.deploy()`` does not run ``backup`` task by default
 - Enhancement: implemented ``apps.db.postgres.PostgresqlContainer.backup()`` and ``apps.db.postgres.PostgresqlContainer.restore()`` (`#17`_)
 - Enhancement: Fabric's ``remote_tunnel`` has been muzzled and ``tasks.DockerTasks.pull()`` output enabled instead (`#42`_)
 
