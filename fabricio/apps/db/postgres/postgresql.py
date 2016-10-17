@@ -12,6 +12,7 @@ from fabric.contrib import files
 import fabricio
 
 from fabricio import docker
+from fabricio.docker.container import Attribute
 from fabricio.utils import Options
 
 
@@ -22,17 +23,15 @@ class PostgresqlBackupMixin(docker.Container):
     (usually this requires `postgresql-client-common` package for Ubuntu/Debian)
     """
 
-    db_name = None
+    db_name = Attribute()
 
-    db_user = 'postgres'
+    db_user = Attribute(default='postgres')
 
-    db_host = None
+    db_host = Attribute()
 
-    db_port = None
+    db_port = Attribute()
 
-    db_backup_dir = None
-
-    @property
+    @Attribute
     def db_backup_folder(self):
         warnings.warn(
             'db_backup_folder is deprecated and will be removed in ver. 0.4, '
@@ -40,7 +39,7 @@ class PostgresqlBackupMixin(docker.Container):
         )
         return None
 
-    @property
+    @Attribute
     def db_backup_dir(self):
         warnings.warn(
             'db_backup_folder is deprecated and will be removed in ver. 0.4, '
@@ -48,13 +47,13 @@ class PostgresqlBackupMixin(docker.Container):
         )
         return self.db_backup_folder
 
-    db_backup_format = 'c'
+    db_backup_format = Attribute(default='c')
 
-    db_backup_compress_level = None  # 0-9 (0 - no compression, 9 - max)
+    db_backup_compress_level = Attribute()  # 0-9 (0 - no compression, 9 - max)
 
-    db_backup_workers = 1
+    db_backup_workers = Attribute(default=1)
 
-    @property
+    @Attribute
     def db_backup_name(self):
         warnings.warn(
             'db_backup_name is deprecated and will be removed in ver. 0.4, '
@@ -62,9 +61,9 @@ class PostgresqlBackupMixin(docker.Container):
         )
         return '{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump'
 
-    db_restore_workers = 4
+    db_restore_workers = Attribute(default=4)
 
-    @property
+    @Attribute
     def db_backup_filename(self):
         warnings.warn(
             'db_backup_name is deprecated and will be removed in ver. 0.4, '
@@ -143,7 +142,7 @@ class PostgresqlBackupMixin(docker.Container):
 
 class PostgresqlContainer(docker.Container):
 
-    @property
+    @Attribute
     def postgresql_conf(self):
         warnings.warn(
             'postgresql_conf is deprecated and will be removed in ver. 0.4, '
@@ -151,7 +150,7 @@ class PostgresqlContainer(docker.Container):
         )
         return NotImplemented
 
-    @property
+    @Attribute
     def pg_conf(self):
         warnings.warn(
             'postgresql_conf is deprecated and will be removed in ver. 0.4, '
@@ -159,7 +158,7 @@ class PostgresqlContainer(docker.Container):
         )
         return self.postgresql_conf
 
-    @property
+    @Attribute
     def pg_hba_conf(self):
         warnings.warn(
             'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
@@ -167,7 +166,7 @@ class PostgresqlContainer(docker.Container):
         )
         return NotImplemented
 
-    @property
+    @Attribute
     def pg_hba(self):
         warnings.warn(
             'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
@@ -175,7 +174,7 @@ class PostgresqlContainer(docker.Container):
         )
         return self.pg_hba_conf
 
-    @property
+    @Attribute
     def data(self):
         warnings.warn(
             'data is deprecated and will be removed in ver. 0.4, '
@@ -183,7 +182,7 @@ class PostgresqlContainer(docker.Container):
         )
         return NotImplemented
 
-    @property
+    @Attribute
     def pg_data(self):
         warnings.warn(
             'data is deprecated and will be removed in ver. 0.4, '
