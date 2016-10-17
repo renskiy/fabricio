@@ -185,6 +185,10 @@ class ContainerTestCase(unittest.TestCase):
         with self.assertRaises(TypeError):
             container.options['some-option'] = 'value'
 
+    def test_container_raises_error_on_unknown_attr(self):
+        with self.assertRaises(TypeError):
+            docker.Container(name='name', unknown_attr='foo')
+
     def test_info(self):
         return_value = '[{"Id": "123", "Image": "abc"}]'
         container = docker.Container(name='name')

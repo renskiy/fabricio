@@ -69,7 +69,7 @@ class Container(object):
         if attrs:
             for attr, value in attrs.items():
                 if not is_attribute(attr):
-                    raise ValueError('Unknown attribute: {}'.format(attr))
+                    raise TypeError('Unknown attribute: {}'.format(attr))
                 setattr(self, attr, value)
 
     def __setattr__(self, attr, value):
