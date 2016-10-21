@@ -50,13 +50,11 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'postgresql.conf',
                     'pg_hba.conf',
                 ],
-                expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
-                ],
+                expected_commands=[],
                 update_kwargs=dict(),
-                update_returns=True,
+                parent_update_returned=True,
                 expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
             ),
             no_change_at_all=dict(
                 pg_exists=True,
@@ -64,13 +62,11 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'postgresql.conf',
                     'pg_hba.conf',
                 ],
-                expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
-                ],
+                expected_commands=[],
                 update_kwargs=dict(),
-                update_returns=False,
+                parent_update_returned=False,
                 expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=False,
             ),
             with_tag=dict(
                 pg_exists=True,
@@ -78,13 +74,11 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'postgresql.conf',
                     'pg_hba.conf',
                 ],
-                expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
-                ],
+                expected_commands=[],
                 update_kwargs=dict(tag='tag'),
-                update_returns=False,
+                parent_update_returned=False,
                 expected_update_kwargs=dict(force=False, tag='tag', registry=None),
+                expected_result=False,
             ),
             custom_registry=dict(
                 pg_exists=True,
@@ -92,13 +86,11 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'postgresql.conf',
                     'pg_hba.conf',
                 ],
-                expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
-                ],
+                expected_commands=[],
                 update_kwargs=dict(registry='registry'),
-                update_returns=False,
+                parent_update_returned=False,
                 expected_update_kwargs=dict(force=False, tag=None, registry='registry'),
+                expected_result=False,
             ),
             forced=dict(
                 pg_exists=True,
@@ -106,28 +98,40 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'postgresql.conf',
                     'pg_hba.conf',
                 ],
-                expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
-                ],
+                expected_commands=[],
                 update_kwargs=dict(force=True),
-                update_returns=True,
+                parent_update_returned=True,
                 expected_update_kwargs=dict(force=True, tag=None, registry=None),
+                expected_result=True,
             ),
-            not_updated_pg_hba_changed=dict(
+            pg_hba_changed=dict(
                 pg_exists=True,
                 old_configs=[
                     'postgresql.conf',
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
                     mock.call('docker kill --signal HUP name'),
                 ],
                 update_kwargs=dict(),
-                update_returns=False,
+                parent_update_returned=False,
                 expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=False,
+            ),
+            pg_hba_changed_container_updated=dict(
+                pg_exists=True,
+                old_configs=[
+                    'postgresql.conf',
+                    'old_pg_hba.conf',
+                ],
+                expected_commands=[
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                ],
+                update_kwargs=dict(),
+                parent_update_returned=True,
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
             ),
             main_conf_changed=dict(
                 pg_exists=True,
@@ -137,11 +141,26 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                    mock.call('docker restart --time 30 name'),
                 ],
                 update_kwargs=dict(),
-                update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None, registry=None),
+                parent_update_returned=False,
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
+            ),
+            main_conf_changed_container_updated=dict(
+                pg_exists=True,
+                old_configs=[
+                    'old_postgresql.conf',
+                    'pg_hba.conf',
+                ],
+                expected_commands=[
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                ],
+                update_kwargs=dict(),
+                parent_update_returned=True,
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
             ),
             configs_changed=dict(
                 pg_exists=True,
@@ -152,10 +171,27 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                    mock.call('docker restart --time 30 name'),
                 ],
                 update_kwargs=dict(),
-                update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None, registry=None),
+                parent_update_returned=False,
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
+            ),
+            configs_changed_container_updated=dict(
+                pg_exists=True,
+                old_configs=[
+                    'old_postgresql.conf',
+                    'old_pg_hba.conf',
+                ],
+                expected_commands=[
+                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
+                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                ],
+                update_kwargs=dict(),
+                parent_update_returned=True,
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
             ),
             from_scratch=dict(
                 pg_exists=False,
@@ -167,10 +203,12 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('docker run --stop-signal INT --name name --detach image:tag ', quiet=True),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                    mock.call('docker restart --time 30 name'),
                 ],
                 update_kwargs=dict(),
-                update_returns=True,
-                expected_update_kwargs=dict(force=True, tag=None, registry=None),
+                parent_update_returned=False,
+                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_result=True,
             ),
             from_scratch_with_custom_tag_and_registry=dict(
                 pg_exists=False,
@@ -182,10 +220,12 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('docker run --stop-signal INT --name name --detach registry/image:foo ', quiet=True),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', sudo=True),
+                    mock.call('docker restart --time 30 name'),
                 ],
                 update_kwargs=dict(tag='foo', registry='registry'),
-                update_returns=True,
-                expected_update_kwargs=dict(force=True, tag='foo', registry='registry'),
+                parent_update_returned=False,
+                expected_update_kwargs=dict(force=False, tag='foo', registry='registry'),
+                expected_result=True,
             ),
         )
         for case, data in cases.items():
@@ -207,14 +247,15 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         with mock.patch.object(
                             docker.Container,
                             'update',
-                            return_value=data['update_returns'],
+                            return_value=data['parent_update_returned'],
                         ) as update:
                             with mock.patch.object(
                                 six.BytesIO,
                                 'getvalue',
                                 side_effect=data['old_configs'],
                             ):
-                                container.update(**data['update_kwargs'])
+                                result = container.update(**data['update_kwargs'])
+                                self.assertEqual(result, data['expected_result'])
                                 run.assert_has_calls(data['expected_commands'])
                                 self.assertEqual(
                                     len(data['expected_commands']),

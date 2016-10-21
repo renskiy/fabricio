@@ -199,15 +199,17 @@ class PostgresqlContainer(docker.Container):
         old_file = six.BytesIO()
         fab.get(remote_path=path, local_path=old_file, use_sudo=True)
         old_content = old_file.getvalue()
-        fabricio.run(
-            'mv {path_from} {path_to}'.format(
-                path_from=path,
-                path_to=path + '.backup',
-            ),
-            sudo=True,
-        )
-        fab.put(six.BytesIO(content), path, use_sudo=True, mode='0644')
-        return content != old_content
+        need_update = content != old_content
+        if need_update:
+            fabricio.run(
+                'mv {path_from} {path_to}'.format(
+                    path_from=path,
+                    path_to=path + '.backup',
+                ),
+                sudo=True,
+            )
+            fab.put(six.BytesIO(content), path, use_sudo=True, mode='0644')
+        return need_update
 
     def update(self, force=False, tag=None, registry=None):
         if not files.exists(
@@ -226,15 +228,17 @@ class PostgresqlContainer(docker.Container):
             content=open(self.pg_hba).read(),
             path=os.path.join(self.pg_data, 'pg_hba.conf'),
         )
-        force = force or main_config_changed
         updated = super(PostgresqlContainer, self).update(
             force=force,
             tag=tag,
             registry=registry,
         )
-        if not updated and hba_config_changed:
-            self.signal('HUP')  # reload configs
-        return updated
+        if not updated:
+            if main_config_changed:
+                self.restart()
+            elif hba_config_changed:
+                self.signal('HUP')
+        return updated or main_config_changed
 
     def revert(self):
         main_conf = os.path.join(self.pg_data, 'postgresql.conf')
