@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.3.7
+-------------
+
+- Change: add `--interactive` option every time when `--tty` has been used
+- Enhancement: custom name can be assigned to the infrastructure
+
 Release 0.3.6
 -------------
 
