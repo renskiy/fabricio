@@ -120,6 +120,7 @@ class Image(object):
                 ('name', name),
                 ('rm', temporary),
                 ('tty', temporary),
+                ('interactive', temporary),
                 ('detach', temporary is not None and not temporary),
             ),
             **options

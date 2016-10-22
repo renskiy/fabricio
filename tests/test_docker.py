@@ -1104,27 +1104,27 @@ class ImageTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 kwargs=dict(),
-                expected_command='docker run --rm --tty image:latest ',
+                expected_command='docker run --rm --tty --interactive image:latest ',
             ),
             with_mapping_option=dict(
                 kwargs=dict(options=dict(ports='80:80')),
-                expected_command='docker run --publish 80:80 --rm --tty image:latest ',
+                expected_command='docker run --publish 80:80 --rm --tty --interactive image:latest ',
             ),
             with_unknown_option=dict(
                 kwargs=dict(options=dict(foo='bar')),
-                expected_command='docker run --rm --tty --foo bar image:latest ',
+                expected_command='docker run --rm --tty --interactive --foo bar image:latest ',
             ),
             with_mapping_option_deprecated=dict(
                 kwargs=dict(ports='80:80'),
-                expected_command='docker run --publish 80:80 --rm --tty image:latest ',
+                expected_command='docker run --publish 80:80 --rm --tty --interactive image:latest ',
             ),
             with_unknown_option_deprecated=dict(
                 kwargs=dict(foo='bar'),
-                expected_command='docker run --rm --tty --foo bar image:latest ',
+                expected_command='docker run --rm --tty --interactive --foo bar image:latest ',
             ),
             with_cmd=dict(
                 kwargs=dict(cmd='cmd'),
-                expected_command='docker run --rm --tty image:latest cmd',
+                expected_command='docker run --rm --tty --interactive image:latest cmd',
             ),
             service=dict(
                 kwargs=dict(temporary=False),
@@ -1132,7 +1132,7 @@ class ImageTestCase(unittest.TestCase):
             ),
             with_name=dict(
                 kwargs=dict(name='name'),
-                expected_command='docker run --name name --rm --tty image:latest ',
+                expected_command='docker run --name name --rm --tty --interactive image:latest ',
             ),
         )
         for case, data in cases.items():
