@@ -94,13 +94,14 @@ class Infrastructure(Tasks):
             return lambda callback: cls(callback, **kwargs)
         return super(Infrastructure, cls).__new__(cls, *args, **kwargs)
 
-    def __init__(self, callback=None, color=colors.yellow, *args, **kwargs):
+    def __init__(
+        self,
+        callback=None,
+        color=colors.yellow,
+        name=None,
+        *args, **kwargs
+    ):
         super(Infrastructure, self).__init__(*args, **kwargs)
-        self.callback = callback
-        self.color = color
-        name = color(callback.__name__)
-        self.default.__doc__ = self.default.__doc__.format(name=name)
-        self.confirm.__doc__ = self.confirm.__doc__.format(name=name)
         # We need to be sure that `default()` will be at first place
         # every time when vars(self) is being invoked.
         # See Fabric's `extract_tasks()`
@@ -108,6 +109,12 @@ class Infrastructure(Tasks):
             (('default', self.default), ),
             **self.__dict__
         )
+        self.callback = callback
+        self.color = color
+        self.name = name = name or callback.__name__
+        name = color(name)
+        self.default.__doc__ = self.default.__doc__.format(name=name)
+        self.confirm.__doc__ = self.confirm.__doc__.format(name=name)
 
     @fab.task(default=True, name='confirm')
     def default(self, *args, **kwargs):
@@ -117,7 +124,7 @@ class Infrastructure(Tasks):
         if not console.confirm(
             'Are you sure you want to select {name} '
             'infrastructure to run task(s) on?'.format(
-                name=self.color(self.callback.__name__),
+                name=self.color(self.name),
             ),
             default=False,
         ):
@@ -129,7 +136,7 @@ class Infrastructure(Tasks):
         """
         automatically confirm {name} infrastructure selection
         """
-        fab.env.infrastructure = self.callback.__name__
+        fab.env.infrastructure = self.name
         self.callback(*args, **kwargs)
 
 infrastructure = Infrastructure

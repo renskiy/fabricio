@@ -50,13 +50,24 @@ class TestCase(unittest.TestCase):
             pass
 
         cases = dict(
-            decorator=tasks.infrastructure,
-            invoked=tasks.infrastructure(),
+            default=dict(
+                decorator=tasks.infrastructure,
+                expected_infrastructure='task',
+            ),
+            invoked=dict(
+                decorator=tasks.infrastructure(),
+                expected_infrastructure='task',
+            ),
+            with_custom_name=dict(
+                decorator=tasks.infrastructure(name='infrastructure'),
+                expected_infrastructure='infrastructure',
+            ),
         )
 
         with fab.settings(abort_on_prompts=True, abort_exception=AbortException):
-            for case, decorator in cases.items():
+            for case, data in cases.items():
                 with self.subTest(case=case):
+                    decorator = data['decorator']
                     infrastructure = decorator(task)
 
                     self.assertTrue(is_task_object(infrastructure.confirm))
@@ -66,12 +77,12 @@ class TestCase(unittest.TestCase):
                         fab.execute(infrastructure.default)
 
                     fab.execute(infrastructure.confirm)
-                    self.assertEqual('task', fab.env.infrastructure)
+                    self.assertEqual(data['expected_infrastructure'], fab.env.infrastructure)
 
                     fab.env.infrastructure = None
                     with mock.patch.object(console, 'confirm', side_effect=(True, False)):
                         fab.execute(infrastructure.default)
-                        self.assertEqual('task', fab.env.infrastructure)
+                        self.assertEqual(data['expected_infrastructure'], fab.env.infrastructure)
                         with self.assertRaises(AbortException):
                             fab.execute(infrastructure.default)
 
