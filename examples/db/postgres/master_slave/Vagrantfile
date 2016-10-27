@@ -1,0 +1,21 @@
+Vagrant.configure('2') do |config|
+
+  config.vm.box = 'ubuntu/trusty64'
+
+  config.vm.network 'public_network'
+
+  %w(
+      docker1
+      docker2
+      docker3
+  ).each do |instance|
+    config.vm.define instance do |host|
+
+      # install Docker
+      host.vm.provision 'docker'
+
+    end
+
+  end
+  
+end

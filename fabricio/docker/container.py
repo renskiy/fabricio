@@ -146,27 +146,21 @@ class Container(object):
     @property
     def info(self):
         command = 'docker inspect --type container {container}'
-        info = fabricio.run(command.format(container=self))
+        try:
+            info = fabricio.run(command.format(container=self))
+        except RuntimeError:
+            raise RuntimeError("Container '{container}' not found".format(
+                container=self,
+            ))
         return json.loads(info)[0]
 
-    def delete(self, force=False, ignore_errors=False, delete_image=False):
+    def delete(self, force=False, delete_image=False):
         delete_image_callback = None
         if delete_image:
-            try:
-                delete_image_callback = self.image.delete(
-                    ignore_errors=True,
-                    deferred=True,
-                )
-            except RuntimeError:
-                if ignore_errors:
-                    return
-                raise
+            delete_image_callback = self.image.delete(deferred=True)
         command = 'docker rm {force}{container}'
         force = force and '--force ' or ''
-        fabricio.run(
-            command.format(container=self, force=force),
-            ignore_errors=ignore_errors,
-        )
+        fabricio.run(command.format(container=self, force=force))
         if delete_image_callback:
             delete_image_callback()
 
@@ -221,17 +215,19 @@ class Container(object):
             else:
                 new_image = self.image[registry:tag]
                 if current_image_id == new_image.id:
-                    fabricio.log('No change detected, update skipped.')
                     self.start()  # force starting container
                     return False
         new_container = self.fork(name=self.name)
         obsolete_container = self.get_backup_container()
-        obsolete_container.delete(delete_image=True, ignore_errors=True)
+        try:
+            obsolete_container.delete(delete_image=True)
+        except RuntimeError:
+            pass  # backup container not found
         try:
             backup_container = self.fork()
             backup_container.rename(obsolete_container.name)
         except RuntimeError:
-            pass
+            pass  # current container not found
         else:
             backup_container.stop()
         new_container.run(tag=tag, registry=registry)
@@ -239,9 +235,11 @@ class Container(object):
 
     def revert(self):
         backup_container = self.get_backup_container()
+        if not backup_container.info:
+            return  # does backup container exist?
         self.stop()
-        self.delete(delete_image=True)
         backup_container.start()
+        self.delete(delete_image=True)
         backup_container.rename(self.name)
 
     def get_backup_container(self):

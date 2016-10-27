@@ -84,3 +84,25 @@ local.cache = {}
 def log(message, color=colors.yellow, output=sys.stdout):
     with utils.patch(sys, 'stdout', output):
         fab.puts(color(message))
+
+
+def move(path_from, path_to, sudo=False, ignore_errors=False):
+    return run(
+        'mv {path_from} {path_to}'.format(
+            path_from=path_from,
+            path_to=path_to,
+        ),
+        sudo=sudo,
+        ignore_errors=ignore_errors,
+    )
+
+
+def remove(path, sudo=False, force=True, ignore_errors=False):
+    return run(
+        'rm {force}{path}'.format(
+            force=force and '-f ' or '',
+            path=path,
+        ),
+        sudo=sudo,
+        ignore_errors=ignore_errors,
+    )

@@ -97,23 +97,21 @@ class DjangoContainer(docker.Container):
     def migrate_back(self):
         migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"'
 
-        try:
-            current_migrations = self.image.run(
-                cmd=migrations_cmd,
-                options=self.migration_options
-            )
-            backup_container = self.get_backup_container()
-            backup_migrations = backup_container.image.run(
-                cmd=migrations_cmd,
-                options=self.migration_options
-            )
-        except RuntimeError:  # either current or backup container not found
-            return
+        backup_container = self.get_backup_container()
 
+        current_migrations = self.image.run(
+            cmd=migrations_cmd,
+            options=self.migration_options
+        )
+        backup_migrations = backup_container.image.run(
+            cmd=migrations_cmd,
+            options=self.migration_options
+        )
         revert_migrations = self.get_revert_migrations(
             current_migrations,
             backup_migrations,
         )
+
         for migration in revert_migrations:
             cmd = 'python manage.py migrate --no-input {app} {migration}'.format(
                 app=migration.app,

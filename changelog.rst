@@ -6,6 +6,12 @@ Release 0.3.7
 
 - Change: add `--interactive` option every time when `--tty` has been used
 - Enhancement: custom name can be assigned to the infrastructure
+- Enhancement: ``PostgresqlContainer`` can be updated without new container creation if only configs were changed
+- Enhancement: added ``StreamingReplicatedPostgresqlContainer`` which supports master-slave configuration deployment (`#72`_)
+- Enhancement: added `example and recipes`_
+
+.. _#72: https://github.com/renskiy/fabricio/issues/72
+.. _example and recipes: examples/
 
 Release 0.3.6
 -------------

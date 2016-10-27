@@ -241,11 +241,13 @@ class DockerTasks(Tasks):
         """
         start new Docker container if necessary
         """
-        self.container.update(
+        updated = self.container.update(
             tag=tag,
             registry=self.registry,
             force=strtobool(force),
         )
+        if not updated:
+            fabricio.log('No change detected, update skipped.')
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
     def deploy(self, tag=None, force=False, migrate=True, backup=False):

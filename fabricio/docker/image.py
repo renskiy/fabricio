@@ -130,22 +130,25 @@ class Image(object):
     @property
     def info(self):
         command = 'docker inspect --type image {image}'
-        info = fabricio.run(command.format(image=self))
+        try:
+            info = fabricio.run(command.format(image=self))
+        except RuntimeError:
+            raise RuntimeError("Image '{image}' not found".format(image=self))
         return json.loads(str(info))[0]
 
     @cached_property
     def id(self):
         if self.container is None:
-            return self.info.get('Id')
+            return self.info['Id']
         return self.container.info['Image']
 
-    def delete(self, force=False, ignore_errors=False, deferred=False):
+    def delete(self, force=False, ignore_delete_error=True, deferred=False):
         command = 'docker rmi {force}{image}'
         force = force and '--force ' or ''
         callback = functools.partial(
             fabricio.run,
             command.format(image=self, force=force),
-            ignore_errors=ignore_errors,
+            ignore_errors=ignore_delete_error,
         )
         if deferred:
             return callback

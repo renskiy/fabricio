@@ -24,6 +24,7 @@ Features
 - tasks groups
 - migrations apply and rollback
 - data backup and restore
+- DB master-slave configurations support
 
 See changelog_ for detailed info.
 
@@ -69,6 +70,10 @@ Finally, to deploy such configuration you simply have to execute following bash 
     fab nginx
 
 To display detailed info about command (including available options) use following command: ``fab --display <command>``.
+
+See also Fabricio `examples and recipes`_.
+
+.. _examples and recipes: examples/
 
 Install
 =======

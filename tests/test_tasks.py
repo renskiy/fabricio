@@ -187,6 +187,7 @@ class DockerTasksTestCase(unittest.TestCase):
         rollback = mock.Mock()
         rollback.attach_mock(migrate_back, 'migrate_back')
         rollback.attach_mock(revert, 'revert')
+        revert.return_value = True
 
         # default case
         fab.execute(tasks_list.rollback)
@@ -285,6 +286,7 @@ class DockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(migrate, 'migrate')
         deploy.attach_mock(update, 'update')
         deploy.attach_mock(run, 'run')
+        update.return_value = False
         for case, data in cases.items():
             with self.subTest(case=case):
                 tasks_list = tasks.DockerTasks(
@@ -536,6 +538,7 @@ class PullDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(run, 'run')
         deploy.attach_mock(local, 'local')
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
+        update.return_value = False
         for case, data in cases.items():
             with self.subTest(case=case):
                 run.return_value = data.get('registry_ip')
@@ -747,6 +750,7 @@ class BuildDockerTasksTestCase(unittest.TestCase):
         deploy.attach_mock(run, 'run')
         deploy.attach_mock(local, 'local')
         deploy.attach_mock(remote_tunnel, 'remote_tunnel')
+        update.return_value = False
         for case, data in cases.items():
             with self.subTest(case=case):
                 run.return_value = data.get('registry_ip')

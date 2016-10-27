@@ -5,6 +5,7 @@ import fabricio
 
 from fabricio import docker
 from fabricio.docker.container import Option, Attribute
+from tests import SucceededResult, FailedResult
 
 
 class TestContainer(docker.Container):
@@ -190,7 +191,8 @@ class ContainerTestCase(unittest.TestCase):
             docker.Container(name='name', unknown_attr='foo')
 
     def test_info(self):
-        return_value = '[{"Id": "123", "Image": "abc"}]'
+        return_value = SucceededResult('[{"Id": "123", "Image": "abc"}]')
+        expected = dict(Id='123', Image='abc')
         container = docker.Container(name='name')
         expected_command = 'docker inspect --type container name'
         with mock.patch.object(
@@ -198,8 +200,17 @@ class ContainerTestCase(unittest.TestCase):
             'run',
             return_value=return_value,
         ) as run:
-            self.assertEqual(dict(Id='123', Image='abc'), container.info)
+            self.assertEqual(expected, container.info)
             run.assert_called_once_with(expected_command)
+
+    @mock.patch.object(fabricio, 'run', side_effect=RuntimeError)
+    def test_info_raises_error_if_container_not_found(self, run):
+        container = docker.Container(name='name')
+        expected_command = 'docker inspect --type container name'
+        with self.assertRaises(RuntimeError) as cm:
+            container.info
+        self.assertEqual(cm.exception.args[0], "Container 'name' not found")
+        run.assert_called_once_with(expected_command)
 
     def test_delete(self):
         cases = dict(
@@ -224,10 +235,7 @@ class ContainerTestCase(unittest.TestCase):
 
                     container.delete(**delete_kwargs)
 
-                    run.assert_called_once_with(
-                        expected_command,
-                        ignore_errors=False,
-                    )
+                    run.assert_called_once_with(expected_command)
 
     def test_execute(self):
         container = docker.Container(name='name')
@@ -743,9 +751,9 @@ class ContainerTestCase(unittest.TestCase):
         cases = dict(
             no_change=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # current container info
-                    '[{"Id": "image_id"}]',  # new image info
-                    '',  # force starting container
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "image_id"}]'),  # new image info
+                    SucceededResult(),  # force starting container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
@@ -757,9 +765,9 @@ class ContainerTestCase(unittest.TestCase):
             ),
             no_change_with_tag=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # current container info
-                    '[{"Id": "image_id"}]',  # new image info
-                    '',  # force starting container
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "image_id"}]'),  # new image info
+                    SucceededResult(),  # force starting container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
@@ -771,16 +779,16 @@ class ContainerTestCase(unittest.TestCase):
             ),
             forced=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # obsolete container info
-                    '',  # delete obsolete container
-                    '',  # delete obsolete container image
-                    '',  # rename current container
-                    '',  # stop current container
-                    'new_container_id',  # run new container
+                    SucceededResult('[{"Image": "image_id"}]'),  # obsolete container info
+                    SucceededResult(),  # delete obsolete container
+                    SucceededResult(),  # delete obsolete container image
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker rm name_backup', ignore_errors=True),
+                    mock.call('docker rm name_backup'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -791,20 +799,20 @@ class ContainerTestCase(unittest.TestCase):
             ),
             regular=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # current container info
-                    '[{"Id": "new_image_id"}]',  # new image info
-                    '[{"Image": "old_image_id"}]',  # obsolete container info
-                    '',  # delete obsolete container
-                    '',  # delete obsolete container image
-                    '',  # rename current container
-                    '',  # stop current container
-                    'new_container_id',  # run new container
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
+                    SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
+                    SucceededResult(),  # delete obsolete container
+                    SucceededResult(),  # delete obsolete container image
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type image image:tag'),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker rm name_backup', ignore_errors=True),
+                    mock.call('docker rm name_backup'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -815,20 +823,20 @@ class ContainerTestCase(unittest.TestCase):
             ),
             regular_with_tag=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # current container info
-                    '[{"Id": "new_image_id"}]',  # new image info
-                    '[{"Image": "old_image_id"}]',  # obsolete container info
-                    '',  # delete obsolete container
-                    '',  # delete obsolete container image
-                    '',  # rename current container
-                    '',  # stop current container
-                    'new_container_id',  # run new container
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
+                    SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
+                    SucceededResult(),  # delete obsolete container
+                    SucceededResult(),  # delete obsolete container image
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
                     mock.call('docker inspect --type image image:foo'),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker rm name_backup', ignore_errors=True),
+                    mock.call('docker rm name_backup'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -837,14 +845,62 @@ class ContainerTestCase(unittest.TestCase):
                 update_kwargs=dict(tag='foo'),
                 excpected_result=True,
             ),
-            without_backup=dict(
+            regular_with_registry=dict(
                 side_effect=(
-                    '[{"Image": "image_id"}]',  # current container info
-                    '[{"Id": "new_image_id"}]',  # new image info
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
+                    SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
+                    SucceededResult(),  # delete obsolete container
+                    SucceededResult(),  # delete obsolete container image
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
+                ),
+                expected_commands=[
+                    mock.call('docker inspect --type container name'),
+                    mock.call('docker inspect --type image registry/image:tag'),
+                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker rm name_backup'),
+                    mock.call('docker rmi old_image_id', ignore_errors=True),
+                    mock.call('docker rename name name_backup'),
+                    mock.call('docker stop --time 10 name_backup'),
+                    mock.call('docker run --name name --detach registry/image:tag ', quiet=True),
+                ],
+                update_kwargs=dict(registry='registry'),
+                excpected_result=True,
+            ),
+            regular_with_tag_and_registry=dict(
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
+                    SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
+                    SucceededResult(),  # delete obsolete container
+                    SucceededResult(),  # delete obsolete container image
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
+                ),
+                expected_commands=[
+                    mock.call('docker inspect --type container name'),
+                    mock.call('docker inspect --type image registry/image:foo'),
+                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker rm name_backup'),
+                    mock.call('docker rmi old_image_id', ignore_errors=True),
+                    mock.call('docker rename name name_backup'),
+                    mock.call('docker stop --time 10 name_backup'),
+                    mock.call('docker run --name name --detach registry/image:foo ', quiet=True),
+                ],
+                update_kwargs=dict(tag='foo', registry='registry'),
+                excpected_result=True,
+            ),
+            regular_without_backup_container=dict(
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),  # current container info
+                    SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
                     RuntimeError,  # obsolete container info
-                    '',  # rename current container
-                    '',  # stop current container
-                    'new_container_id',  # run new container
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
@@ -857,12 +913,28 @@ class ContainerTestCase(unittest.TestCase):
                 update_kwargs=dict(),
                 excpected_result=True,
             ),
+            forced_without_backup_container=dict(
+                side_effect=(
+                    RuntimeError,  # obsolete container info
+                    SucceededResult(),  # rename current container
+                    SucceededResult(),  # stop current container
+                    SucceededResult('new_container_id'),  # run new container
+                ),
+                expected_commands=[
+                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker rename name name_backup'),
+                    mock.call('docker stop --time 10 name_backup'),
+                    mock.call('docker run --name name --detach image:tag ', quiet=True),
+                ],
+                update_kwargs=dict(force=True),
+                excpected_result=True,
+            ),
             from_scratch=dict(
                 side_effect=(
                     RuntimeError,  # current container info
                     RuntimeError,  # obsolete container info
                     RuntimeError,  # rename current container
-                    'new_container_id',  # run new container
+                    SucceededResult('new_container_id'),  # run new container
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
@@ -888,42 +960,67 @@ class ContainerTestCase(unittest.TestCase):
                 ) as run:
                     result = container.update(**update_kwargs)
                     self.assertEqual('name', container.name)
-                    run.assert_has_calls(expected_commands)
-                    self.assertEqual(
-                        len(expected_commands),
-                        run.call_count,
-                    )
+                    self.assertListEqual(run.mock_calls, expected_commands)
                     self.assertEqual(excpected_result, result)
 
     def test_revert(self):
         side_effect = (
-            '',  # stop current container
-            '[{"Image": "failed_image_id"}]',  # current container info
-            '',  # delete current container
-            '',  # delete current container image
-            '',  # start backup container
-            '',  # rename backup container
+            SucceededResult('[{"Image": "backup_image_id"}]'),  # backup container info
+            SucceededResult(),  # stop current container
+            SucceededResult(),  # start backup container
+            SucceededResult('[{"Image": "failed_image_id"}]'),  # current container info
+            SucceededResult(),  # delete current container
+            SucceededResult(),  # delete current container image
+            SucceededResult(),  # rename backup container
         )
         expected_commands = [
+            mock.call('docker inspect --type container name_backup'),
             mock.call('docker stop --time 10 name'),
-            mock.call('docker inspect --type container name'),
-            mock.call('docker rm name', ignore_errors=False),
-            mock.call('docker rmi failed_image_id', ignore_errors=True),
             mock.call('docker start name_backup'),
+            mock.call('docker inspect --type container name'),
+            mock.call('docker rm name'),
+            mock.call('docker rmi failed_image_id', ignore_errors=True),
             mock.call('docker rename name_backup name'),
         ]
         container = TestContainer(name='name')
-        with mock.patch.object(
-            fabricio,
-            'run',
-            side_effect=side_effect,
-        ) as run:
+        with mock.patch.object(fabricio, 'run', side_effect=side_effect) as run:
             container.revert()
-            run.assert_has_calls(expected_commands)
-            self.assertEqual(len(expected_commands), run.call_count)
+            self.assertListEqual(run.mock_calls, expected_commands)
+
+    @mock.patch.object(fabricio, 'run', side_effect=RuntimeError)
+    def test_revert_raises_error_if_backup_container_not_found(self, *args):
+        container = docker.Container(name='name')
+        with self.assertRaises(RuntimeError) as cm:
+            container.revert()
+        self.assertEqual(
+            cm.exception.args[0],
+            "Container 'name_backup' not found",
+        )
 
 
 class ImageTestCase(unittest.TestCase):
+
+    def test_info(self):
+        return_value = SucceededResult('[{"Id": "123", "Image": "abc"}]')
+        expected = dict(Id='123', Image='abc')
+        image = docker.Image(name='name')
+        expected_command = 'docker inspect --type image name:latest'
+        with mock.patch.object(
+            fabricio,
+            'run',
+            return_value=return_value,
+        ) as run:
+            self.assertEqual(expected, image.info)
+            run.assert_called_once_with(expected_command)
+
+    @mock.patch.object(fabricio, 'run', side_effect=RuntimeError)
+    def test_info_raises_error_if_image_not_found(self, run):
+        image = docker.Image(name='name')
+        expected_command = 'docker inspect --type image name:latest'
+        with self.assertRaises(RuntimeError) as cm:
+            image.info
+        self.assertEqual(cm.exception.args[0], "Image 'name:latest' not found")
+        run.assert_called_once_with(expected_command)
 
     def test_name_tag_registry(self):
         cases = dict(
