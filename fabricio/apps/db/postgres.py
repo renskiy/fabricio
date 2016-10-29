@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-import time
 import warnings
 
 from datetime import datetime
@@ -195,6 +194,10 @@ class PostgresqlContainer(docker.Container):
 
     stop_timeout = 30
 
+    def __init__(self, *args, **kwargs):
+        super(PostgresqlContainer, self).__init__(*args, **kwargs)
+        assert self.volumes, 'provide volume for your data'
+
     @staticmethod
     def update_config(content, path):
         old_file = six.BytesIO()
@@ -223,8 +226,15 @@ class PostgresqlContainer(docker.Container):
 
     def create_db(self, tag=None, registry=None):
         fabricio.log('PostgreSQL database not found, creating new...')
-        self.run(tag=tag, registry=registry)
-        time.sleep(30)  # wait until all data prepared during first start
+        self.image[registry:tag].run(
+            # official PostgreSQL image executes 'postgres initdb' before
+            # any 'postgres' command (see /docker-entrypoint.sh),
+            # therefore if you use image other then official, you should
+            # implement your own `create_db()`
+            'postgres --version',
+            options=self.options,
+            quiet=False,
+        )
 
     def update(self, force=False, tag=None, registry=None):
         if not self.db_exists():

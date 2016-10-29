@@ -1,5 +1,4 @@
 import sys
-import time
 
 from multiprocessing.synchronize import Event
 
@@ -44,7 +43,6 @@ class PostgresqlContainerTestCase(unittest.TestCase):
 
     @mock.patch.object(fab, 'get')
     @mock.patch.object(fab, 'put')
-    @mock.patch.object(time, 'sleep')
     @mock.patch.object(files, 'exists', return_value=True)
     def test_update(self, exists, *args):
         cases = dict(
@@ -328,7 +326,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('docker run --stop-signal INT --name name --detach image:tag ', quiet=True),
+                    mock.call('docker run --volume /data:/data --stop-signal INT --rm --tty --interactive image:tag postgres --version', quiet=False),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
@@ -353,7 +351,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     six.BytesIO('postgresql.conf'),
                     six.BytesIO('pg_hba.conf'),
                 )
-                container = TestContainer(name='name')
+                container = TestContainer(
+                    name='name',
+                    options=dict(volumes='/data:/data'),
+                )
                 with mock.patch.object(
                     fabricio,
                     'run',
@@ -467,7 +468,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         'revert',
                         side_effect=data['parent_revert_returned'],
                     ):
-                        container = TestContainer(name='name')
+                        container = TestContainer(
+                            name='name',
+                            options=dict(volumes='/data:/data'),
+                        )
                         container.revert()
                         self.assertListEqual(
                             run.mock_calls,
@@ -493,7 +497,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 'revert',
                 side_effect=RuntimeError,
             ):
-                container = TestContainer(name='name')
+                container = TestContainer(
+                    name='name',
+                    options=dict(volumes='/data:/data'),
+                )
                 with self.assertRaises(RuntimeError):
                     container.revert()
                 self.assertListEqual(
@@ -623,8 +630,6 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         self.fab_settings.__enter__()
         self.event_wait_mock = mock.patch.object(Event, 'wait')
         self.event_wait_mock.start()
-        self.time_sleep_mock = mock.patch.object(time, 'sleep')
-        self.time_sleep_mock.start()
         self.stderr = sys.stderr
         sys.stderr = six.BytesIO()
 
@@ -632,7 +637,6 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         postgres.open = open
         self.fab_settings.__exit__(None, None, None)
         self.event_wait_mock.stop()
-        self.time_sleep_mock.stop()
         sys.stderr = self.stderr
 
     @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'db_exists')
@@ -686,7 +690,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 set_master='master',
                 expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_commands=[
-                    mock.call("docker run --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=master --username=postgres --port=5432'", quiet=False),
+                    mock.call("docker run --volume /data:/data --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=master --username=postgres --port=5432'", quiet=False),
                 ],
             ),
             master_promotion_from_scratch=dict(
@@ -720,6 +724,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 fab.env.host = data['host']
                 container = postgres.StreamingReplicatedPostgresqlContainer(
                     name='name', image='image', pg_data='/data',
+                    options=dict(volumes='/data:/data'),
                     **data.get('init_kwargs', {})
                 )
                 if 'set_master' in data:
@@ -743,6 +748,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     def test_update_recovery_config_does_not_promote_new_master_without_db_if_slave_with_db_exists(self, run, *args):
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', image='image', pg_data='/data',
+            options=dict(volumes='/data:/data'),
         )
         container.multiprocessing_data.db_exists = True
         container.multiprocessing_data.master = 'promoted_master'
@@ -750,7 +756,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         self.assertListEqual(
             run.mock_calls,
             [
-                mock.call("docker run --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=promoted_master --username=postgres --port=5432'", quiet=False),
+                mock.call("docker run --volume /data:/data --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=promoted_master --username=postgres --port=5432'", quiet=False),
             ],
         )
 
@@ -761,6 +767,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', pg_data='/data',
+            options=dict(volumes='/data:/data'),
         )
         with fab.settings(abort_exception=AbortException):
             with self.assertRaises(AbortException):
@@ -769,7 +776,10 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     def test_update_raises_error_when_not_parallel_mode(self):
         class AbortException(Exception):
             pass
-        container = postgres.StreamingReplicatedPostgresqlContainer('name')
+        container = postgres.StreamingReplicatedPostgresqlContainer(
+            'name',
+            options=dict(volumes='/data:/data'),
+        )
         fab.env.parallel = False
         with fab.settings(abort_exception=AbortException):
             with self.assertRaises(AbortException):
@@ -778,7 +788,10 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     def test_revert_disabled_by_default(self):
         class AbortException(Exception):
             pass
-        container = postgres.StreamingReplicatedPostgresqlContainer('name')
+        container = postgres.StreamingReplicatedPostgresqlContainer(
+            'name',
+            options=dict(volumes='/data:/data'),
+        )
         with fab.settings(abort_exception=AbortException):
             with self.assertRaises(AbortException):
                 container.revert()
@@ -787,6 +800,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     def test_revert_can_be_enabled(self, parent_revert):
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', pg_recovery_revert_enabled=True,
+            options=dict(volumes='/data:/data'),
         )
         container.revert()
         parent_revert.assert_called_once()
@@ -834,6 +848,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                         ):
                             container = postgres.StreamingReplicatedPostgresqlContainer(
                                 name='name', pg_recovery_revert_enabled=True,
+                                options=dict(volumes='/data:/data'),
                             )
                             result = container.update()
                             if data['should_restart']:
