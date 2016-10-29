@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.8
+-------------
+
+Fix: ``StreamingReplicatedPostgresqlContainer``: do not promote host without data as new master if there is another host with DB exists
+
 Release 0.3.7
 -------------
 

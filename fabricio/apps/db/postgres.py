@@ -319,7 +319,8 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             *args, **kwargs)
         self.master_obtained = multiprocessing.Event()
         self.master_lock = multiprocessing.Lock()
-        self.master = multiprocessing.Manager().Namespace()
+        self.multiprocessing_data = data = multiprocessing.Manager().Namespace()
+        data.db_exists = False
         self.instances = multiprocessing.JoinableQueue()
 
     def copy_data_from_master(self, tag=None, registry=None):
@@ -333,7 +334,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             ' --username={user}'
             ' --port={port}'
             ''.format(
-                host=self.master.host,
+                host=self.multiprocessing_data.master,
                 user=self.pg_recovery_user,
                 port=self.pg_recovery_port,
             )
@@ -350,7 +351,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
     def get_recovery_config(self):
         recovery_config = open(self.pg_recovery, 'r').read()
         primary_conninfo = self.pg_recovery_primary_conninfo.format(
-            host=self.master.host,
+            host=self.multiprocessing_data.master,
             port=self.pg_recovery_port,
             user=self.pg_recovery_user,
         )
@@ -363,15 +364,17 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
 
     def set_master_info(self):
         fabricio.log('Found master: {host}'.format(host=fab.env.host))
-        self.master.host = fab.env.host
+        self.multiprocessing_data.master = fab.env.host
 
     def update_recovery_config(self, tag=None, registry=None):
         db_exists = self.db_exists()
         recovery_conf_file = os.path.join(self.pg_data, 'recovery.conf')
-        if db_exists and not files.exists(recovery_conf_file, use_sudo=True):
-            # master founded
-            self.set_master_info()
-            return False
+        if db_exists:
+            self.multiprocessing_data.db_exists = True
+            if not files.exists(recovery_conf_file, use_sudo=True):
+                # master founded
+                self.set_master_info()
+                return False
         fabricio.log('Waiting for master info ({seconds} seconds)...'.format(
             seconds=self.pg_recovery_wait_for_master_seconds,
         ))
@@ -386,18 +389,19 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
                 )
             self.master_lock.acquire()
             if not self.master_obtained.is_set():
-                # promote new master
-                self.set_master_info()
                 if db_exists:
                     fabricio.move(
                         path_from=recovery_conf_file,
                         path_to=recovery_conf_file + '.backup',
                         sudo=True,
                     )
+                    self.set_master_info()
                     return True
-                self.create_db(tag=tag, registry=registry)
-                return False
+                elif not self.multiprocessing_data.db_exists:
+                    self.set_master_info()
+                    return False
             self.master_lock.release()
+            self.master_obtained.wait()
         if not db_exists:
             self.copy_data_from_master(tag=tag, registry=registry)
         recovery_config = self.get_recovery_config()

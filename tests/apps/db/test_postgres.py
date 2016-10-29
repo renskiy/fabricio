@@ -695,9 +695,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 host='new_master',
                 expected_master_host='new_master',
                 expected_result=False,
-                expected_commands=[
-                    mock.call('docker run --stop-signal INT --name name --detach image:latest ', quiet=True),
-                ],
+                expected_commands=[],
             ),
             master_promotion=dict(
                 db_exists=True,
@@ -725,18 +723,36 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                     **data.get('init_kwargs', {})
                 )
                 if 'set_master' in data:
-                    container.master.host = data['set_master']
+                    container.multiprocessing_data.master = data['set_master']
                     container.master_obtained.set()
                 with mock.patch.object(container, 'update_config', return_value=True) as update_config:
                     result = container.update_recovery_config()
                     self.assertEqual(result, data['expected_result'])
-                    self.assertEqual(container.master.host, data['expected_master_host'])
+                    self.assertEqual(container.multiprocessing_data.master, data['expected_master_host'])
                     self.assertListEqual(run.mock_calls, data['expected_commands'])
                     if 'expected_recovery_conf' in data:
                         update_config.assert_called_once_with(
                             content=data['expected_recovery_conf'],
                             path='/data/recovery.conf',
                         )
+
+    @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'db_exists', return_value=False)
+    @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'update_config')
+    @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'get_recovery_config')
+    @mock.patch.object(fabricio, 'run')
+    def test_update_recovery_config_does_not_promote_new_master_without_db_if_slave_with_db_exists(self, run, *args):
+        container = postgres.StreamingReplicatedPostgresqlContainer(
+            name='name', image='image', pg_data='/data',
+        )
+        container.multiprocessing_data.db_exists = True
+        container.multiprocessing_data.master = 'promoted_master'
+        container.update_recovery_config()
+        self.assertListEqual(
+            run.mock_calls,
+            [
+                mock.call("docker run --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=promoted_master --username=postgres --port=5432'", quiet=False),
+            ],
+        )
 
     @mock.patch.object(postgres.PostgresqlContainer, 'db_exists', return_value=True)
     @mock.patch.object(files, 'exists', return_value=True)

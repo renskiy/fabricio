@@ -3,7 +3,7 @@
 This configuration based on PostgreSQL [streaming replication](https://wiki.postgresql.org/wiki/Streaming_Replication).
 
 ## Requirements
-* Fabricio 0.3.7 or greater
+* Fabricio 0.3.8 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 
@@ -25,23 +25,18 @@ At first, this will initiate 3 VMs creation using `Vagrant`: `docker1`, `docker2
 
 ### Master fail
 
-To initiate new master promotion you have to remove VM with current master:
+To initiate new master promotion you may destroy VM with current master and run deploy again:
 
-1. `vagrant destroy <name_of_the_VM_with_master>`
-2. Remove appropriate VM description from `Vagrantfile`
+1. `vagrant destroy <name_of_the_VM_with_current_master>`
+2. `fab --parallel db`
 
-After that start deploy again:
-
-    fab --parallel db
-    
 This will lead to a new master promotion.
 
 ### Adding new slave
 
-1. Add new VM description to `Vagrantfile`
-2. `fab --parallel db`
+Add new VM definition to `Vagrantfile` and then run deploy again:
 
-*Be sure you do not use old VM (e.g. with old failed master). New slave's VM must not have existing DB.*
+    fab --parallel db
 
 ## Issues
 

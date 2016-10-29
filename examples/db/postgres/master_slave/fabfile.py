@@ -15,7 +15,7 @@ class AvailableVagrantHosts(object):
     def hosts(self):
         keys = fab.env.key_filename = []
         hosts = []
-        fab.local('vagrant up')
+        fab.local('vagrant up --parallel')
         ssh_configs_data = fab.local('vagrant ssh-config', capture=True)
         ssh_configs = map(
             lambda config: dict(map(
@@ -28,9 +28,9 @@ class AvailableVagrantHosts(object):
             keys.append(ssh_config['IdentityFile'])
             host_string = '{User}@{HostName}:{Port}'.format(**ssh_config)
             with fab.settings(
-                    host_string=host_string,
-                    # see https://github.com/fabric/fabric/issues/1522
-                    # disable_known_hosts=True,
+                host_string=host_string,
+                # see https://github.com/fabric/fabric/issues/1522
+                # disable_known_hosts=True,
             ):
                 ip_command = (
                     "ip addr show eth1 "
@@ -61,6 +61,7 @@ db = tasks.DockerTasks(
         pg_recovery='recovery.conf',
         pg_recovery_revert_enabled=True,
         pg_recovery_master_promotion_enabled=True,
+        pg_recovery_wait_for_master_seconds=10,
         options=dict(
             volumes='/data:/data',
             env='PGDATA=/data',
