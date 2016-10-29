@@ -157,7 +157,7 @@ class Container(object):
     def delete(self, force=False, delete_image=False):
         delete_image_callback = None
         if delete_image:
-            delete_image_callback = self.image.delete(deferred=True)
+            delete_image_callback = self.image.get_delete_callback()
         command = 'docker rm {force}{container}'
         force = force and '--force ' or ''
         fabricio.run(command.format(container=self, force=force))

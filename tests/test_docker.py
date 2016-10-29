@@ -1022,6 +1022,37 @@ class ImageTestCase(unittest.TestCase):
         self.assertEqual(cm.exception.args[0], "Image 'name:latest' not found")
         run.assert_called_once_with(expected_command)
 
+    def test_delete(self):
+        cases = dict(
+            default=dict(
+                expeected_commands=[
+                    mock.call('docker rmi image:latest', ignore_errors=True),
+                ],
+                kwargs=dict(),
+            ),
+            forced=dict(
+                expeected_commands=[
+                    mock.call('docker rmi --force image:latest', ignore_errors=True),
+                ],
+                kwargs=dict(force=True),
+            ),
+            do_not_ignore_errors=dict(
+                expeected_commands=[
+                    mock.call('docker rmi image:latest', ignore_errors=False),
+                ],
+                kwargs=dict(ignore_errors=False),
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                with mock.patch.object(fabricio, 'run') as run:
+                    image = docker.Image('image')
+                    image.delete(**data['kwargs'])
+                    self.assertListEqual(
+                        run.mock_calls,
+                        data['expeected_commands'],
+                    )
+
     def test_name_tag_registry(self):
         cases = dict(
             single=dict(

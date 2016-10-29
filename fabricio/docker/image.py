@@ -142,17 +142,25 @@ class Image(object):
             return self.info['Id']
         return self.container.info['Image']
 
-    def delete(self, force=False, ignore_delete_error=True, deferred=False):
+    def get_delete_callback(self, force=False):
         command = 'docker rmi {force}{image}'
         force = force and '--force ' or ''
-        callback = functools.partial(
+        return functools.partial(
             fabricio.run,
             command.format(image=self, force=force),
-            ignore_errors=ignore_delete_error,
+            ignore_errors=True,
         )
+
+    def delete(self, force=False, ignore_errors=True, deferred=False):
+        delete_callback = self.get_delete_callback(force=force)
         if deferred:
-            return callback
-        callback()
+            warnings.warn(
+                'deferred argument is deprecated and will be removed in v0.4, '
+                'use get_delete_callback() instead',
+                category=RuntimeWarning, stacklevel=2,
+            )
+            return delete_callback
+        return delete_callback(ignore_errors=ignore_errors)
 
     def run(
         self,
