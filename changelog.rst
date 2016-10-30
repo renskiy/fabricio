@@ -4,7 +4,8 @@ Changelog
 Release 0.3.8
 -------------
 
-Fix: ``StreamingReplicatedPostgresqlContainer``: do not promote host without data as new master if there is another host with DB exists
+- Fix: ``StreamingReplicatedPostgresqlContainer``: do not promote host without data as new master if there is another host with DB exists
+- Enhancement: ``docker.Container``: added `safe_options` property which contains safe options; multiple containers with such options on the same host will not conflict
 
 Release 0.3.7
 -------------
