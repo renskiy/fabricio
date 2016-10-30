@@ -2,7 +2,7 @@ import itertools
 
 from cached_property import cached_property
 
-from fabricio import docker, utils, log
+from fabricio import docker, utils
 
 
 class Migration(str):
@@ -29,33 +29,11 @@ class DjangoContainer(docker.Container):
     manage.py placed
     """
 
-    @property
-    def migration_options(self):
-        return dict(
-            user=self.user,
-            env=self.env,
-            volumes=self.volumes,
-            links=self.links,
-            hosts=self.hosts,
-            network=self.network,
-        )
-
     def migrate(self, tag=None, registry=None):
-        image = self.image[registry:tag]
-
-        unapplied_migrations = image.run(
-            'python manage.py showmigrations --plan | egrep "^\[ \]"; true',
-            options=self.migration_options
-        )
-
-        if not unapplied_migrations:
-            log('No new migrations detected')
-            return
-
-        image.run(
+        self.image[registry:tag].run(
             'python manage.py migrate --noinput',
             quiet=False,
-            options=self.migration_options
+            options=self.safe_options,
         )
 
     @staticmethod
@@ -98,14 +76,15 @@ class DjangoContainer(docker.Container):
         migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"'
 
         backup_container = self.get_backup_container()
+        options = self.safe_options
 
         current_migrations = self.image.run(
             cmd=migrations_cmd,
-            options=self.migration_options
+            options=options,
         )
         backup_migrations = backup_container.image.run(
             cmd=migrations_cmd,
-            options=self.migration_options
+            options=options,
         )
         revert_migrations = self.get_revert_migrations(
             current_migrations,
@@ -117,4 +96,4 @@ class DjangoContainer(docker.Container):
                 app=migration.app,
                 migration=migration.name,
             )
-            self.image.run(cmd=cmd, quiet=False, options=self.migration_options)
+            self.image.run(cmd=cmd, quiet=False, options=options)

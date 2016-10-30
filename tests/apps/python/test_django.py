@@ -7,55 +7,30 @@ import fabricio
 
 from fabricio import docker
 from fabricio.apps.python.django import DjangoContainer
-from tests import SucceededResult, FailedResult
+from tests import SucceededResult
 
 
 class DjangoContainerTestCase(unittest.TestCase):
 
-    @mock.patch.object(docker.Container, 'backup', return_value=mock.Mock())
-    @mock.patch.object(fabricio, 'run', return_value=mock.Mock())
-    def test_migrate(self, run, backup):
+    def test_migrate(self):
         cases = dict(
-            no_new_migrations=dict(
-                side_effect=('', ),
-                expected_commands=[
-                    mock.call.run('docker run --rm --tty --interactive image:tag python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
-                ],
-                kwargs=dict(),
-                container_class_vars=dict(name='name'),
-            ),
             new_migrations=dict(
-                side_effect=(
-                    '[ ]  app.0001_initial',
-                    '',
-                ),
                 expected_commands=[
-                    mock.call.run('docker run --rm --tty --interactive image:tag python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
-                    mock.call.run('docker run --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
+                    mock.call('docker run --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
                 ],
                 kwargs=dict(),
                 container_class_vars=dict(name='name'),
             ),
             customized=dict(
-                side_effect=(
-                    '[ ]  app.0001_initial',
-                    '',
-                ),
                 expected_commands=[
-                    mock.call.run('docker run --rm --tty --interactive registry/image:foo python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
-                    mock.call.run('docker run --rm --tty --interactive registry/image:foo python manage.py migrate --noinput', quiet=False),
+                    mock.call('docker run --rm --tty --interactive registry/image:foo python manage.py migrate --noinput', quiet=False),
                 ],
                 kwargs=dict(tag='foo', registry='registry'),
                 container_class_vars=dict(name='name'),
             ),
             default_with_customized_container=dict(
-                side_effect=(
-                    '[ ]  app.0001_initial',
-                    '',
-                ),
                 expected_commands=[
-                    mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive image:tag python manage.py showmigrations --plan | egrep "^\[ \]"; true', quiet=True),
-                    mock.call.run('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
                 ],
                 kwargs=dict(),
                 container_class_vars=dict(
@@ -65,36 +40,33 @@ class DjangoContainerTestCase(unittest.TestCase):
                     links='links',
                     hosts='hosts',
                     network='network',
-
                     cmd='cmd',
-                    ports='ports',
                     restart_policy='restart_policy',
                     stop_signal='stop_signal',
                     stop_timeout='stop_timeout',
+
+                    ports='ports',
                 ),
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                run.side_effect = data['side_effect']
-                migrate = mock.Mock()
-                migrate.attach_mock(backup, 'backup')
-                migrate.attach_mock(run, 'run')
-                TestContainer = type(
-                    'TestContainer',
-                    (DjangoContainer, ),
-                    dict(
-                        dict(image=docker.Image('image:tag')),
-                        **data['container_class_vars']
-                    ),
-                )
-                container = TestContainer('test')
-                with fab.settings(fab.hide('everything')):
-                    container.migrate(**data['kwargs'])
-                    self.assertListEqual(
-                        data['expected_commands'],
-                        migrate.mock_calls,
+                with mock.patch.object(fabricio, 'run') as run:
+                    TestContainer = type(
+                        'TestContainer',
+                        (DjangoContainer, ),
+                        dict(
+                            dict(image=docker.Image('image:tag')),
+                            **data['container_class_vars']
+                        ),
                     )
+                    container = TestContainer('test')
+                    with fab.settings(fab.hide('everything')):
+                        container.migrate(**data['kwargs'])
+                        self.assertListEqual(
+                            data['expected_commands'],
+                            run.mock_calls,
+                        )
 
     def test_migrate_back(self):
         cases = dict(
@@ -190,12 +162,12 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --rm --tty --interactive current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
                 ],
                 init_kwargs=dict(
                     options=dict(
@@ -205,10 +177,10 @@ class DjangoContainerTestCase(unittest.TestCase):
                         links='links',
                         hosts='hosts',
                         network='network',
-
-                        ports='ports',
                         restart_policy='restart_policy',
                         stop_signal='stop_signal',
+
+                        ports='ports',
                     ),
                     cmd='cmd',
                     stop_timeout='stop_timeout',
