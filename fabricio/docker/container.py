@@ -93,6 +93,10 @@ class Container(object):
 
     options = property(_get_options, _set_options)
 
+    @property
+    def safe_options(self):
+        return frozendict(self.options, ports=None)
+
     @cached_property
     def default_options(self):
         return set(

@@ -5,7 +5,7 @@ import fabricio
 
 from fabricio import docker
 from fabricio.docker.container import Option, Attribute
-from tests import SucceededResult, FailedResult
+from tests import SucceededResult
 
 
 class TestContainer(docker.Container):

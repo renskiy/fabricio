@@ -512,11 +512,13 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 expected_commands=[
-                    mock.call(
-                        'docker exec --tty --interactive name pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump',
-                        ignore_errors=False, quiet=False, use_cache=False,
-                    ),
+                    mock.call('docker inspect --type container name'),
+                    mock.call('docker run --rm --tty --interactive image_id pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump', quiet=False),
                 ],
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
                     db_backup_filename='backup.dump',
@@ -524,11 +526,13 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             ),
             regular=dict(
                 expected_commands=[
-                    mock.call(
-                        'docker exec --tty --interactive name pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump',
-                        ignore_errors=False, quiet=False, use_cache=False,
-                    ),
+                    mock.call('docker inspect --type container name'),
+                    mock.call('docker run --rm --tty --interactive image_id pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump', quiet=False),
                 ],
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
                     db_backup_filename='backup.dump',
@@ -550,7 +554,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     data['container_class_attributes'],
                 )
                 container = container_type(name='name')
-                with mock.patch.object(fabricio, 'run') as run:
+                with mock.patch.object(fabricio, 'run', side_effect=data['side_effect']) as run:
                     container.backup()
                     self.assertListEqual(run.mock_calls, data['expected_commands'])
 
@@ -566,22 +570,26 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 expected_commands=[
-                    mock.call(
-                        'docker exec --tty --interactive name pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump',
-                        ignore_errors=False, quiet=False, use_cache=False,
-                    ),
+                    mock.call('docker inspect --type container name'),
+                    mock.call('docker run --rm --tty --interactive image_id pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump', quiet=False),
                 ],
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
                 ),
             ),
             regular=dict(
                 expected_commands=[
-                    mock.call(
-                        'docker exec --tty --interactive name pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump',
-                        ignore_errors=False, quiet=False, use_cache=False,
-                    ),
+                    mock.call('docker inspect --type container name'),
+                    mock.call('docker run --rm --tty --interactive image_id pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump', quiet=False),
                 ],
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
                 container_class_attributes=dict(
                     db_backup_dir='/data/backup/postgres',
                     db_backup_filename='backup.dump',
@@ -602,7 +610,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     data['container_class_attributes'],
                 )
                 container = container_type(name='name')
-                with mock.patch.object(fabricio, 'run') as run:
+                with mock.patch.object(fabricio, 'run', side_effect=data['side_effect']) as run:
                     container.restore(backup_filename='backup.dump')
                     self.assertListEqual(run.mock_calls, data['expected_commands'])
 
