@@ -5,30 +5,16 @@ from frozendict import frozendict
 
 import fabricio
 
+from fabricio.utils import default_property
+
 from . import Image
 
 
-class Property(object):
-
-    def __init__(self, func=None, default=None):
-        self.func = func
-        if func is not None:
-            self.__doc__ = func.__doc__
-        self.default = default
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self
-        if self.func is None:
-            return self.default
-        return self.func(instance)
-
-
-class Option(Property):
+class Option(default_property):
     pass
 
 
-class Attribute(Property):
+class Attribute(default_property):
     pass
 
 
