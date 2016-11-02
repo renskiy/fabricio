@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.9
+-------------
+
+- Fix: ``StreamingReplicatedPostgresqlContainer`` aborts execution if master promotion failed with exception
+
 Release 0.3.8
 -------------
 

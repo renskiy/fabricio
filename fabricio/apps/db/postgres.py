@@ -340,6 +340,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         self.master_lock = multiprocessing.Lock()
         self.multiprocessing_data = data = multiprocessing.Manager().Namespace()
         data.db_exists = False
+        data.exception = None
         self.instances = multiprocessing.JoinableQueue()
 
     def copy_data_from_master(self, tag=None, registry=None):
@@ -377,11 +378,15 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         recovery_config_items = [
             row for row in recovery_config.splitlines()
             if not row.startswith('primary_conninfo')
-            ]
+        ]
         recovery_config_items.append(primary_conninfo)
         return '\n'.join(recovery_config_items) + '\n'
 
     def set_master_info(self):
+        if self.multiprocessing_data.exception is not None:
+            fab.abort('Task aborted due an exception: {exception}'.format(
+                exception=self.multiprocessing_data.exception,
+            ))
         fabricio.log('Found master: {host}'.format(host=fab.env.host))
         self.multiprocessing_data.master = fab.env.host
 
@@ -450,14 +455,13 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
                 self,
             ).update(force=force, tag=tag, registry=registry)
 
-            try:
-                if not container_updated:
-                    if not recovery_config_updated:
-                        return False  # nothing updated
-                    self.restart()
-                return True
-            finally:
-                self.master_obtained.set()  # one who first comes here is master
+            if not container_updated and recovery_config_updated:
+                self.restart()
+            self.master_obtained.set()  # one who first comes here is master
+            return container_updated or recovery_config_updated
+        except Exception as exception:
+            self.multiprocessing_data.exception = exception
+            raise
         finally:
             try:
                 self.master_lock.release()
@@ -467,7 +471,8 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             self.instances.task_done()
             self.instances.join()  # wait until all instances will be updated
 
-            self.master_obtained.clear()  # prepare for next iteration
+            # reset state at the end to prevent fail of the next Fabric command
+            self.master_obtained.clear()
 
     def revert(self):
         if not self.pg_recovery_revert_enabled:

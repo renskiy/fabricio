@@ -862,3 +862,48 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                             if data['should_restart']:
                                 restart.assert_called_once()
                             self.assertEqual(result, data['expected_result'])
+                            self.assertFalse(container.master_obtained.is_set())
+
+    def test_set_master_info_calls_abort_on_exception(self):
+        class AbortException(Exception):
+            pass
+        container = postgres.StreamingReplicatedPostgresqlContainer(
+            'name', options=dict(volumes='volume'),
+        )
+        container.multiprocessing_data.exception = Exception('exception')
+        with fab.settings(abort_exception=AbortException):
+            with self.assertRaises(AbortException):
+                container.set_master_info()
+
+    @mock.patch.object(postgres.PostgresqlContainer, 'update', return_value=False)
+    @mock.patch.object(postgres.PostgresqlContainer, 'restart')
+    @mock.patch.object(Event, 'clear')
+    @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'update_recovery_config', return_value=True)
+    def test_update_set_exception_info_if_any_happens(self, *args):
+        exception = Exception('error')
+        cases = dict(
+            container_update_failed=dict(
+                mock=mock.patch.object(postgres.PostgresqlContainer, 'update', side_effect=exception),
+            ),
+            configs_update_failed=dict(
+                mock=mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'update_recovery_config', side_effect=exception),
+            ),
+            container_restart_failed=dict(
+                mock=mock.patch.object(postgres.PostgresqlContainer, 'restart', side_effect=exception),
+            ),
+        )
+        container = postgres.StreamingReplicatedPostgresqlContainer(
+            'name', options=dict(volumes='volume'),
+        )
+        with fab.settings(parallel=True):
+            for case, data in cases.items():
+                with self.subTest(case=case):
+                    with data['mock']:
+                        with self.assertRaises(Exception):
+                            container.update()
+                        self.assertIsInstance(
+                            container.multiprocessing_data.exception,
+                            Exception,
+                        )
+                        self.assertFalse(container.master_obtained.is_set())
+                        container.multiprocessing_data.exception = None
