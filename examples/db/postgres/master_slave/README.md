@@ -42,3 +42,4 @@ Add new VM definition to `Vagrantfile` and then run deploy again:
 
 * If your host machine has more then one network adapter `Vagrant` will [ask](https://www.vagrantup.com/docs/networking/public_network.html#default-network-interface) you which one will be used
 * Sometimes `VirtualBox` can't assign proper IP address to VM's bridged network adapter. In such cases destroying VM and creation new one will help (`vagrant reload` usually does not help)
+* If you see warnings in Vagrant logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`
