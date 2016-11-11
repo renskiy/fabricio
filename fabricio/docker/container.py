@@ -144,13 +144,23 @@ class Container(object):
             ))
         return json.loads(info)[0]
 
-    def delete(self, force=False, delete_image=False):
+    def delete(
+        self,
+        force=False,
+        delete_image=False,
+        delete_dangling_volumes=True,
+    ):
         delete_image_callback = None
         if delete_image:
             delete_image_callback = self.image.get_delete_callback()
         command = 'docker rm {force}{container}'
         force = force and '--force ' or ''
         fabricio.run(command.format(container=self, force=force))
+        if delete_dangling_volumes:
+            fabricio.run(
+                'docker volume ls --filter "dangling=true" --quiet '
+                '| xargs --no-run-if-empty docker volume rm',
+            )
         if delete_image_callback:
             delete_image_callback()
 

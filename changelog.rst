@@ -5,6 +5,7 @@ Release 0.3.9
 -------------
 
 - Fix: ``StreamingReplicatedPostgresqlContainer`` aborts execution if master promotion failed with exception
+- Enhancement: dangling volumes removal as default option of ``Container.delete()``
 
 Release 0.3.8
 -------------
