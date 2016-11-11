@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.10
+--------------
+
+- Change: ``Options``: option values which contain space characters, single and double quotes are surrounded by double quotes now
+
 Release 0.3.9
 -------------
 

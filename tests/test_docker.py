@@ -390,7 +390,7 @@ class ContainerTestCase(unittest.TestCase):
                     '--stop-signal stop_signal '
                     '--name name '
                     '--detach '
-                    '--custom-option foo '
+                    '--custom_option foo '
                     'image:tag cmd'
                 ),
             ),

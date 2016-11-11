@@ -1,4 +1,5 @@
 import contextlib
+import re
 
 try:
     from collections import OrderedDict
@@ -36,12 +37,18 @@ class default_property(object):
 
 class Options(OrderedDict):
 
-    @staticmethod
-    def make_option(option, value=None):
-        option = '--' + option.replace('_', '-')
+    quoting_required_regex = re.compile('[\s"\']+')
+
+    def quote_option_value(self, value):
+        if value and not self.quoting_required_regex.search(value):
+            return value
+        return '"{value}"'.format(value=value.replace('"', '\\"'))
+
+    def make_option(self, option, value=None):
+        option = '--' + option
         if value is not None:
             # TODO escape value
-            option += ' ' + value
+            option += ' ' + self.quote_option_value(value)
         return option
 
     def make_options(self):
