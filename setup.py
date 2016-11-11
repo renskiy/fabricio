@@ -21,7 +21,7 @@ if sys.version_info < (2,7):
 
 setup(
     name='fabricio',
-    version='0.3.9',
+    version='0.3.10',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],

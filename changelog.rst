@@ -4,7 +4,9 @@ Changelog
 Release 0.3.10
 --------------
 
-- Change: ``Options``: option values which contain space characters, single and double quotes are surrounded by double quotes now
+- Fix: ``Options``: option values which contain space characters, single and double quotes are surrounded by double quotes now (`#87`_)
+
+.. _#87: https://github.com/renskiy/fabricio/issues/87
 
 Release 0.3.9
 -------------
