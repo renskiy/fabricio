@@ -158,8 +158,9 @@ class Container(object):
         fabricio.run(command.format(container=self, force=force))
         if delete_dangling_volumes:
             fabricio.run(
-                'docker volume ls --filter "dangling=true" --quiet '
-                '| xargs --no-run-if-empty docker volume rm',
+                'for volume in '
+                '$(docker volume ls --filter "dangling=true" --quiet); '
+                'do docker volume rm "$volume"; done'
             )
         if delete_image_callback:
             delete_image_callback()
