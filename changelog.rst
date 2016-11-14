@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.11
+--------------
+
+- Fix: macOS: fixed dangling entities removal
+
 Release 0.3.10
 --------------
 
