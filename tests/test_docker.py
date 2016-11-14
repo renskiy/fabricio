@@ -218,7 +218,7 @@ class ContainerTestCase(unittest.TestCase):
                 delete_kwargs=dict(),
                 expected_commands=[
                     mock.call('docker rm name'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                 ],
             ),
             with_image=dict(
@@ -226,7 +226,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
                     mock.call('docker rm name'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                 ],
             ),
@@ -234,7 +234,7 @@ class ContainerTestCase(unittest.TestCase):
                 delete_kwargs=dict(force=True),
                 expected_commands=[
                     mock.call('docker rm --force name'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                 ],
             ),
             no_dangling_removal=dict(
@@ -248,7 +248,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
                     mock.call('docker rm --force name'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                 ],
             ),
@@ -820,7 +820,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rm name_backup'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -846,7 +846,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type image image:tag'),
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rm name_backup'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -872,7 +872,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type image image:foo'),
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rm name_backup'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -898,7 +898,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type image registry/image:tag'),
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rm name_backup'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -924,7 +924,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type image registry/image:foo'),
                     mock.call('docker inspect --type container name_backup'),
                     mock.call('docker rm name_backup'),
-                    mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -1020,7 +1020,7 @@ class ContainerTestCase(unittest.TestCase):
             mock.call('docker start name_backup'),
             mock.call('docker inspect --type container name'),
             mock.call('docker rm name'),
-            mock.call('docker volume ls --filter "dangling=true" --quiet | xargs --no-run-if-empty docker volume rm'),
+            mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
             mock.call('docker rmi failed_image_id', ignore_errors=True),
             mock.call('docker rename name_backup name'),
         ]

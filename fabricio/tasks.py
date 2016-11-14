@@ -370,8 +370,8 @@ class PullDockerTasks(DockerTasks):
     @staticmethod
     def delete_dangling_images():
         fabricio.local(
-            'docker images --filter "dangling=true" --quiet '
-            '| xargs --no-run-if-empty docker rmi',
+            'for image in $(docker images --filter "dangling=true" --quiet); '
+            'do docker rmi "$image"; done'
         )
 
     def remove_obsolete_images(self):
