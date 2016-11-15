@@ -18,17 +18,17 @@ def _command(
     **kwargs
 ):
     if quiet:
-        hide += ('output', 'warnings')
+        hide += ('output', 'aborts')
     log('{method}: {command}'.format(
         method=fabric_method.__name__,
         command=command,
     ))
-    settings_kwargs = (
-        {'warn_only': True}
-        if ignore_errors else
-        {'abort_exception': RuntimeError}
-    )
-    with fab.settings(fab.hide(*hide), fab.show(*show), **settings_kwargs):
+    with fab.settings(
+        fab.hide(*hide),
+        fab.show(*show),
+        abort_exception=RuntimeError,
+        warn_only=ignore_errors,
+    ):
         return fabric_method(command, **kwargs)
 
 
