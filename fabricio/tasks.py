@@ -143,7 +143,7 @@ class Infrastructure(Tasks):
 infrastructure = Infrastructure
 
 
-class DockerTasks(Tasks):
+class _DockerTasks(Tasks):
 
     def __init__(
         self,
@@ -153,7 +153,7 @@ class DockerTasks(Tasks):
         backup_commands=False,
         **kwargs
     ):
-        super(DockerTasks, self).__init__(**kwargs)
+        super(_DockerTasks, self).__init__(**kwargs)
         self.registry = registry and docker.Registry(registry)
         self.container = container  # type: docker.Container
         self.backup.use_task_objects = backup_commands
@@ -263,7 +263,7 @@ class DockerTasks(Tasks):
         fab.execute(self.update, tag=tag, force=force)
 
 
-class PullDockerTasks(DockerTasks):
+class PullDockerTasks(_DockerTasks):
 
     def __init__(
         self,
@@ -272,6 +272,14 @@ class PullDockerTasks(DockerTasks):
         use_ssh_tunnel=True,
         **kwargs
     ):
+        warnings.warn(
+            'PullDockerTasks is deprecated and will be removed in v0.4, '
+            'use DockerTasks instead', DeprecationWarning,
+        )
+        warnings.warn(
+            'PullDockerTasks is deprecated and will be removed in v0.4, '
+            'use DockerTasks instead', category=RuntimeWarning, stacklevel=2,
+        )
         super(PullDockerTasks, self).__init__(registry=registry, **kwargs)
         self.local_registry = docker.Registry(local_registry)
         self.use_ssh_tunnel = use_ssh_tunnel
@@ -341,9 +349,9 @@ class PullDockerTasks(DockerTasks):
                         local_port=self.local_registry.port,
                         local_host=self.local_registry.host,
                     ):
-                        DockerTasks.pull(self, tag=tag)
+                        _DockerTasks.pull(self, tag=tag)
         else:
-            DockerTasks.pull(self, tag=tag)
+            _DockerTasks.pull(self, tag=tag)
 
     @fab.task(task_class=IgnoreHostsTask)
     def prepare(self, tag=None):
@@ -364,7 +372,7 @@ class PullDockerTasks(DockerTasks):
         """
         fab.execute(self.prepare, tag=tag)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(
+        _DockerTasks.deploy(
             self, tag=tag, force=force, migrate=migrate, backup=backup)
 
     @staticmethod
@@ -382,9 +390,224 @@ class PullDockerTasks(DockerTasks):
         self.delete_dangling_images()
 
 
+class DockerTasks(Tasks):
+
+    def __init__(
+        self,
+        container,
+        registry=None,
+        ssh_tunnel_port=None,
+        migrate_commands=False,
+        backup_commands=False,
+        **kwargs
+    ):
+        super(DockerTasks, self).__init__(**kwargs)
+        self.container = container  # type: docker.Container
+        self.registry = registry and docker.Registry(registry)
+        self.ssh_tunnel_port = ssh_tunnel_port
+        self.backup.use_task_objects = backup_commands
+        self.restore.use_task_objects = backup_commands
+        self.migrate.use_task_objects = migrate_commands
+        self.migrate_back.use_task_objects = migrate_commands
+        self.revert.use_task_objects = False  # disabled in favour of rollback
+        self.prepare.use_task_objects = registry is not None
+        self.push.use_task_objects = registry is not None
+        self._backup_done = set()
+        self._restore_done = set()
+
+    @property
+    def image(self):
+        return self.container.image
+
+    @fab.task
+    @skip_unknown_host
+    def revert(self):
+        """
+        revert Docker container to previous version
+        """
+        self.container.revert()
+
+    @fab.task
+    @fab.serial
+    @skip_unknown_host
+    def migrate(self, tag=None):
+        """
+        apply migrations
+        """
+        self.container.migrate(tag=tag)
+
+    @fab.task
+    @fab.serial
+    @skip_unknown_host
+    def migrate_back(self):
+        """
+        remove previously applied migrations if any
+        """
+        self.container.migrate_back()
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def rollback(self, migrate_back=True):
+        """
+        rollback Docker container to previous version
+        """
+        if strtobool(migrate_back):
+            fab.execute(self.migrate_back)
+        fab.execute(self.revert)
+
+    @fab.task
+    @fab.serial
+    @skip_unknown_host
+    def backup(self):
+        """
+        backup data
+        """
+        if fab.env.infrastructure not in self._backup_done:
+            self._backup_done.add(fab.env.infrastructure)
+            self.container.backup()
+
+    @fab.task
+    @fab.serial
+    @skip_unknown_host
+    def restore(self, backup_filename=None):
+        """
+        restore data
+        """
+        if fab.env.infrastructure not in self._restore_done:
+            self._restore_done.add(fab.env.infrastructure)
+            self.container.restore(backup_name=backup_filename)
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def prepare(self, tag=None):
+        """
+        prepare Docker image
+        """
+        if self.registry is None:
+            return
+        fabricio.local(
+            'docker pull {image}'.format(image=self.image[tag]),
+            quiet=False,
+            use_cache=True,
+        )
+        self.delete_dangling_images()
+
+    @staticmethod
+    def delete_dangling_images():
+        fabricio.local(
+            'for image in $(docker images --filter "dangling=true" --quiet); '
+            'do docker rmi "$image"; done'
+        )
+
+    def push_image(self, tag=None):
+        fabricio.local(
+            'docker push {image}'.format(image=self.image[self.registry:tag]),
+            quiet=False,
+            use_cache=True,
+        )
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def push(self, tag=None):
+        """
+        push Docker image to registry
+        """
+        if self.registry is None:
+            return
+        tag_with_registry = str(self.image[self.registry:tag])
+        fabricio.local(
+            'docker tag {image} {tag}'.format(
+                image=self.image[tag],
+                tag=tag_with_registry,
+            ),
+            use_cache=True,
+        )
+        self.push_image(tag=tag)
+        fabricio.local(
+            'docker rmi {tag}'.format(tag=tag_with_registry),
+            use_cache=True,
+        )
+
+    def pull_image(self, tag=None, registry=None):
+        temporary_tag = str(self.image[registry:tag])
+        fabricio.run(
+            'docker pull {image}'.format(image=temporary_tag),
+            quiet=False,
+        )
+        if registry and registry != self.image.registry:
+            fabricio.run('docker tag {image} {tag}'.format(
+                image=temporary_tag,
+                tag=self.image[tag],
+            ))
+            fabricio.run('docker rmi {image}'.format(image=temporary_tag))
+
+    @fab.task
+    @skip_unknown_host
+    def pull(self, tag=None):
+        """
+        pull Docker image from registry
+        """
+        if self.ssh_tunnel_port:
+            if self.registry:
+                local_port = self.registry.port
+                local_host = self.registry.host
+            elif self.image.registry:
+                local_port = self.image.registry.port
+                local_host = self.image.registry.host
+            else:
+                raise ValueError(
+                    'Either local host or local port for SSH tunnel '
+                    'can not be obtained'
+                )
+            with contextlib.closing(open(os.devnull, 'w')) as output:
+                with patch(sys, 'stdout', output):
+                    # forward sys.stdout to os.devnull to prevent
+                    # printing debug messages by fab.remote_tunnel
+
+                    with fab.remote_tunnel(
+                        remote_port=self.ssh_tunnel_port,
+                        local_port=local_port,
+                        local_host=local_host,
+                    ):
+                        registry = 'localhost:{0}'.format(self.ssh_tunnel_port)
+                        self.pull_image(tag=tag, registry=registry)
+        else:
+            self.pull_image(tag=tag, registry=self.registry)
+
+    @fab.task
+    @skip_unknown_host
+    def update(self, tag=None, force=False):
+        """
+        start new Docker container if necessary
+        """
+        updated = self.container.update(tag=tag, force=strtobool(force))
+        if not updated:
+            fabricio.log('No changes detected, update skipped.')
+
+    @fab.task(default=True, task_class=IgnoreHostsTask)
+    def deploy(self, tag=None, force=False, migrate=True, backup=False):
+        """
+        prepare -> push -> backup -> pull -> migrate -> update
+        """
+        fab.execute(self.prepare, tag=tag)
+        fab.execute(self.push, tag=tag)
+        if strtobool(backup):
+            fab.execute(self.backup)
+        fab.execute(self.pull, tag=tag)
+        if strtobool(migrate):
+            fab.execute(self.migrate, tag=tag)
+        fab.execute(self.update, tag=tag, force=force)
+
+
 class BuildDockerTasks(PullDockerTasks):
 
     def __init__(self, build_path='.', **kwargs):
+        warnings.warn(
+            'BuildDockerTasks is deprecated and will be removed in v0.4, '
+            'use ImageBuildDockerTasks instead', DeprecationWarning,
+        )
+        warnings.warn(
+            'BuildDockerTasks is deprecated and will be removed in v0.4, '
+            'use ImageBuildDockerTasks instead',
+            category=RuntimeWarning, stacklevel=2,
+        )
         super(BuildDockerTasks, self).__init__(**kwargs)
         self.build_path = build_path
 
@@ -422,10 +645,46 @@ class BuildDockerTasks(PullDockerTasks):
         """
         fab.execute(self.prepare, tag=tag, no_cache=no_cache)
         fab.execute(self.push, tag=tag)
-        DockerTasks.deploy(
+        _DockerTasks.deploy(
             self,
             tag=tag,
             force=force,
             migrate=migrate,
             backup=backup,
         )
+
+
+class ImageBuildDockerTasks(DockerTasks):
+
+    def __init__(self, build_path='.', **kwargs):
+        super(ImageBuildDockerTasks, self).__init__(**kwargs)
+        self.build_path = build_path
+        self.prepare.use_task_objects = True
+        self.push.use_task_objects = True
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def prepare(self, tag=None, no_cache=False):
+        """
+        prepare Docker image
+        """
+        options = Options([
+            ('tag', str(self.image[self.registry:tag])),
+            ('no-cache', strtobool(no_cache)),
+            ('pull', True),
+        ])
+        fabricio.local(
+            'docker build {options} {build_path}'.format(
+                build_path=self.build_path,
+                options=options,
+            ),
+            quiet=False,
+            use_cache=True,
+        )
+        self.delete_dangling_images()
+
+    @fab.task(task_class=IgnoreHostsTask)
+    def push(self, tag=None):
+        """
+        push Docker image to registry
+        """
+        self.push_image(tag=tag)

@@ -187,19 +187,19 @@ Forced update forces creation of new container.
 Local Docker registry
 =====================
 
-It is often when production infrastructure has limited access to the Internet. In such case Fabricio offers ability to use local Docker registry which can be used as an intermediate registry for the selected infrastructure. To use this option you have to have local Docker registry running within your LAN and also Docker client on your work PC. You can up your own Docker registry by executing following command on the PC with Docker installed:
+It is often when production infrastructure has limited access to the Internet. In such case Fabricio offers ability to use local Docker registry which can be used as an intermediate registry for the selected infrastructure. To use this option you have to have local Docker registry running within your LAN and also Docker client on your PC. If you have Docker installed you can run up Docker registry locally by executing following command:
 
 .. code:: bash
 
     docker run --name registry --publish 5000:5000 --detach --restart always registry:2
 
-When your local Docker registry is up and run you can use special tasks class to bypass infrastructure network limitations:
+When your local Docker registry is up and run you can provide custom ``registry`` which will be used as an intermediate Docker registry:
 
 .. code:: python
 
     from fabricio import docker, tasks
 
-    nginx = tasks.PullDockerTasks(
+    nginx = tasks.DockerTasks(
         container=docker.Container(
             name='nginx',
             image='nginx:stable',
@@ -207,6 +207,7 @@ When your local Docker registry is up and run you can use special tasks class to
                 'ports': '80:80',
             },
         ),
+        registry='localhost:5000',
         hosts=['user@example.com'],
     )
 
@@ -222,19 +223,35 @@ The first one pulls Image from the original registry and the second pushes it to
 Building Docker images
 ======================
 
-Using local Docker registry you can also build Docker images from local sources. This example shows how this can be set up:
+Using Fabricio you can also build Docker images from local sources and deploy them to your servers. This example shows how this can be set up:
 
 .. code:: python
 
     from fabricio import docker, tasks
 
-    app = tasks.BuildDockerTasks(
+    app = tasks.ImageBuildDockerTasks(
         container=docker.Container(
             name='app',
-            image='app',
+            image='your_docker_hub_account/app',
         ),
         hosts=['user@example.com'],
         build_path='src',
     )
 
-Commands list for :code:`BuildDockerTasks` is same as for :code:`PullDockerTasks`. The only difference is that 'prepare' builds image instead of pulling it from the original registry.
+Commands list for :code:`ImageBuildDockerTasks` is same as for :code:`DockerTasks` with provided custom registry. The only difference is that 'prepare' builds image instead of pulling it from the original registry.
+
+And of course, you can use your own private Docker registry:
+
+.. code:: python
+
+    from fabricio import docker, tasks
+
+    app = tasks.ImageBuildDockerTasks(
+        container=docker.Container(
+            name='app',
+            image='app',
+        ),
+        registry='localhost:5000',
+        hosts=['user@example.com'],
+        build_path='src',
+    )

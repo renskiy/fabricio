@@ -9,6 +9,8 @@ import fabricio
 
 from fabricio.utils import Options
 
+from .registry import Registry
+
 
 class Image(object):
 
@@ -29,11 +31,11 @@ class Image(object):
             _registry, _name, _tag = self.parse_image_name(name)
             self.name = _name
             self.tag = tag or _tag or 'latest'  # TODO 'latest' is unnecessary
-            self.registry = registry or _registry
+            registry = registry or _registry or None
         else:
             self.name = name
             self.tag = tag
-            self.registry = registry
+        self.registry = registry and Registry(registry)
         self.field_names = {}
         self.container = None
 

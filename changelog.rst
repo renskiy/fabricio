@@ -5,6 +5,7 @@ Release 0.3.12
 --------------
 
 - Fix: run/local: show detailed information about error occurred
+- Change: deprecated ``PullDockerTasks`` and ``BuildDockerTasks``, ``DockerTasks`` and ``ImageBuildDockerTasks`` can be used instead, accordingly
 
 Release 0.3.11
 --------------
