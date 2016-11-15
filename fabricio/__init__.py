@@ -23,11 +23,13 @@ def _command(
         method=fabric_method.__name__,
         command=command,
     ))
-    with fab.settings(fab.hide(*hide), fab.show(*show), warn_only=True):
-        result = fabric_method(command, **kwargs)
-        if not ignore_errors and result.failed:
-            raise RuntimeError(result)
-    return result
+    with fab.settings(
+        fab.hide(*hide),
+        fab.show(*show),
+        abort_exception=RuntimeError,
+        warn_only=ignore_errors,
+    ):
+        return fabric_method(command, **kwargs)
 
 
 def run(

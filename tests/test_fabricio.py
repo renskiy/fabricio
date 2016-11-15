@@ -38,7 +38,8 @@ class FabricioTestCase(unittest.TestCase):
                 mocked_method.__name__ = 'mock'
 
                 callback.cache.clear()
-        
+
+                mocked_method.side_effect = RuntimeError
                 with self.assertRaises(RuntimeError):
                     callback('command', use_cache=True)
         
@@ -47,29 +48,30 @@ class FabricioTestCase(unittest.TestCase):
         
                 self.assertEqual(2, mocked_method.call_count)
                 mocked_method.reset_mock()
-        
+
+                mocked_method.side_effect = None
                 callback('command', ignore_errors=True)
                 callback('command', ignore_errors=True)
                 self.assertEqual(2, mocked_method.call_count)
                 mocked_method.reset_mock()
-        
+
                 callback('command', ignore_errors=True, use_cache=True)
                 callback('command', ignore_errors=True, use_cache=True)
                 mocked_method.assert_called_once()
                 mocked_method.reset_mock()
-        
+
                 callback('command1', ignore_errors=True, use_cache=True)
                 callback('command2', ignore_errors=True, use_cache=True)
                 self.assertEqual(2, mocked_method.call_count)
                 mocked_method.reset_mock()
                 callback.cache.clear()
-        
+
                 @tasks.infrastructure
                 def inf1(): pass
-        
+
                 @tasks.infrastructure
                 def inf2(): pass
-        
+
                 fab.execute(inf1.confirm)
                 callback('command', ignore_errors=True, use_cache=True)
                 fab.execute(inf2.confirm)

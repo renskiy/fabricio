@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.12
+--------------
+
+- Fix: run/local: show detailed information about error occurred
+
 Release 0.3.11
 --------------
 
