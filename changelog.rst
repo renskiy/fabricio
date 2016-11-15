@@ -4,8 +4,12 @@ Changelog
 Release 0.3.12
 --------------
 
-- Fix: run/local: show detailed information about error occurred
 - Change: deprecated ``PullDockerTasks`` and ``BuildDockerTasks``, ``DockerTasks`` and ``ImageBuildDockerTasks`` can be used instead, accordingly
+- Change: run/local: show detailed information about error occurred
+- Enhancement: added additional examples `hello_world`_ and `build_image`_
+
+.. _hello_world: examples/hello_world/
+.. _build_image: examples/build_image/
 
 Release 0.3.11
 --------------

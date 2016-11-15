@@ -656,8 +656,8 @@ class BuildDockerTasks(PullDockerTasks):
 
 class ImageBuildDockerTasks(DockerTasks):
 
-    def __init__(self, build_path='.', **kwargs):
-        super(ImageBuildDockerTasks, self).__init__(**kwargs)
+    def __init__(self, container, build_path='.', **kwargs):
+        super(ImageBuildDockerTasks, self).__init__(container, **kwargs)
         self.build_path = build_path
         self.prepare.use_task_objects = True
         self.push.use_task_objects = True

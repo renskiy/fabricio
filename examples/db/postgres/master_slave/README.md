@@ -15,13 +15,17 @@ This configuration based on PostgreSQL [streaming replication](https://wiki.post
 * __recovery.conf__, PostgreSQL recovery config
 * __Vagrantfile__, Vagrant config
 
+## List of available commands
+
+    fab --list
+
 ## Deploy
 
 ### From scratch
 
     fab --parallel db
     
-At first, this will initiate 3 VMs creation using `Vagrant`: `docker1`, `docker2` and `docker3`. After VMs will be created `Fabricio` will initiate master-slave configuration deployment 'from scratch' with automatic master selection.
+At first, this will initiate process of three Virtual Machines creation using `Vagrant` configuration: `docker1`, `docker2` and `docker3`. After that 'from scratch' case will automatically start.
 
 ### Master fail
 
@@ -42,4 +46,4 @@ Add new VM definition to `Vagrantfile` and then run deploy again:
 
 * If your host machine has more then one network adapter `Vagrant` will [ask](https://www.vagrantup.com/docs/networking/public_network.html#default-network-interface) you which one will be used
 * Sometimes `VirtualBox` can't assign proper IP address to VM's bridged network adapter. In such cases destroying VM and creation new one will help (`vagrant reload` usually does not help)
-* If you see warnings in Vagrant logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`
+* If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`

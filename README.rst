@@ -184,16 +184,16 @@ Forced update
     
 Forced update forces creation of new container.
 
-Local Docker registry
-=====================
+Private Docker registry
+=======================
 
-It is often when production infrastructure has limited access to the Internet. In such case Fabricio offers ability to use local Docker registry which can be used as an intermediate registry for the selected infrastructure. To use this option you have to have local Docker registry running within your LAN and also Docker client on your PC. If you have Docker installed you can run up Docker registry locally by executing following command:
+It is often when production infrastructure has limited access to the Internet or your security policy does not allow using of public Docker image registries. In such case Fabricio offers ability to use private Docker registry which can be used also as an intermediate registry for the selected infrastructure. To use this option you have to have local Docker registry running within your LAN and also Docker client on your PC. If you have Docker installed you can run up Docker registry locally by executing following command:
 
 .. code:: bash
 
-    docker run --name registry --publish 5000:5000 --detach --restart always registry:2
+    docker run --name registry --publish 5000:5000 --detach registry:2
 
-When your local Docker registry is up and run you can provide custom ``registry`` which will be used as an intermediate Docker registry:
+When your local Docker registry is up and run you can provide custom ``registry`` which will be used as an intermediate Docker registry accessed via reverse SSH tunnel:
 
 .. code:: python
 
@@ -208,8 +208,15 @@ When your local Docker registry is up and run you can provide custom ``registry`
             },
         ),
         registry='localhost:5000',
+        ssh_tunnel_port=5000,
         hosts=['user@example.com'],
     )
+
+*Note, that you can provide custom registry and/or account within 'image' parameter like this:*
+
+.. code:: python
+
+    image='custom-registry.example.com/user/image:tag'
 
 List of commands in this case updated with additional two commands:
 
@@ -251,7 +258,7 @@ And of course, you can use your own private Docker registry:
             name='app',
             image='app',
         ),
-        registry='localhost:5000',
+        registry='registry.your_company.com',
         hosts=['user@example.com'],
         build_path='src',
     )
