@@ -23,12 +23,12 @@ def _command(
         method=fabric_method.__name__,
         command=command,
     ))
-    with fab.settings(
-        fab.hide(*hide),
-        fab.show(*show),
-        abort_exception=RuntimeError,
-        warn_only=ignore_errors,
-    ):
+    settings_kwargs = (
+        {'warn_only': True}
+        if ignore_errors else
+        {'abort_exception': RuntimeError}
+    )
+    with fab.settings(fab.hide(*hide), fab.show(*show), **settings_kwargs):
         return fabric_method(command, **kwargs)
 
 
