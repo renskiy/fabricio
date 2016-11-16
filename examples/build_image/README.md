@@ -10,6 +10,7 @@ This example shows how to deploy configuration consisting of a single container 
 * Docker registry which runs locally on 5000 port, this can be reached out by executing following docker command: `docker run --name registry --publish 5000:5000 --detach registry:2`
 
 ## Files
+* __Dockerfile__, used for building image
 * __fabfile.py__, Fabricio configuration
 * __README.md__, this file
 * __Vagrantfile__, Vagrant config
