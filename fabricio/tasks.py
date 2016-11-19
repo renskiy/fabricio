@@ -582,12 +582,20 @@ class DockerTasks(Tasks):
             fabricio.log('No changes detected, update skipped.')
 
     @fab.task(default=True, task_class=IgnoreHostsTask)
-    def deploy(self, tag=None, force=False, migrate=True, backup=False):
+    def deploy(
+        self,
+        tag=None,
+        force=False,
+        prepare=True,
+        backup=False,
+        migrate=True,
+    ):
         """
         prepare -> push -> backup -> pull -> migrate -> update
         """
-        fab.execute(self.prepare, tag=tag)
-        fab.execute(self.push, tag=tag)
+        if strtobool(prepare):
+            fab.execute(self.prepare, tag=tag)
+            fab.execute(self.push, tag=tag)
         if strtobool(backup):
             fab.execute(self.backup)
         fab.execute(self.pull, tag=tag)
