@@ -30,7 +30,7 @@ class DjangoContainerTestCase(unittest.TestCase):
             ),
             default_with_customized_container=dict(
                 expected_commands=[
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
                 ],
                 kwargs=dict(),
                 container_class_vars=dict(
@@ -41,11 +41,11 @@ class DjangoContainerTestCase(unittest.TestCase):
                     hosts='hosts',
                     network='network',
                     cmd='cmd',
-                    restart_policy='restart_policy',
                     stop_signal='stop_signal',
                     stop_timeout='stop_timeout',
 
                     ports='ports',
+                    restart_policy='restart_policy',
                 ),
             ),
         )
@@ -162,12 +162,12 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
                     mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --restart restart_policy --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
+                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
                 ],
                 init_kwargs=dict(
                     options=dict(
@@ -177,10 +177,10 @@ class DjangoContainerTestCase(unittest.TestCase):
                         links='links',
                         hosts='hosts',
                         network='network',
-                        restart_policy='restart_policy',
                         stop_signal='stop_signal',
 
                         ports='ports',
+                        restart_policy='restart_policy',
                     ),
                     cmd='cmd',
                     stop_timeout='stop_timeout',

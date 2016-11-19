@@ -127,6 +127,9 @@ class Image(object):
             ),
             **options
         )
+        if temporary:
+            # temporary containers can't be restarted
+            container_options['restart'] = None
         return container_options
 
     @property

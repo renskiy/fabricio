@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.3.13 (not released yet)
+---------------------------------
+
+- Fix: restart policy cannot be applied to temporary containers (`#95`_)
+
+.. _#95: https://github.com/renskiy/fabricio/issues/95
+
 Release 0.3.12
 --------------
 
