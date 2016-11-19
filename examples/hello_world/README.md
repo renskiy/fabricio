@@ -3,7 +3,7 @@
 This example shows how to deploy basic configuration consisting of a single container based on [official Nginx image](https://hub.docker.com/_/nginx/).
 
 ## Requirements
-* Fabricio 0.3.12 or greater
+* Fabricio 0.3.13 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 

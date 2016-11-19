@@ -378,8 +378,8 @@ class PullDockerTasks(_DockerTasks):
     @staticmethod
     def delete_dangling_images():
         fabricio.local(
-            'for image in $(docker images --filter "dangling=true" --quiet); '
-            'do docker rmi "$image"; done'
+            'for img in $(docker images --filter "dangling=true" --quiet); '
+            'do docker rmi "$img"; done'
         )
 
     def remove_obsolete_images(self):
@@ -492,10 +492,18 @@ class DockerTasks(Tasks):
 
     @staticmethod
     def delete_dangling_images():
-        fabricio.local(
-            'for image in $(docker images --filter "dangling=true" --quiet); '
-            'do docker rmi "$image"; done'
-        )
+        if os.name == 'posix':
+            # macOS, Linux, etc.
+            fabricio.local(
+                'for img in $(docker images --filter "dangling=true" --quiet); '
+                'do docker rmi "$img"; done'
+            )
+        elif os.name == 'nt':
+            # Windows
+            fabricio.local(
+                "for /F %i in ('docker images --filter \"dangling=true\" "
+                "--quiet') do @docker rmi %i"
+            )
 
     def push_image(self, tag=None):
         fabricio.local(

@@ -4,9 +4,11 @@ Changelog
 Release 0.3.13 (not released yet)
 ---------------------------------
 
+- Fix: ``DockerTasks.delete_dangling_images()`` now works on Windows (`#94`_)
 - Fix: restart policy cannot be applied to temporary containers (`#95`_)
 - Enhancement: ``DockerTasks.deploy()``: added option `prepare=True` which can be used to skip 'prepare' step during deploy
 
+.. _#94: https://github.com/renskiy/fabricio/issues/94
 .. _#95: https://github.com/renskiy/fabricio/issues/95
 
 Release 0.3.12
