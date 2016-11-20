@@ -1,8 +1,8 @@
 Changelog
 =========
 
-Release 0.3.13 (not released yet)
----------------------------------
+Release 0.3.14
+--------------
 
 - Fix: ``DockerTasks.delete_dangling_images()`` now works on Windows (`#94`_)
 - Fix: restart policy cannot be applied to temporary containers (`#95`_)

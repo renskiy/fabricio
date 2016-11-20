@@ -3,7 +3,7 @@
 This configuration based on PostgreSQL [streaming replication](https://wiki.postgresql.org/wiki/Streaming_Replication).
 
 ## Requirements
-* Fabricio 0.3.13 or greater
+* Fabricio 0.3.14 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 * [Docker](https://www.docker.com/products/overview) for Linux/Mac/Windows
