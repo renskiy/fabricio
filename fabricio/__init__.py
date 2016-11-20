@@ -18,7 +18,7 @@ def _command(
     **kwargs
 ):
     if quiet:
-        hide += ('output', 'aborts')
+        hide += ('output', 'aborts', 'warnings')
     log('{method}: {command}'.format(
         method=fabric_method.__name__,
         command=command,
