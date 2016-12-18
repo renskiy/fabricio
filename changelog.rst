@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.3.15
+--------------
+
+- Fix: ignore errors during dangaling images delete attempts (`#104`_)
+
+.. _#104: https://github.com/renskiy/fabricio/issues/104
+
 Release 0.3.14
 --------------
 
