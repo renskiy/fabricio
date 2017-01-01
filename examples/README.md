@@ -1,10 +1,14 @@
 # Fabricio examples and recipes
 
-## Regular
+## Basics
 
 * [Hello, World](hello_world/)
 * [Build Docker image](build_image/)
 
 ## Applications
 
-* [PostgreSQL Master-slave deployment configuration](db/postgres/master_slave/)
+* [PostgreSQL Master-slave configuration](db/postgres/master_slave/)
+
+## Services
+
+* [Docker Swarm](service/swarm)

@@ -1,5 +1,6 @@
 import hashlib
 import sys
+import warnings
 
 from fabric import colors, api as fab
 
@@ -15,6 +16,7 @@ def _command(
     quiet=True,
     hide=('running', ),
     show=(),
+    abort_exception=RuntimeError,
     **kwargs
 ):
     if quiet:
@@ -26,7 +28,7 @@ def _command(
     with fab.settings(
         fab.hide(*hide),
         fab.show(*show),
-        abort_exception=RuntimeError,
+        abort_exception=abort_exception,
         warn_only=ignore_errors,
     ):
         return fabric_method(command, **kwargs)
@@ -38,17 +40,17 @@ def run(
     stdout=sys.stdout,
     stderr=sys.stderr,
     use_cache=False,
+    cache_key='',
     **kwargs
 ):
     if use_cache:
-        def from_cache(*args, **kwargs):
-            return run.cache[cache_key]
         md5 = hashlib.md5()
         md5.update(command)
         md5.update(fab.env.host or '')
+        md5.update(cache_key)
         cache_key = md5.digest()
         if cache_key in run.cache:
-            return _command(fabric_method=from_cache, command=command, **kwargs)
+            return run.cache[cache_key]
     fabric_method = sudo and fab.sudo or fab.run
     result = _command(
         fabric_method=fabric_method,
@@ -65,13 +67,11 @@ run.cache = {}
 
 def local(command, use_cache=False, **kwargs):
     if use_cache:
-        def from_cache(*args, **kwargs):
-            return local.cache[cache_key]
         md5 = hashlib.md5()
         md5.update(command)
         cache_key = md5.digest()
         if cache_key in local.cache:
-            return _command(fabric_method=from_cache, command=command, **kwargs)
+            return local.cache[cache_key]
     result = _command(
         fabric_method=fab.local,
         command=command,
@@ -88,7 +88,7 @@ def log(message, color=colors.yellow, output=sys.stdout):
         fab.puts(color(message))
 
 
-def move(path_from, path_to, sudo=False, ignore_errors=False):
+def move_file(path_from, path_to, sudo=False, ignore_errors=False):
     return run(
         'mv {path_from} {path_to}'.format(
             path_from=path_from,
@@ -99,7 +99,7 @@ def move(path_from, path_to, sudo=False, ignore_errors=False):
     )
 
 
-def remove(path, sudo=False, force=True, ignore_errors=False):
+def remove_file(path, sudo=False, force=True, ignore_errors=False):
     return run(
         'rm {force}{path}'.format(
             force=force and '-f ' or '',
@@ -108,3 +108,19 @@ def remove(path, sudo=False, force=True, ignore_errors=False):
         sudo=sudo,
         ignore_errors=ignore_errors,
     )
+
+
+def move(*args, **kwargs):
+    warnings.warn(
+        "'move' is deprecated and will be removed in v0.4, "
+        "use 'move_file' instead", DeprecationWarning,
+    )
+    return move_file(*args, **kwargs)
+
+
+def remove(*args, **kwargs):
+    warnings.warn(
+        "'remove' is deprecated and will be removed in v0.4, "
+        "use 'remove_file' instead", DeprecationWarning,
+    )
+    return remove_file(*args, **kwargs)

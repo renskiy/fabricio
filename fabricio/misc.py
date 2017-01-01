@@ -1,3 +1,4 @@
+import os
 import re
 
 from cached_property import cached_property
@@ -60,3 +61,25 @@ class AvailableVagrantHosts(object):
             fab.puts('Added host: ' + host_string)
             hosts.append(host_string)
         return hosts
+
+
+def dangling_images_delete_command(os_name=None, repository=None):
+    os_name = os_name or os.name
+    repository = repository and ' {0}'.format(repository) or ''
+    if os_name == 'posix':
+        # macOS, Linux, etc.
+        return (
+            'for img in $(docker images --filter "dangling=true" '
+            '--quiet{repository}); do docker rmi "$img"; done'.format(
+                repository=repository,
+            )
+        )
+    if os_name == 'nt':
+        # Windows
+        return (
+            "for /F %i in ('docker images --filter \"dangling=true\" "
+            "--quiet{repository}') do @docker rmi %i".format(
+                repository=repository,
+            )
+        )
+    raise TypeError('unknown OS name: {os_name}'.format(os_name=os_name))

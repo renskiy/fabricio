@@ -2,91 +2,94 @@ import functools
 import json
 import warnings
 
-from cached_property import cached_property
+import six
+
 from docker import utils as docker_utils, auth as docker_auth
 
 import fabricio
 
-from fabricio.utils import Options
+from fabricio import utils
 
 from .registry import Registry
 
 
+class ImageNotFoundError(RuntimeError):
+    pass
+
+
 class Image(object):
 
-    container_options_mapping = (
-        ('user', 'user'),
-        ('publish', 'ports'),
-        ('env', 'env'),
-        ('volume', 'volumes'),
-        ('link', 'links'),
-        ('add-host', 'hosts'),
-        ('net', 'network'),
-        ('restart', 'restart_policy'),
-        ('stop-signal', 'stop_signal'),
-    )
+    name = None
+
+    tag = None
+
+    registry = None
+
+    use_digest = False
+
+    def __new__(cls, name=None, tag=None, registry=None):
+        if isinstance(name, Image):
+            return name[registry:tag]
+        return super(Image, cls).__new__(cls)
 
     def __init__(self, name=None, tag=None, registry=None):
-        if name:
+        if isinstance(name, six.string_types):
             _registry, _name, _tag = self.parse_image_name(name)
             self.name = _name
             self.tag = tag or _tag or 'latest'  # TODO 'latest' is unnecessary
-            registry = registry or _registry or None
-        else:
-            self.name = name
-            self.tag = tag
-        self.registry = registry and Registry(registry)
-        self.field_names = {}
-        self.container = None
+            self.registry = Registry(registry or _registry)
+            self.use_digest = tag is None and '@' in name
+        self.field_names = {}  # descriptor's cache
+        self.service = None
 
     def __str__(self):
-        if self.container is not None:
-            return self.id
-        return repr(self)
+        if self.service is not None:
+            image_id = getattr(self.service, 'image_id', None)
+            if image_id:
+                return image_id
+        return self.__repr__()
 
     def __repr__(self):
-        if self.registry:
-            return '{registry}/{name}:{tag}'.format(
-                registry=self.registry,
-                name=self.name,
-                tag=self.tag,
-            )
-        return '{name}:{tag}'.format(name=self.name, tag=self.tag)
+        if not self.name:
+            raise ValueError('image name is not set or empty')
+        tag_separator = '@' if self.use_digest else ':'
+        registry = self.registry and '{0}/'.format(self.registry) or ''
+        tag = self.tag and '{0}{1}'.format(tag_separator, self.tag) or ''
+        return '{registry}{name}{tag}'.format(
+            registry=registry,
+            name=self.name,
+            tag=tag,
+        )
 
-    def __get__(self, container, owner_cls):
-        if container is None:
+    def __get__(self, service, owner_cls):
+        if service is None:
             return self
         field_name = self.get_field_name(owner_cls)
-        image = container.__dict__.get(field_name)
+        image = service.__dict__.get(field_name)
         if image is None:
-            image = container.__dict__[field_name] = self.__class__(
-                name=self.name,
-                tag=self.tag,
-                registry=self.registry,
-            )
-        # this cause circular reference between container and image, but it's
-        # not a problem due to temporary nature of Fabric runtime
-        image.container = container
+            image = service.__dict__[field_name] = self[:]
+
+        # this causes circular reference between container and image, but it
+        # isn't an issue due to a temporary nature of Fabric runtime
+        image.service = service
+
         return image
 
-    def __set__(self, container, image):
-        field_name = self.get_field_name(type(container))
-        container.__dict__[field_name] = (
-            image[:]  # actually this means copy of image
-            if isinstance(image, Image) else
-            self.__class__(name=image)
-        )
+    def __set__(self, service, image):
+        field_name = self.get_field_name(type(service))
+        service.__dict__[field_name] = self.__class__(image)
 
     def __getitem__(self, item):
         if isinstance(item, slice):
             registry, tag = item.start, item.stop
         else:
             registry, tag = None, item
-        return self.__class__(
-            name=self.name,
-            tag=tag or self.tag,
-            registry=registry or self.registry,
-        )
+        registry = registry or self.registry
+        if self.use_digest and tag is None:
+            name = '{name}@{digest}'.format(name=self.name, digest=self.tag)
+        else:
+            tag, name = tag or self.tag, self.name
+        return self.__class__(name=name, tag=tag, registry=registry)
 
     def get_field_name(self, owner_cls):
         field_name = self.field_names.get(owner_cls)
@@ -96,7 +99,7 @@ class Image(object):
                     if field_name is not None:
                         raise ValueError(
                             'Same instance of Image used for more than one '
-                            'attributes of class {cls}'.format(
+                            'attribute of class {cls}'.format(
                                 cls=owner_cls.__name__,
                             )
                         )
@@ -108,44 +111,25 @@ class Image(object):
         repository, tag = docker_utils.parse_repository_tag(image)
         registry, name = docker_auth.resolve_repository_name(repository)
         if registry == docker_auth.INDEX_NAME:
-            registry = ''
+            registry = None
         return registry, name, tag
 
-    @classmethod
-    def make_container_options(cls, temporary=None, name=None, options=()):
-        options = dict(options)
-        container_options = Options()
-        for remap, option in cls.container_options_mapping:
-            container_options[remap] = options.pop(option, None)
-        container_options.update(
-            (
-                ('name', name),
-                ('rm', temporary),
-                ('tty', temporary),
-                ('interactive', temporary),
-                ('detach', temporary is not None and not temporary),
-            ),
-            **options
-        )
-        if temporary:
-            # temporary containers can't be restarted
-            container_options['restart'] = None
-        return container_options
-
     @property
+    def digest(self):
+        if not self.use_digest:
+            for repo_digest in self.info.get('RepoDigests', ()):
+                return repo_digest
+            raise RuntimeError('image has no digest')
+        return repr(self)
+
+    @utils.default_property
     def info(self):
         command = 'docker inspect --type image {image}'
-        try:
-            info = fabricio.run(command.format(image=self))
-        except RuntimeError:
-            raise RuntimeError("Image '{image}' not found".format(image=self))
-        return json.loads(str(info))[0]
-
-    @cached_property
-    def id(self):
-        if self.container is None:
-            return self.info['Id']
-        return self.container.info['Image']
+        info = fabricio.run(
+            command.format(image=self),
+            abort_exception=ImageNotFoundError,
+        )
+        return json.loads(info)[0]
 
     def get_delete_callback(self, force=False):
         command = 'docker rmi {force}{image}'
@@ -167,14 +151,35 @@ class Image(object):
             return delete_callback
         return delete_callback(ignore_errors=ignore_errors)
 
-    def run(
-        self,
-        cmd=None,
-        temporary=True,
-        quiet=True,
+    @classmethod
+    def make_container_options(
+        cls,
+        temporary=None,
         name=None,
         options=(),
-        **kwargs
+    ):
+        override_options = {}
+        if temporary:
+            override_options['restart'] = None
+        return utils.Options(
+            options,
+            name=name,
+            rm=temporary,
+            tty=temporary,
+            interactive=temporary,
+            detach=temporary is not None and not temporary,
+            **override_options
+        )
+
+    def run(
+        self,
+        command=None,
+        cmd=None,  # deprecated
+        name=None,
+        temporary=True,
+        options=(),
+        quiet=True,
+        **kwargs  # deprecated
     ):
         if kwargs:
             warnings.warn(
@@ -183,11 +188,17 @@ class Image(object):
                 category=RuntimeWarning, stacklevel=2,
             )
             options = dict(options, **kwargs)
-        command = 'docker run {options} {image} {cmd}'
+        if cmd:
+            warnings.warn(
+                "'cmd' argument deprecated and will be removed in v0.4, "
+                "use 'command' instead",
+                category=RuntimeWarning, stacklevel=2,
+            )
+        run_command = 'docker run {options} {image} {command}'
         return fabricio.run(
-            command.format(
+            run_command.format(
                 image=self,
-                cmd=cmd or '',
+                command=command or cmd or '',
                 options=self.make_container_options(
                     temporary=temporary,
                     name=name,
@@ -195,4 +206,20 @@ class Image(object):
                 ),
             ),
             quiet=quiet,
+        )
+
+    def create(self, command=None, name=None, options=()):
+        run_command = 'docker create {options} {image}{command}'
+        return fabricio.run(
+            run_command.format(
+                image=self,
+                command=command and ' {0}'.format(command) or '',
+                options=self.make_container_options(name=name, options=options),
+            ),
+        )
+
+    def pull(self):
+        return fabricio.run(
+            'docker pull {image}'.format(image=self),
+            quiet=False,
         )

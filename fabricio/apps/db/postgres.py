@@ -11,12 +11,12 @@ from fabric.contrib import files
 
 import fabricio
 
-from fabricio import docker
+from fabricio import docker, utils
 from fabricio.docker.container import Attribute
 from fabricio.utils import Options
 
 
-class PostgresqlBackupMixin(docker.Container):
+class PostgresqlBackupMixin(docker.BaseService):
     """
     Your Docker image must have pg_dump and pg_restore installed in order
     to run backup and restore respectively
@@ -102,12 +102,13 @@ class PostgresqlBackupMixin(docker.Container):
         ])
         return 'pg_dump {options}'.format(options=options)
 
+    @utils.once_per_command
     def backup(self):
         if self.db_backup_dir is None:
             fab.abort('db_backup_dir not set, can\'t continue with backup')
-        cmd = self.make_backup_command()
+        command = self.make_backup_command()
         self.image.run(
-            cmd=cmd,
+            command=command,
             quiet=False,
             options=self.safe_options,
         )
@@ -121,12 +122,13 @@ class PostgresqlBackupMixin(docker.Container):
         options.update(self.db_restore_options)
         options.update([
             ('dbname', 'template1'),  # use any existing DB
-            ('jobs', str(self.db_restore_workers)),
+            ('jobs', self.db_restore_workers),
             ('file', os.path.join(self.db_backup_dir, backup_filename)),
         ])
         return 'pg_restore {options}'.format(options=options)
 
-    def restore(self, backup_filename=None):
+    @utils.once_per_command
+    def restore(self, backup_name=None):
         """
         Before run this method you have somehow to disable incoming connections,
         e.g. by stopping all database client containers:
@@ -138,12 +140,12 @@ class PostgresqlBackupMixin(docker.Container):
         if self.db_backup_dir is None:
             fab.abort('db_backup_dir not set, can\'t continue with restore')
 
-        if backup_filename is None:
+        if backup_name is None:
             raise ValueError('backup_filename not provided')
 
-        cmd = self.make_restore_command(backup_filename)
+        command = self.make_restore_command(backup_name)
         self.image.run(
-            cmd=cmd,
+            command=command,
             quiet=False,
             options=self.safe_options,
         )
@@ -157,7 +159,7 @@ class PostgresqlContainer(docker.Container):
             'postgresql_conf is deprecated and will be removed in ver. 0.4, '
             'use pg_conf instead', DeprecationWarning,
         )
-        return NotImplemented
+        return 'postgresql.conf'
 
     @Attribute
     def pg_conf(self):
@@ -173,7 +175,7 @@ class PostgresqlContainer(docker.Container):
             'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
             'use pg_hba instead', DeprecationWarning,
         )
-        return NotImplemented
+        return 'pg_hba.conf'
 
     @Attribute
     def pg_hba(self):
@@ -215,7 +217,7 @@ class PostgresqlContainer(docker.Container):
         old_content = old_file.getvalue()
         need_update = content != old_content
         if need_update:
-            fabricio.move(
+            fabricio.move_file(
                 path_from=path,
                 path_to=path + '.backup',
                 sudo=True,
@@ -238,7 +240,7 @@ class PostgresqlContainer(docker.Container):
         self.image[registry:tag].run(
             # official PostgreSQL image executes 'postgres initdb' before
             # any 'postgres' command (see /docker-entrypoint.sh),
-            # therefore if you use image other then official, you should
+            # therefore if you use image other then official, you may need
             # implement your own `create_db()`
             'postgres --version',
             options=self.safe_options,
@@ -274,17 +276,17 @@ class PostgresqlContainer(docker.Container):
                 return False  # nothing updated
             try:
                 # remove container backup to prevent reverting to old version
-                self.get_backup_container().delete(delete_image=True)
+                self.get_backup_version().delete(delete_image=True)
             except RuntimeError:
                 pass  # backup container not found
         if not main_config_updated:
             # remove main config backup to prevent reverting to old version
             main_conf_backup = main_conf + '.backup'
-            fabricio.remove(main_conf_backup, ignore_errors=True, sudo=True)
+            fabricio.remove_file(main_conf_backup, ignore_errors=True, sudo=True)
         if not hba_config_updated:
             # remove pg_hba config backup to prevent reverting to old version
             hba_conf_backup = hba_conf + '.backup'
-            fabricio.remove(hba_conf_backup, ignore_errors=True, sudo=True)
+            fabricio.remove_file(hba_conf_backup, ignore_errors=True, sudo=True)
         return True
 
     def revert(self):
@@ -292,13 +294,13 @@ class PostgresqlContainer(docker.Container):
         main_conf_backup = main_conf + '.backup'
         hba_conf = os.path.join(self.pg_data, 'pg_hba.conf')
         hba_conf_backup = hba_conf + '.backup'
-        main_config_reverted = fabricio.move(
+        main_config_reverted = fabricio.move_file(
             path_from=main_conf_backup,
             path_to=main_conf,
             ignore_errors=True,
             sudo=True,
         ).succeeded
-        hba_config_reverted = fabricio.move(
+        hba_config_reverted = fabricio.move_file(
             path_from=hba_conf_backup,
             path_to=hba_conf,
             ignore_errors=True,
@@ -317,7 +319,7 @@ class PostgresqlContainer(docker.Container):
 
 class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
 
-    pg_recovery = Attribute()
+    pg_recovery = Attribute(default='recovery.conf')
 
     pg_recovery_primary_conninfo = Attribute(
         default="primary_conninfo = 'host={host} port={port} user={user}'"
@@ -344,7 +346,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         self.instances = multiprocessing.JoinableQueue()
 
     def copy_data_from_master(self, tag=None, registry=None):
-        pg_basebackup_cmd = (
+        pg_basebackup_command = (
             'pg_basebackup'
             ' --progress'
             ' --write-recovery-conf'
@@ -359,11 +361,11 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
                 port=self.pg_recovery_port,
             )
         )
-        cmd = "/bin/bash -c '{pg_basebackup_cmd}'".format(
-            pg_basebackup_cmd=pg_basebackup_cmd,
+        command = "/bin/bash -c '{pg_basebackup_command}'".format(
+            pg_basebackup_command=pg_basebackup_command,
         )
         self.image[registry:tag].run(
-            cmd=cmd,
+            command=command,
             options=self.options,
             quiet=False,
         )
@@ -414,7 +416,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             self.master_lock.acquire()
             if not self.master_obtained.is_set():
                 if db_exists:
-                    fabricio.move(
+                    fabricio.move_file(
                         path_from=recovery_conf_file,
                         path_to=recovery_conf_file + '.backup',
                         sudo=True,

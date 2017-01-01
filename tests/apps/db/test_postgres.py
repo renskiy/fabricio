@@ -13,7 +13,8 @@ import fabricio
 
 from fabricio.apps.db import postgres
 from fabricio import docker
-from tests import SucceededResult, FailedResult
+from tests import SucceededResult, FailedResult, docker_run_args_parser, \
+    docker_inspect_args_parser, args_parser
 
 
 class TestContainer(postgres.PostgresqlContainer):
@@ -25,6 +26,376 @@ class TestContainer(postgres.PostgresqlContainer):
     pg_hba = 'pg_hba.conf'
 
     pg_data = '/data'
+
+
+class PostgresqlBackupMixinTestCase(unittest.TestCase):
+
+    class BackupContainer(docker.Container, postgres.PostgresqlBackupMixin):
+        pass
+
+    class BackupService(docker.Service, postgres.PostgresqlBackupMixin):
+        pass
+
+    def setUp(self):
+        self.stderr = sys.stderr
+        sys.stderr = six.BytesIO()
+
+    def tearDown(self):
+        sys.stderr = self.stderr
+
+    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
+    def test_backup(self, *args):
+        cases = dict(
+            container_default=dict(
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    docker_inspect_args_parser,
+                    docker_run_args_parser,
+                ],
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
+                ),
+                expected_args=[
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name',
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image_id',
+                        'command': ['pg_dump', '--username', 'postgres', '--if-exists', '--create', '--clean', '--format', 'c', '--jobs', '1', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                service_type=self.BackupContainer,
+            ),
+            service_default=dict(
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}}}}]'),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                ],
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
+                ),
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['pg_dump', '--username', 'postgres', '--if-exists', '--create', '--clean', '--format', 'c', '--jobs', '1', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                service_type=self.BackupService,
+            ),
+            container_regular=dict(
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    docker_inspect_args_parser,
+                    docker_run_args_parser,
+                ],
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
+                    db_user='user',
+                    db_host='localhost',
+                    db_port=5432,
+                    db_name='test_db',
+                    db_backup_format='t',
+                    db_backup_compress_level=9,
+                    db_backup_workers=2,
+                ),
+                expected_args=[
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name',
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image_id',
+                        'command': ['pg_dump', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--format', 't', '--dbname', 'test_db', '--compress', '9', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                service_type=self.BackupContainer,
+            ),
+            service_regular=dict(
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}}}}]'),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                ],
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
+                    db_user='user',
+                    db_host='localhost',
+                    db_port=5432,
+                    db_name='test_db',
+                    db_backup_format='t',
+                    db_backup_compress_level=9,
+                    db_backup_workers=2,
+                ),
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['pg_dump', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--format', 't', '--dbname', 'test_db', '--compress', '9', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                service_type=self.BackupService,
+            ),
+        )
+
+        def test_command(command, *args, **kwargs):
+            parser = next(args_parsers)
+            options = parser.parse_args(command.split())
+            self.assertDictEqual(vars(options), next(expected_args))
+            return next(side_effect)
+        for case, data in cases.items():
+            expected_args = iter(data['expected_args'])
+            args_parsers = iter(data['args_parsers'])
+            side_effect = iter(data['side_effect'])
+            with self.subTest(case=case):
+                service = data['service_type'](
+                    name='name',
+                    image='image:tag',
+                    **data['init_kwargs']
+                )
+                with mock.patch.object(fabricio, 'run', side_effect=test_command) as run:
+                    fab.env.command = '{0}__{1}'.format(self, case)
+                    service.backup()
+                    self.assertEqual(run.call_count, len(data['side_effect']))
+
+    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
+    def test_backup_raises_error_if_db_backup_dir_not_set(self, *args):
+        class AbortException(Exception):
+            pass
+        cases = dict(
+            container=self.BackupContainer,
+            service=self.BackupService,
+        )
+        for case, service_type in cases.items():
+            fab.env.command = '{0}__{1}'.format(self, case)
+            with self.subTest(case=case):
+                service = service_type(name='name')
+                with fab.settings(abort_exception=AbortException):
+                    with self.assertRaises(AbortException):
+                        service.backup()
+
+    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
+    def test_restore(self, *args):
+        cases = dict(
+            container_default=dict(
+                expected_args=[
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name',
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image_id',
+                        'command': ['pg_restore', '--username', 'postgres', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '4', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                args_parsers=[
+                    docker_inspect_args_parser,
+                    docker_run_args_parser,
+                ],
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                ),
+                service_type=self.BackupContainer,
+            ),
+            service_default=dict(
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['pg_restore', '--username', 'postgres', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '4', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                ],
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}}}}]'),
+                    SucceededResult(),
+                ),
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                ),
+                service_type=self.BackupService,
+            ),
+            container_regular=dict(
+                expected_args=[
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name',
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image_id',
+                        'command': ['pg_restore', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                args_parsers=[
+                    docker_inspect_args_parser,
+                    docker_run_args_parser,
+                ],
+                side_effect=(
+                    SucceededResult('[{"Image": "image_id"}]'),
+                    SucceededResult(),
+                ),
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
+                    db_user='user',
+                    db_host='localhost',
+                    db_port=5432,
+                    db_name='test_db',
+                    db_backup_format='t',
+                    db_restore_workers=2,
+                ),
+                service_type=self.BackupContainer,
+            ),
+            service_regular=dict(
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['pg_restore', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                    },
+                ],
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                ],
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}}}}]'),
+                    SucceededResult(),
+                ),
+                init_kwargs=dict(
+                    db_backup_dir='/data/backup/postgres',
+                    db_backup_filename='backup.dump',
+                    db_user='user',
+                    db_host='localhost',
+                    db_port=5432,
+                    db_name='test_db',
+                    db_backup_format='t',
+                    db_restore_workers=2,
+                ),
+                service_type=self.BackupService,
+            ),
+        )
+
+        def test_command(command, *args, **kwargs):
+            parser = next(args_parsers)
+            options = parser.parse_args(command.split())
+            self.assertDictEqual(vars(options), next(expected_args))
+            return next(side_effect)
+        for case, data in cases.items():
+            expected_args = iter(data['expected_args'])
+            args_parsers = iter(data['args_parsers'])
+            side_effect = iter(data['side_effect'])
+            with self.subTest(case=case):
+                service = data['service_type'](
+                    name='name',
+                    image='image:tag',
+                    **data['init_kwargs']
+                )
+                with mock.patch.object(fabricio, 'run', side_effect=test_command) as run:
+                    fab.env.command = '{0}__{1}'.format(self, case)
+                    service.restore(backup_name='backup.dump')
+                    self.assertEqual(run.call_count, len(data['side_effect']))
+
+    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
+    def test_restore_raises_error_if_db_backup_dir_not_set(self, *args):
+        class AbortException(Exception):
+            pass
+        cases = dict(
+            container=self.BackupContainer,
+            service=self.BackupService,
+        )
+        for case, service_type in cases.items():
+            fab.env.command = '{0}__{1}'.format(self, case)
+            with self.subTest(case=case):
+                service = service_type(name='name')
+                with fab.settings(abort_exception=AbortException):
+                    with self.assertRaises(AbortException):
+                        service.restore(backup_name='backup.dump')
+
+    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
+    def test_restore_raises_error_if_backup_filename_not_provided(self, *args):
+        cases = dict(
+            container=self.BackupContainer,
+            service=self.BackupService,
+        )
+        for case, service_type in cases.items():
+            fab.env.command = '{0}__{1}'.format(self, case)
+            with self.subTest(case=case):
+                service = service_type(
+                    name='name',
+                    db_backup_dir='/data/backup/postgres',
+                )
+                with self.assertRaises(ValueError):
+                    service.restore()
 
 
 class PostgresqlContainerTestCase(unittest.TestCase):
@@ -43,8 +414,9 @@ class PostgresqlContainerTestCase(unittest.TestCase):
 
     @mock.patch.object(fab, 'get')
     @mock.patch.object(fab, 'put')
+    @mock.patch.object(postgres.PostgresqlContainer, 'create_db')
     @mock.patch.object(files, 'exists', return_value=True)
-    def test_update(self, exists, *args):
+    def test_update(self, exists, create_db, *args):
         cases = dict(
             updated_without_config_change=dict(
                 db_exists=True,
@@ -133,7 +505,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker kill --signal HUP name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi image_id', ignore_errors=True),
@@ -162,7 +534,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker kill --signal HUP name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('rm -f /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                 ],
                 side_effect=(
@@ -200,7 +572,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi image_id', ignore_errors=True),
@@ -229,7 +601,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('rm -f /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                 ],
                 side_effect=(
@@ -268,7 +640,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi image_id', ignore_errors=True),
@@ -297,7 +669,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                 ],
                 side_effect=(
                     SucceededResult(),
@@ -332,14 +704,12 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('docker run --volume /data:/data --stop-signal INT --rm --tty --interactive image:tag postgres --version', quiet=False),
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
-                    mock.call('docker inspect --type container name_backup'),
+                    mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                 ],
                 side_effect=(
-                    SucceededResult(),
                     SucceededResult(),
                     SucceededResult(),
                     SucceededResult(),
@@ -349,6 +719,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 parent_update_returned=False,
                 expected_update_kwargs=dict(force=False, tag=None, registry=None),
                 expected_result=True,
+                expected_db_creation=True,
             ),
         )
         for case, data in cases.items():
@@ -385,6 +756,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                                 self.assertListEqual(run.mock_calls, data['expected_commands'])
                                 self.assertEqual(result, data['expected_result'])
                                 update.assert_called_once_with(**data['expected_update_kwargs'])
+                                if data.get('expected_db_creation', False):
+                                    create_db.assert_called_once()
 
     def test_revert(self):
         cases = dict(
@@ -514,128 +887,6 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     expected_commands,
                 )
 
-    def test_backup(self):
-        cases = dict(
-            default=dict(
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive image_id pg_dump --username postgres --if-exists --create --clean --format c --jobs 1 --file /data/backup/postgres/backup.dump', quiet=False),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "image_id"}]'),
-                    SucceededResult(),
-                ),
-                container_class_attributes=dict(
-                    db_backup_dir='/data/backup/postgres',
-                    db_backup_filename='backup.dump',
-                ),
-            ),
-            regular=dict(
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive image_id pg_dump --username user --host localhost --port 5432 --if-exists --create --clean --format t --dbname test_db --compress 9 --jobs 2 --file /data/backup/postgres/backup.dump', quiet=False),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "image_id"}]'),
-                    SucceededResult(),
-                ),
-                container_class_attributes=dict(
-                    db_backup_dir='/data/backup/postgres',
-                    db_backup_filename='backup.dump',
-                    db_user='user',
-                    db_host='localhost',
-                    db_port=5432,
-                    db_name='test_db',
-                    db_backup_format='t',
-                    db_backup_compress_level=9,
-                    db_backup_workers=2,
-                ),
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                container_type = type(
-                    'TestContainer',
-                    (postgres.PostgresqlBackupMixin,),
-                    data['container_class_attributes'],
-                )
-                container = container_type(name='name')
-                with mock.patch.object(fabricio, 'run', side_effect=data['side_effect']) as run:
-                    container.backup()
-                    self.assertListEqual(run.mock_calls, data['expected_commands'])
-
-    def test_backup_raises_error_if_db_backup_dir_not_set(self):
-        class AbortException(Exception):
-            pass
-        container = postgres.PostgresqlBackupMixin(name='name')
-        with fab.settings(abort_exception=AbortException):
-            with self.assertRaises(AbortException):
-                container.backup()
-
-    def test_restore(self):
-        cases = dict(
-            default=dict(
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive image_id pg_restore --username postgres --if-exists --create --clean --dbname template1 --jobs 4 --file /data/backup/postgres/backup.dump', quiet=False),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "image_id"}]'),
-                    SucceededResult(),
-                ),
-                container_class_attributes=dict(
-                    db_backup_dir='/data/backup/postgres',
-                ),
-            ),
-            regular=dict(
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive image_id pg_restore --username user --host localhost --port 5432 --if-exists --create --clean --dbname template1 --jobs 2 --file /data/backup/postgres/backup.dump', quiet=False),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "image_id"}]'),
-                    SucceededResult(),
-                ),
-                container_class_attributes=dict(
-                    db_backup_dir='/data/backup/postgres',
-                    db_backup_filename='backup.dump',
-                    db_user='user',
-                    db_host='localhost',
-                    db_port=5432,
-                    db_name='test_db',
-                    db_backup_format='t',
-                    db_restore_workers=2,
-                ),
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                container_type = type(
-                    'TestContainer',
-                    (postgres.PostgresqlBackupMixin,),
-                    data['container_class_attributes'],
-                )
-                container = container_type(name='name')
-                with mock.patch.object(fabricio, 'run', side_effect=data['side_effect']) as run:
-                    container.restore(backup_filename='backup.dump')
-                    self.assertListEqual(run.mock_calls, data['expected_commands'])
-
-    def test_restore_raises_error_if_db_backup_dir_not_set(self):
-        class AbortException(Exception):
-            pass
-        container = postgres.PostgresqlBackupMixin(name='name')
-        with fab.settings(abort_exception=AbortException):
-            with self.assertRaises(AbortException):
-                container.restore(backup_filename='backup.dump')
-
-    def test_restore_raises_error_if_backup_filename_not_provided(self):
-        class Container(postgres.PostgresqlBackupMixin):
-            db_backup_dir = '/data/backup/postgres'
-
-        container = Container(name='name')
-        with self.assertRaises(ValueError):
-            container.restore()
-
 
 class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
 
@@ -703,9 +954,17 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_result=True,
                 set_master='master',
                 expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
-                expected_commands=[
-                    mock.call("docker run --volume /data:/data --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=master --username=postgres --port=5432'", quiet=False),
-                ],
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'volume': ['/data:/data'],
+                    'stop-signal': 'INT',
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:latest',
+                    'command': ['/bin/bash', '-c', "'pg_basebackup", '--progress', '--write-recovery-conf', '--xlog-method=stream', '--pgdata=$PGDATA', '--host=master', '--username=postgres', "--port=5432'"],
+                },
             ),
             master_promotion_from_scratch=dict(
                 db_exists=False,
@@ -727,9 +986,14 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 init_kwargs=dict(pg_recovery_master_promotion_enabled=True),
             ),
         )
+
+        def test_command(command, *args, **kwargs):
+            options = docker_run_args_parser.parse_args(command.split())
+            self.assertDictEqual(vars(options), data['expected_args'])
         for case, data in cases.items():
             with self.subTest(case=case):
                 run.reset_mock()
+                run.side_effect = data.get('expected_args') and test_command
                 postgres.open = mock.MagicMock(
                     return_value=six.BytesIO(data.get('old_recovery_conf', '')),
                 )
@@ -748,7 +1012,9 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                     result = container.update_recovery_config()
                     self.assertEqual(result, data['expected_result'])
                     self.assertEqual(container.multiprocessing_data.master, data['expected_master_host'])
-                    self.assertListEqual(run.mock_calls, data['expected_commands'])
+                    expected_commands = data.get('expected_commands')
+                    if expected_commands:
+                        self.assertListEqual(run.mock_calls, expected_commands)
                     if 'expected_recovery_conf' in data:
                         update_config.assert_called_once_with(
                             content=data['expected_recovery_conf'],
@@ -760,6 +1026,23 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'get_recovery_config')
     @mock.patch.object(fabricio, 'run')
     def test_update_recovery_config_does_not_promote_new_master_without_db_if_slave_with_db_exists(self, run, *args):
+        def test_command(command, *args, **kwargs):
+            options = docker_run_args_parser.parse_args(command.split())
+            self.assertDictEqual(
+                vars(options),
+                {
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'volume': ['/data:/data'],
+                    'stop-signal': 'INT',
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:latest',
+                    'command': ['/bin/bash', '-c', "'pg_basebackup", '--progress', '--write-recovery-conf', '--xlog-method=stream', '--pgdata=$PGDATA', '--host=promoted_master', '--username=postgres', "--port=5432'"],
+                },
+            )
+        run.side_effect = test_command
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', image='image', pg_data='/data',
             options=dict(volumes='/data:/data'),
@@ -767,12 +1050,6 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         container.multiprocessing_data.db_exists = True
         container.multiprocessing_data.master = 'promoted_master'
         container.update_recovery_config()
-        self.assertListEqual(
-            run.mock_calls,
-            [
-                mock.call("docker run --volume /data:/data --stop-signal INT --rm --tty --interactive image:latest /bin/bash -c 'pg_basebackup --progress --write-recovery-conf --xlog-method=stream --pgdata=$PGDATA --host=promoted_master --username=postgres --port=5432'", quiet=False),
-            ],
-        )
 
     @mock.patch.object(postgres.PostgresqlContainer, 'db_exists', return_value=True)
     @mock.patch.object(files, 'exists', return_value=True)
@@ -791,7 +1068,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         class AbortException(Exception):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
-            'name',
+            name='name',
             options=dict(volumes='/data:/data'),
         )
         fab.env.parallel = False
@@ -803,7 +1080,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         class AbortException(Exception):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
-            'name',
+            name='name',
             options=dict(volumes='/data:/data'),
         )
         with fab.settings(abort_exception=AbortException):
@@ -874,7 +1151,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         class AbortException(Exception):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
-            'name', options=dict(volumes='volume'),
+            name='name', options=dict(volumes='volume'),
         )
         container.multiprocessing_data.exception = Exception('exception')
         with fab.settings(abort_exception=AbortException):
@@ -899,7 +1176,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             ),
         )
         container = postgres.StreamingReplicatedPostgresqlContainer(
-            'name', options=dict(volumes='volume'),
+            name='name', options=dict(volumes='volume'),
         )
         with fab.settings(parallel=True):
             for case, data in cases.items():

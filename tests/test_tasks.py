@@ -1,17 +1,17 @@
-import os
 import sys
 
 import mock
 import six
 import unittest2 as unittest
 
-from fabric import api as fab
+from fabric import api as fab, state
 from fabric.contrib import console
 from fabric.main import load_tasks_from_module, is_task_module, is_task_object
 
 import fabricio
+import fabricio.tasks
 
-from fabricio import docker, tasks
+from fabricio import docker, tasks, utils
 
 
 class TestContainer(docker.Container):
@@ -32,7 +32,7 @@ class TestCase(unittest.TestCase):
 
         mocked_task = mock.Mock()
 
-        @tasks.skip_unknown_host
+        @fabricio.tasks.skip_unknown_host
         def task():
             mocked_task()
 
@@ -86,6 +86,38 @@ class TestCase(unittest.TestCase):
                         self.assertEqual(data['expected_infrastructure'], fab.env.infrastructure)
                         with self.assertRaises(AbortException):
                             fab.execute(infrastructure.default)
+
+    def test__uncrawl(self):
+        cases = dict(
+            case1=dict(
+                command='command1',
+                expected='layer1.layer2.command1',
+            ),
+            case2=dict(
+                command='command2',
+                expected='layer1.layer2.command2',
+            ),
+            case3=dict(
+                command='command3',
+                expected='layer1.command3',
+            ),
+        )
+        commands = dict(
+            layer1=dict(
+                layer2=dict(
+                    command1='command1',
+                    command2='command2',
+                ),
+                command3='command3',
+            ),
+        )
+        with utils.patch(state, 'commands', commands):
+            for case, data in cases.items():
+                with self.subTest(case=case):
+                    self.assertEqual(
+                        tasks._uncrawl(data['command']),
+                        data['expected'],
+                    )
 
 
 class TasksTestCase(unittest.TestCase):
@@ -144,37 +176,39 @@ class DockerTasksTestCase(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
+        self.stderr, sys.stderr = sys.stderr, six.BytesIO()
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
 
     def tearDown(self):
         self.fab_settings.__exit__(None, None, None)
+        sys.stderr = self.stderr
 
     def test_commands_list(self):
         cases = dict(
             default=dict(
-                init_kwargs=dict(container='container'),
+                init_kwargs=dict(service='service'),
                 expected_commands_list=['pull', 'rollback', 'update', 'deploy'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate_back', 'backup', 'restore'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore'],
             ),
             prepare_tasks=dict(
-                init_kwargs=dict(container='container', registry='registry'),
+                init_kwargs=dict(service='service', registry='registry'),
                 expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'prepare', 'push'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate_back', 'backup', 'restore'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore'],
             ),
             migrate_tasks=dict(
-                init_kwargs=dict(container='container', migrate_commands=True),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'migrate', 'migrate_back'],
+                init_kwargs=dict(service='service', migrate_commands=True),
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'migrate', 'migrate-back'],
                 unexpected_commands_list=['revert', 'backup', 'restore', 'prepare', 'push'],
             ),
             backup_tasks=dict(
-                init_kwargs=dict(container='container', backup_commands=True),
+                init_kwargs=dict(service='service', backup_commands=True),
                 expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate_back', 'prepare', 'push'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'prepare', 'push'],
             ),
             all_tasks=dict(
-                init_kwargs=dict(container='container', backup_commands=True, migrate_commands=True, registry='registry'),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate_back', 'prepare', 'push'],
+                init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry'),
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push'],
                 unexpected_commands_list=['revert'],
             ),
         )
@@ -189,13 +223,21 @@ class DockerTasksTestCase(unittest.TestCase):
 
     @mock.patch.multiple(TestContainer, revert=mock.DEFAULT, migrate_back=mock.DEFAULT)
     def test_rollback(self, revert, migrate_back):
-        tasks_list = tasks.DockerTasks(container=TestContainer('name'), hosts=['host'])
+        tasks_list = tasks.DockerTasks(service=TestContainer(), hosts=['host'])
         rollback = mock.Mock()
         rollback.attach_mock(migrate_back, 'migrate_back')
         rollback.attach_mock(revert, 'revert')
         revert.return_value = True
 
+        # with migrate_back disabled
+        tasks_list.rollback.name = '{0}__migrate_disabled'.format(self)
+        fab.execute(tasks_list.rollback, migrate_back='no')
+        migrate_back.assert_not_called()
+        revert.assert_called_once()
+        rollback.reset_mock()
+
         # default case
+        tasks_list.rollback.name = '{0}__default'.format(self)
         fab.execute(tasks_list.rollback)
         self.assertListEqual(
             [mock.call.migrate_back(), mock.call.revert()],
@@ -203,15 +245,9 @@ class DockerTasksTestCase(unittest.TestCase):
         )
         rollback.reset_mock()
 
-        # with migrate_back disabled
-        fab.execute(tasks_list.rollback, migrate_back='no')
-        migrate_back.assert_not_called()
-        revert.assert_called_once()
-        rollback.reset_mock()
-
-    def test_pull_raises_error_if_no_ssh_tunnel_credentials_can_be_obtained(self):
+    def test_pull_raises_error_if_ssh_tunnel_credentials_can_not_be_obtained(self):
         tasks_list = tasks.DockerTasks(
-            container=docker.Container(name='name', image='image'),
+            service=docker.Container(name='name', image='image'),
             ssh_tunnel_port=1234,
             hosts=['host'],
         )
@@ -228,8 +264,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -238,8 +274,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull registry:5000/test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry='registry:5000',
             ),
@@ -249,10 +285,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 expected_calls=[
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='registry'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest registry:5000/test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -266,10 +300,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push host:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi host:5000/test:latest', use_cache=True),
                     mock.call.run('docker pull host:5000/test:latest', quiet=False),
-                    mock.call.run('docker tag host:5000/test:latest test:latest'),
-                    mock.call.run('docker rmi host:5000/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='host:5000'),
+                    mock.call.update(force=False, tag=None, registry='host:5000'),
                 ],
                 image_registry=None,
             ),
@@ -284,10 +316,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker rmi host:5000/test:latest', use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry=None,
             ),
@@ -296,10 +326,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(registry='host:5000'),
                 expected_calls=[
                     mock.call.run('docker pull host:5000/test:latest', quiet=False),
-                    mock.call.run('docker tag host:5000/test:latest test:latest'),
-                    mock.call.run('docker rmi host:5000/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='host:5000'),
+                    mock.call.update(force=False, tag=None, registry='host:5000'),
                 ],
                 image_registry=None,
             ),
@@ -309,10 +337,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 expected_calls=[
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry=None,
             ),
@@ -326,10 +352,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push host:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi host:5000/test:latest', use_cache=True),
                     mock.call.run('docker pull host:5000/test:latest', quiet=False),
-                    mock.call.run('docker tag host:5000/test:latest test:latest'),
-                    mock.call.run('docker rmi host:5000/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='host:5000'),
+                    mock.call.update(force=False, tag=None, registry='host:5000'),
                 ],
                 image_registry=None,
             ),
@@ -344,10 +368,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker rmi host:5000/test:latest', use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry=None,
             ),
@@ -361,10 +383,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push host:4000/test:latest', quiet=False, use_cache=True),
                     mock.call.local('docker rmi host:4000/test:latest', use_cache=True),
                     mock.call.run('docker pull host:4000/test:latest', quiet=False),
-                    mock.call.run('docker tag host:4000/test:latest registry:5000/test:latest'),
-                    mock.call.run('docker rmi host:4000/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='host:4000'),
+                    mock.call.update(force=False, tag=None, registry='host:4000'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -379,10 +399,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker rmi host:4000/test:latest', use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=4000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest registry:5000/test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -391,8 +409,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=True, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=True, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -401,8 +419,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -411,8 +429,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:tag', quiet=False),
-                    mock.call.migrate(tag='tag'),
-                    mock.call.update(force=False, tag='tag'),
+                    mock.call.migrate(tag='tag', registry=None),
+                    mock.call.update(force=False, tag='tag', registry=None),
                 ],
                 image_registry=None,
             ),
@@ -422,8 +440,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 expected_calls=[
                     mock.call.backup(),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -432,8 +450,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -442,7 +460,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -451,8 +469,8 @@ class DockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -468,10 +486,8 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=1234, local_port=4000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:tag', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:tag registry:5000/test:tag'),
-                    mock.call.run('docker rmi localhost:1234/test:tag'),
-                    mock.call.migrate(tag='tag'),
-                    mock.call.update(force=True, tag='tag'),
+                    mock.call.migrate(tag='tag', registry='localhost:1234'),
+                    mock.call.update(force=True, tag='tag', registry='localhost:1234'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -488,81 +504,16 @@ class DockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 deploy.reset_mock()
                 tasks_list = tasks.DockerTasks(
-                    container=docker.Container(
+                    service=docker.Container(
                         name='name',
                         image=docker.Image('test', registry=data['image_registry']),
                     ),
                     hosts=['host'],
                     **data['init_kwargs']
                 )
-                tasks_list.deploy(**data['deploy_kwargs'])
+                tasks_list.deploy.name = '{0}__{1}'.format(self, case)
+                fab.execute(tasks_list.deploy, **data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
-
-    @mock.patch.object(docker.Container, 'backup')
-    def test_backup_runs_once_per_infrastructure(self, backup):
-        @tasks.infrastructure
-        def inf1():
-            pass
-
-        @tasks.infrastructure
-        def inf2():
-            pass
-
-        cases = [
-            ('no_infrastructure', dict(
-                infrastructure=None,
-            )),
-            ('infrastructure1', dict(
-                infrastructure=inf1,
-            )),
-            ('infrastructure2', dict(
-                infrastructure=inf2,
-            )),
-        ]
-        for case, data in cases:
-            with self.subTest(case=case):
-                if data['infrastructure']:
-                    fab.execute(data['infrastructure'].confirm)
-                backup.reset_mock()
-                container = docker.Container('name')
-                commands = tasks.DockerTasks(container=container, hosts=['host'])
-                fab.execute(commands.backup)
-                backup.assert_called_once()
-                fab.execute(commands.backup)
-                backup.assert_called_once()
-
-    @mock.patch.object(docker.Container, 'restore')
-    def test_restore_runs_once_per_infrastructure(self, restore):
-        @tasks.infrastructure
-        def inf1():
-            pass
-
-        @tasks.infrastructure
-        def inf2():
-            pass
-
-        cases = [
-            ('no_infrastructure', dict(
-                infrastructure=None,
-            )),
-            ('infrastructure1', dict(
-                infrastructure=inf1,
-            )),
-            ('infrastructure2', dict(
-                infrastructure=inf2,
-            )),
-        ]
-        for case, data in cases:
-            with self.subTest(case=case):
-                if data['infrastructure']:
-                    fab.execute(data['infrastructure'].confirm)
-                restore.reset_mock()
-                container = docker.Container('name')
-                commands = tasks.DockerTasks(container=container, hosts=['host'])
-                fab.execute(commands.restore)
-                restore.assert_called_once()
-                fab.execute(commands.restore)
-                restore.assert_called_once()
 
     def test_delete_dangling_images(self):
         cases = dict(
@@ -579,7 +530,7 @@ class DockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 with mock.patch.object(fabricio, 'local') as local:
                     with mock.patch('os.name', data['os_name']):
-                        tasks_list = tasks.DockerTasks(container=docker.Container(name='name'))
+                        tasks_list = tasks.DockerTasks(service=docker.Container(name='name'))
                         tasks_list.delete_dangling_images()
                         local.assert_called_once_with(
                             data['expected_command'],
@@ -765,8 +716,13 @@ class PullDockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 deploy.reset_mock()
                 run.return_value = data.get('registry_ip')
-                tasks_list = tasks.PullDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
-                tasks_list.deploy(**data['deploy_kwargs'])
+                tasks_list = tasks.PullDockerTasks(
+                    service=TestContainer(name='name'),
+                    hosts=['host'],
+                    **data.get('init_kwargs', {})
+                )
+                tasks_list.deploy.name = '{0}__{1}'.format(self, case)
+                fab.execute(tasks_list.deploy, **data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
 
 
@@ -977,8 +933,13 @@ class BuildDockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 deploy.reset_mock()
                 run.return_value = data.get('registry_ip')
-                tasks_list = tasks.BuildDockerTasks(container=TestContainer('name'), hosts=['host'], **data.get('init_kwargs', {}))
-                tasks_list.deploy(**data['deploy_kwargs'])
+                tasks_list = tasks.BuildDockerTasks(
+                    service=TestContainer(name='name'),
+                    hosts=['host'],
+                    **data.get('init_kwargs', {})
+                )
+                tasks_list.deploy.name = '{0}__{1}'.format(self, case)
+                fab.execute(tasks_list.deploy, **data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
 
 
@@ -1006,8 +967,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1019,8 +980,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push registry:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull registry:5000/test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry='registry:5000',
             ),
@@ -1033,10 +994,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push registry:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='registry'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest registry:5000/test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -1048,10 +1007,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push host:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull host:5000/test:latest', quiet=False),
-                    mock.call.run('docker tag host:5000/test:latest test:latest'),
-                    mock.call.run('docker rmi host:5000/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='host:5000'),
+                    mock.call.update(force=False, tag=None, registry='host:5000'),
                 ],
                 image_registry=None,
             ),
@@ -1064,10 +1021,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push host:5000/test:latest', quiet=False, use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry=None,
             ),
@@ -1079,10 +1034,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push host:4000/test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull host:4000/test:latest', quiet=False),
-                    mock.call.run('docker tag host:4000/test:latest registry:5000/test:latest'),
-                    mock.call.run('docker rmi host:4000/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='host:4000'),
+                    mock.call.update(force=False, tag=None, registry='host:4000'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -1095,10 +1048,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push host:4000/test:latest', quiet=False, use_cache=True),
                     mock.call.remote_tunnel(remote_port=1234, local_port=4000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:latest registry:5000/test:latest'),
-                    mock.call.run('docker rmi localhost:1234/test:latest'),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry='localhost:1234'),
+                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -1110,8 +1061,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=True, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=True, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1123,8 +1074,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1136,8 +1087,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1149,8 +1100,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:tag', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:tag', quiet=False),
-                    mock.call.migrate(tag='tag'),
-                    mock.call.update(force=False, tag='tag'),
+                    mock.call.migrate(tag='tag', registry=None),
+                    mock.call.update(force=False, tag='tag', registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1163,8 +1114,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.backup(),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1176,8 +1127,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1189,7 +1140,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1201,8 +1152,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1211,8 +1162,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                 init_kwargs=dict(),
                 expected_calls=[
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1224,8 +1175,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push test:latest', quiet=False, use_cache=True),
                     mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None),
-                    mock.call.update(force=False, tag=None),
+                    mock.call.migrate(tag=None, registry=None),
+                    mock.call.update(force=False, tag=None, registry=None),
                 ],
                 image_registry=None,
             ),
@@ -1239,10 +1190,8 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     mock.call.backup(),
                     mock.call.remote_tunnel(remote_port=1234, local_port=4000, local_host='host'),
                     mock.call.run('docker pull localhost:1234/test:tag', quiet=False),
-                    mock.call.run('docker tag localhost:1234/test:tag registry:5000/test:tag'),
-                    mock.call.run('docker rmi localhost:1234/test:tag'),
-                    mock.call.migrate(tag='tag'),
-                    mock.call.update(force=True, tag='tag'),
+                    mock.call.migrate(tag='tag', registry='localhost:1234'),
+                    mock.call.update(force=True, tag='tag', registry='localhost:1234'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -1259,14 +1208,15 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 deploy.reset_mock()
                 tasks_list = tasks.ImageBuildDockerTasks(
-                    container=docker.Container(
+                    service=docker.Container(
                         name='name',
                         image=docker.Image('test', registry=data['image_registry']),
                     ),
                     hosts=['host'],
                     **data['init_kwargs']
                 )
-                tasks_list.deploy(**data['deploy_kwargs'])
+                tasks_list.deploy.name = '{0}__{1}'.format(self, case)
+                fab.execute(tasks_list.deploy, **data['deploy_kwargs'])
                 self.assertListEqual(data['expected_calls'], deploy.mock_calls)
 
     def test_prepare_no_cache(self):
@@ -1297,14 +1247,14 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 with mock.patch.object(fabricio, 'local') as local:
                     tasks_list = tasks.ImageBuildDockerTasks(
-                        container=docker.Container(name='name', image='image'),
+                        service=docker.Container(name='name', image='image'),
                         hosts=['host'],
                     )
                     fab.execute(tasks_list.prepare, **data['kwargs'])
                     self.assertListEqual(local.mock_calls, data['expected_calls'])
 
     def test_prepare_and_push_are_in_the_commands_list_by_default(self):
-        init_kwargs = dict(container='container')
+        init_kwargs = dict(service='service')
         expected_commands_list = ['pull', 'rollback', 'update', 'deploy', 'prepare', 'push']
         tasks_list = tasks.ImageBuildDockerTasks(**init_kwargs)
         docstring, new_style, classic, default = load_tasks_from_module(tasks_list)

@@ -1,10 +1,18 @@
 Changelog
 =========
 
+Release 0.3.16
+--------------
+
+- Change: renamed command: migrate_back => migrate-back
+- Enhancement: implemented Docker Swarm mode support (`#38`_)
+
+.. _#38: https://github.com/renskiy/fabricio/issues/38
+
 Release 0.3.15
 --------------
 
-- Fix: ignore errors during dangaling images delete attempts (`#104`_)
+- Fix: ignore errors during dangling images delete attempts (`#104`_)
 
 .. _#104: https://github.com/renskiy/fabricio/issues/104
 

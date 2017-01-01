@@ -12,6 +12,7 @@ install_requires = [
     'cached-property>=1.3',
     'docker-py>=1.8.1,<2.0',
     'six>=1.4.0',
+    'dpath>=1.4.0',
 ]
 
 if sys.version_info < (2,7):

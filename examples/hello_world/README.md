@@ -3,7 +3,7 @@
 This example shows how to deploy basic configuration consisting of a single container based on [official Nginx image](https://hub.docker.com/_/nginx/).
 
 ## Requirements
-* Fabricio 0.3.14 or greater
+* Fabricio 0.3.16 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 
@@ -20,7 +20,13 @@ This example shows how to deploy basic configuration consisting of a single cont
 
     fab nginx
     
-At first, this will initiate creation of a new Virtual Machine (VM) using `Vagrant` configuration. Then deploy itself will start.
+At first, this will initiate creation of a new Virtual Machine (if not created yet) using `Vagrant` configuration. Then deploy itself will start.
+
+## Parallel execution
+
+Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
+
+    fab --parallel nginx
 
 ## Customization
 
@@ -42,7 +48,7 @@ There is also ability to set up reverse SSH tunnel from remote host to your loca
     
 If `ssh_tunnel_port` value is set, then Fabricio will set up reverse SSH tunnel using custom (if provided) or image registry's host and port as tunnel's target every time when deploy process is taking place.
  
-Note, that official Docker registry (hub.docker.com) and most other registries behind load balancers (e.g. nginx) will not work over SSH tunnel (due to incorrect `Host` header sending by Docker daemon in such cases).
+*Note, that official Docker registry (hub.docker.com) and most other registries behind load balancers (e.g. nginx) will not work over SSH tunnel (due to incorrect `Host` header sending by Docker daemon in such cases).*
 
 ## Issues
 

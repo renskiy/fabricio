@@ -16,15 +16,16 @@ Features
 ========
 
 - build Docker images
-- create containers from images with provided tags
+- create containers and services from images with provided tags
 - unlimited infrastructures
 - Fabric's parallel execution mode compatibility
-- rollback containers to previous version
+- rollback containers or services to previous version
 - public and private Docker registries support
 - tasks groups
 - migrations apply and rollback
 - data backup and restore
 - DB master-slave configurations support
+- (**NEW**) Docker Swarm mode (Docker 1.12+)
 
 See changelog_ for detailed info.
 
@@ -41,7 +42,7 @@ The most basic :code:`fabfile.py` you can use with the Fabricio is something lik
     
     
     nginx = tasks.DockerTasks(
-        container=docker.Container(
+        service=docker.Container(
             name='nginx',
             image='nginx:stable',
             options={
@@ -60,8 +61,8 @@ Type :code:`fab --list` in your terminal to see available Fabric commands:
         nginx           backup -> pull -> migrate -> update
         nginx.deploy    backup -> pull -> migrate -> update
         nginx.pull      pull Docker image from registry
-        nginx.rollback  rollback container to previous version
-        nginx.update    start new Docker container if necessary
+        nginx.rollback  rollback service to a previous version
+        nginx.update    update service to a new version
 
 Finally, to deploy such configuration you simply have to execute following bash command:
 
@@ -75,12 +76,35 @@ See also Fabricio `examples and recipes`_.
 
 .. _examples and recipes: examples/
 
+Requirements
+============
+
+Local
+-----
+
+- Python 2.6 or 2.7
+- `Fabric`_ 1.x
+- (optional) Docker 1.9+ for building Docker images
+
+Remote
+------
+
+- sshd
+- Docker 1.9+
+- (optional) Docker 1.12+ for using Docker in Swarm mode
+
 Install
 =======
 
 .. code:: bash
 
     pip install --upgrade fabricio
+    
+*For system-wide installation macOS users should explicitly provide version of the 'six' package installed on their system. For example:*
+
+.. code:: bash
+
+    sudo pip install --upgrade fabricio six==1.4.1
 
 Roles and infrastructures
 =========================
@@ -109,7 +133,7 @@ You can define as many roles and infrastructures as you need. The following exam
         )
 
     balancer = tasks.DockerTasks(
-        container=docker.Container(
+        service=docker.Container(
             name='balancer',
             image='registry.example.com/nginx:balancer',
             options={
@@ -121,7 +145,7 @@ You can define as many roles and infrastructures as you need. The following exam
     )
 
     web = tasks.DockerTasks(
-        container=docker.Container(
+        service=docker.Container(
             name='web',
             image='registry.example.com/nginx:web',
             options={
@@ -145,13 +169,13 @@ Here is the list of available commands:
         balancer            backup -> pull -> migrate -> update
         balancer.deploy     backup -> pull -> migrate -> update
         balancer.pull       pull Docker image from registry
-        balancer.rollback   rollback container to previous version
-        balancer.update     start new Docker container if necessary
+        balancer.rollback   rollback service to a previous version
+        balancer.update     update service to a new version
         web                 backup -> pull -> migrate -> update
         web.deploy          backup -> pull -> migrate -> update
         web.pull            pull Docker image from registry
-        web.rollback        rollback container to previous version
-        web.update          start new Docker container if necessary
+        web.rollback        rollback service to a previous version
+        web.update          update service to a new version
         
 'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 
@@ -162,18 +186,18 @@ Here is the list of available commands:
 Tags
 ====
 
-Almost every Fabricio command takes optional argument 'tag' which means Docker image tag to use when deploying container. For instance, if you want to deploy specific version of your application you can do it as following:
+Almost every Fabricio command takes optional argument 'tag' which means Docker image tag to use when deploying container or service. For instance, if you want to deploy specific version of your application you can do it as following:
 
 .. code:: bash
 
     fab app.deploy:v1.2
 
-By default, value for tag is taken from Container's Image.
+By default, value for tag is taken from Container/Service Image.
 
 Rollback
 ========
 
-To return container to previous version execute command :code:`fab app.rollback`.
+To return container or service to a previous version execute command :code:`fab app.rollback`.
 
 Forced update
 =============
@@ -182,7 +206,7 @@ Forced update
 
     fab app.update:force=yes
     
-Forced update forces creation of new container.
+``force=yes`` is used to force container or service update.
 
 Private Docker registry
 =======================
@@ -200,7 +224,7 @@ When your local Docker registry is up and run you can provide custom ``registry`
     from fabricio import docker, tasks
 
     nginx = tasks.DockerTasks(
-        container=docker.Container(
+        service=docker.Container(
             name='nginx',
             image='nginx:stable',
             options={
@@ -237,7 +261,7 @@ Using Fabricio you can also build Docker images from local sources and deploy th
     from fabricio import docker, tasks
 
     app = tasks.ImageBuildDockerTasks(
-        container=docker.Container(
+        service=docker.Container(
             name='app',
             image='your_docker_hub_account/app',
         ),
@@ -254,7 +278,7 @@ And of course, you can use your own private Docker registry:
     from fabricio import docker, tasks
 
     app = tasks.ImageBuildDockerTasks(
-        container=docker.Container(
+        service=docker.Container(
             name='app',
             image='app',
         ),

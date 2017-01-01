@@ -1,16 +1,13 @@
-# Fabricio: Hello, World
+# Fabricio: Docker Swarm
 
-This example shows how to deploy configuration consisting of a single container based on custom image which automatically built from provided [Dockerfile](Dockerfile).
+This example shows how to deploy Docker Swarm configuration consisting of a single service based on [official Nginx image](https://hub.docker.com/_/nginx/).
 
 ## Requirements
 * Fabricio 0.3.16 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
-* [Docker](https://www.docker.com/products/overview) for Linux/Mac/Windows
-* Docker registry which runs locally on 5000 port, this can be reached out by executing following docker command: `docker run --name registry --publish 5000:5000 --detach registry:2`
 
 ## Files
-* __Dockerfile__, used for building image
 * __fabfile.py__, Fabricio configuration
 * __README.md__, this file
 * __Vagrantfile__, Vagrant config
@@ -21,25 +18,25 @@ This example shows how to deploy configuration consisting of a single container 
 
 ## Deploy
 
-    fab my_nginx
-    
-At first, this will initiate creation of a new Virtual Machine (if not created yet) using `Vagrant` configuration. Then deploy itself will start.
+Before proceed you must initialize Docker Swarm cluster first by running following command:
 
+    fab swarm-init
+    
+At first, this command will start creation of three Virtual Machines (if not created yet) using `Vagrant` configuration. Then single Swarm manager and two Swarm workers will be set up.
+ 
+After cluster has been successfully initialized Docker is ready to work with services:
+
+    fab nginx
+    
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel my_nginx
-
+    fab --parallel nginx
+    
 ## Customization
 
-See also "Hello, World" [Customization](../hello_world/#customization) section.
-
-### Custom `Dockerfile`
-
-You can provide custom folder with `Dockerfile` by passing `build_path` parameter:
-
-    build_path='path_to_folder_with_dockerfile'
+See "Hello, World" [Customization](../../hello_world/#customization) section.
 
 ## Issues
 

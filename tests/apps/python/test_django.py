@@ -5,72 +5,169 @@ from fabric import api as fab
 
 import fabricio
 
-from fabricio import docker
-from fabricio.apps.python.django import DjangoContainer
-from tests import SucceededResult
+from fabricio.apps.python.django import DjangoContainer, DjangoService
+from tests import SucceededResult, docker_run_args_parser, args_parser, \
+    docker_inspect_args_parser
 
 
 class DjangoContainerTestCase(unittest.TestCase):
 
-    def test_migrate(self):
+    @mock.patch.object(DjangoService, 'is_manager', return_value=True)
+    def test_migrate(self, *args):
         cases = dict(
-            new_migrations=dict(
-                expected_commands=[
-                    mock.call('docker run --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
-                ],
+            container_default=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:tag',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
                 kwargs=dict(),
-                container_class_vars=dict(name='name'),
+                service_init_kwargs=dict(name='name', image='image:tag'),
+                service_type=DjangoContainer,
             ),
-            customized=dict(
-                expected_commands=[
-                    mock.call('docker run --rm --tty --interactive registry/image:foo python manage.py migrate --noinput', quiet=False),
-                ],
+            service_default=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:tag',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
+                kwargs=dict(),
+                service_init_kwargs=dict(name='name', image='image:tag'),
+                service_type=DjangoService,
+            ),
+            container_with_tag_and_registry=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'registry/image:foo',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
                 kwargs=dict(tag='foo', registry='registry'),
-                container_class_vars=dict(name='name'),
+                service_init_kwargs=dict(name='name', image='image:tag'),
+                service_type=DjangoContainer,
             ),
-            default_with_customized_container=dict(
-                expected_commands=[
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive image:tag python manage.py migrate --noinput', quiet=False),
-                ],
+            service_with_tag_and_registry=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'registry/image:foo',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
+                kwargs=dict(tag='foo', registry='registry'),
+                service_init_kwargs=dict(name='name', image='image:tag'),
+                service_type=DjangoService,
+            ),
+            customized_container=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'user': 'user',
+                    'env': ['env'],
+                    'volume': ['volumes'],
+                    'link': ['links'],
+                    'label': ['label'],
+                    'add-host': ['hosts'],
+                    'net': 'network',
+                    'stop-signal': 'stop_signal',
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:tag',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
                 kwargs=dict(),
-                container_class_vars=dict(
-                    user='user',
-                    env='env',
-                    volumes='volumes',
-                    links='links',
-                    hosts='hosts',
-                    network='network',
-                    cmd='cmd',
-                    stop_signal='stop_signal',
+                service_init_kwargs=dict(
+                    name='name',
+                    image='image:tag',
                     stop_timeout='stop_timeout',
+                    command='command',
 
-                    ports='ports',
-                    restart_policy='restart_policy',
+                    options=dict(
+                        user='user',
+                        env='env',
+                        volumes='volumes',
+                        links='links',
+                        hosts='hosts',
+                        network='network',
+                        stop_signal='stop_signal',
+                        labels='label',
+
+                        ports='ports',
+                        restart_policy='restart_policy',
+                    ),
                 ),
+                service_type=DjangoContainer,
+            ),
+            customized_service=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'user': 'user',
+                    'env': ['env'],
+                    'label': ['label'],
+                    'network': 'network',
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:tag',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
+                kwargs=dict(),
+                service_init_kwargs=dict(
+                    name='name',
+                    image='image:tag',
+                    command='command',
+                    args='args',
+
+                    options=dict(
+                        user='user',
+                        env='env',
+                        network='network',
+                        labels='label',
+
+                        stop_timeout='stop_timeout',
+                        restart_condition='restart_condition',
+                        ports='ports',
+                        mounts='mounts',
+                        replicas='replicas',
+                        constraints='constraints',
+                        container_labels='container_labels',
+                    ),
+                ),
+                service_type=DjangoService,
             ),
         )
+
+        def test_command(command, *args, **kwargs):
+            options = docker_run_args_parser.parse_args(command.split())
+            self.assertDictEqual(vars(options), data['expected_args'])
         for case, data in cases.items():
             with self.subTest(case=case):
-                with mock.patch.object(fabricio, 'run') as run:
-                    TestContainer = type(
-                        'TestContainer',
-                        (DjangoContainer, ),
-                        dict(
-                            dict(image=docker.Image('image:tag')),
-                            **data['container_class_vars']
-                        ),
-                    )
-                    container = TestContainer('test')
+                fab.env.command = '{0}__{1}'.format(self, case)
+                with mock.patch.object(fabricio, 'run', side_effect=test_command) as run:
+                    service = data['service_type'](**data['service_init_kwargs'])
                     with fab.settings(fab.hide('everything')):
-                        container.migrate(**data['kwargs'])
-                        self.assertListEqual(
-                            data['expected_commands'],
-                            run.mock_calls,
-                        )
+                        service.migrate(**data['kwargs'])
+                        run.assert_called_once()
 
-    def test_migrate_back(self):
+    @mock.patch.object(DjangoService, 'is_manager', return_value=True)
+    def test_migrate_back(self, *args):
         cases = dict(
-            no_change=dict(
+            container_no_change=dict(
                 side_effect=(
                     SucceededResult('[{"Image": "current_image_id"}]'),
                     SucceededResult(
@@ -85,28 +182,150 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'app2.0001_initial\n'
                     ),
                 ),
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    args_parser,
+                    docker_run_args_parser,
                 ],
+                expected_args=[
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'backup_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                ],
+                service_type=DjangoContainer,
             ),
-            no_migrations=dict(
+            service_no_change=dict(
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}},"Labels":{"_backup_options":"{\\"image\\": \\"image@backup\\"}"}}}]'),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@backup',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                ],
+                service_type=DjangoService,
+            ),
+            container_no_migrations=dict(
                 side_effect=(
                     SucceededResult('[{"Image": "current_image_id"}]'),
                     SucceededResult(),
                     SucceededResult('[{"Image": "backup_image_id"}]'),
                     SucceededResult(),
                 ),
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    args_parser,
+                    docker_run_args_parser,
                 ],
+                expected_args=[
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'backup_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                ],
+                service_type=DjangoContainer,
             ),
-            regular=dict(
+            service_no_migrations=dict(
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}},"Labels":{"_backup_options":"{\\"image\\": \\"image@backup\\"}"}}}]'),
+                    SucceededResult(),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@backup',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                ],
+                service_type=DjangoService,
+            ),
+            container_regular=dict(
                 side_effect=(
                     SucceededResult('[{"Image": "current_image_id"}]'),
                     SucceededResult(
@@ -128,17 +347,146 @@ class DjangoContainerTestCase(unittest.TestCase):
                     SucceededResult(),
                     SucceededResult(),
                 ),
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
                 ],
+                expected_args=[
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'backup_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
+                    },
+                ],
+                service_type=DjangoContainer,
             ),
-            with_container_custom_options=dict(
+            service_regular=dict(
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}},"Labels":{"_backup_options":"{\\"image\\": \\"image@backup\\"}"}}}]'),
+                    SucceededResult(
+                        'app0.0001_initial\n'
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                        'app3.0001_initial\n'
+                        'app2.0002_foo\n'
+                        'app3.0002_foo\n'
+                    ),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@backup',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
+                    },
+                ],
+                service_type=DjangoService,
+            ),
+            container_custom_options=dict(
                 side_effect=(
                     SucceededResult('[{"Image": "current_image_id"}]'),
                     SucceededResult(
@@ -160,14 +508,98 @@ class DjangoContainerTestCase(unittest.TestCase):
                     SucceededResult(),
                     SucceededResult(),
                 ),
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker inspect --type container name_backup'),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive backup_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app3 zero', quiet=False),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app2 0001_initial', quiet=False),
-                    mock.call('docker run --user user --env env --volume volumes --link links --add-host hosts --net network --stop-signal stop_signal --rm --tty --interactive current_image_id python manage.py migrate --no-input app0 zero', quiet=False),
+                expected_args=[
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'volume': ['volumes'],
+                        'link': ['links'],
+                        'add-host': ['hosts'],
+                        'net': 'network',
+                        'stop-signal': 'stop_signal',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'volume': ['volumes'],
+                        'link': ['links'],
+                        'add-host': ['hosts'],
+                        'net': 'network',
+                        'stop-signal': 'stop_signal',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'backup_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'volume': ['volumes'],
+                        'link': ['links'],
+                        'add-host': ['hosts'],
+                        'net': 'network',
+                        'stop-signal': 'stop_signal',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'volume': ['volumes'],
+                        'link': ['links'],
+                        'add-host': ['hosts'],
+                        'net': 'network',
+                        'stop-signal': 'stop_signal',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'volume': ['volumes'],
+                        'link': ['links'],
+                        'add-host': ['hosts'],
+                        'net': 'network',
+                        'stop-signal': 'stop_signal',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
+                    },
+                ],
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
                 ],
                 init_kwargs=dict(
                     options=dict(
@@ -182,27 +614,156 @@ class DjangoContainerTestCase(unittest.TestCase):
                         ports='ports',
                         restart_policy='restart_policy',
                     ),
-                    cmd='cmd',
+                    command='command',
                     stop_timeout='stop_timeout',
                 ),
+                service_type=DjangoContainer,
+            ),
+            service_custom_options=dict(
+                side_effect=(
+                    SucceededResult('[{"Spec":{"TaskTemplate":{"ContainerSpec":{"Image":"image@digest"}},"Labels":{"_backup_options":"{\\"image\\": \\"image@backup\\"}"}}}]'),
+                    SucceededResult(
+                        'app0.0001_initial\n'
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                        'app3.0001_initial\n'
+                        'app2.0002_foo\n'
+                        'app3.0002_foo\n'
+                    ),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ),
+                expected_args=[
+                    dict(args=['docker', 'service', 'inspect', 'name']),
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'label': ['label'],
+                        'network': 'network',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'label': ['label'],
+                        'network': 'network',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@backup',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'label': ['label'],
+                        'network': 'network',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'label': ['label'],
+                        'network': 'network',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'user': 'user',
+                        'env': ['env'],
+                        'label': ['label'],
+                        'network': 'network',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image@digest',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
+                    },
+                ],
+                args_parsers=[
+                    args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                init_kwargs=dict(
+                    command='command',
+                    args='args',
+
+                    options=dict(
+                        user='user',
+                        env='env',
+                        network='network',
+                        labels='label',
+
+                        stop_timeout='stop_timeout',
+                        restart_condition='restart_condition',
+                        ports='ports',
+                        mounts='mounts',
+                        replicas='replicas',
+                        constraints='constraints',
+                        container_labels='container_labels',
+                    ),
+                ),
+                service_type=DjangoService,
             ),
         )
+
+        def test_command(command, *args, **kwargs):
+            parser = next(args_parsers)
+            options = parser.parse_args(command.split())
+            self.assertDictEqual(vars(options), next(expected_args))
+            return next(side_effect)
         for case, data in cases.items():
+            expected_args = iter(data['expected_args'])
+            args_parsers = iter(data['args_parsers'])
+            side_effect = iter(data['side_effect'])
             with self.subTest(case=case):
-                side_effect = data['side_effect']
-                expected_commands = data['expected_commands']
+                fab.env.command = '{0}__{1}'.format(self, case)
                 with mock.patch.object(
                     fabricio,
                     'run',
-                    side_effect=side_effect,
+                    side_effect=test_command,
                 ) as run:
-                    container = DjangoContainer(
+                    container = data['service_type'](
                         name='name',
                         image='image:tag',
                         **data.get('init_kwargs', {})
                     )
                     container.migrate_back()
-                    self.assertListEqual(run.mock_calls, expected_commands)
+                    self.assertEqual(run.call_count, len(data['side_effect']))
+
+    maxDiff = None
 
     def test_migrate_back_errors(self):
         cases = dict(
@@ -210,10 +771,17 @@ class DjangoContainerTestCase(unittest.TestCase):
                 expected_exception=RuntimeError,
                 expected_error_message="Container 'name' not found",
                 side_effect=(
-                    RuntimeError,
+                    RuntimeError(),
                 ),
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
+                args_parsers=[
+                    docker_inspect_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name',
+                    },
                 ],
             ),
             backup_container_not_found=dict(
@@ -224,28 +792,52 @@ class DjangoContainerTestCase(unittest.TestCase):
                     SucceededResult(
                         'app1.0001_initial\n'
                     ),
-                    RuntimeError,
+                    RuntimeError(),
                 ),
-                expected_commands=[
-                    mock.call('docker inspect --type container name'),
-                    mock.call('docker run --rm --tty --interactive current_image_id python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"', quiet=True),
-                    mock.call('docker inspect --type container name_backup'),
+                args_parsers=[
+                    docker_inspect_args_parser,
+                    docker_run_args_parser,
+                    docker_inspect_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name',
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'current_image_id',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\[X\]"', '|', 'awk', '"{print', '\$2}"'],
+                    },
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'container',
+                        'image_or_container': 'name_backup',
+                    },
                 ],
             ),
         )
+
+        def test_command(command, *args, **kwargs):
+            parser = next(args_parsers)
+            options = parser.parse_args(command.split())
+            self.assertDictEqual(vars(options), next(expected_args))
+            result = next(side_effect)
+            if isinstance(result, Exception):
+                raise result
+            return result
         for case, data in cases.items():
+            fab.env.command = '{0}__{1}'.format(self, case)
+            expected_args = iter(data['expected_args'])
+            args_parsers = iter(data['args_parsers'])
+            side_effect = iter(data['side_effect'])
             with self.subTest(case=case):
-                with mock.patch.object(
-                    fabricio,
-                    'run',
-                    side_effect=data['side_effect'],
-                ) as run:
-                    expected_commands = data['expected_commands']
+                with mock.patch.object(fabricio, 'run', side_effect=test_command):
                     container = DjangoContainer(name='name', image='image')
-                    with self.assertRaises(data['expected_exception']) as cm:
+                    with self.assertRaises(data['expected_exception']):
                         container.migrate_back()
-                    self.assertEqual(
-                        cm.exception.args[0],
-                        data['expected_error_message'],
-                    )
-                    self.assertListEqual(run.mock_calls, expected_commands)

@@ -2,9 +2,9 @@ from fabricio import tasks, docker
 from fabricio.misc import AvailableVagrantHosts
 
 nginx = tasks.DockerTasks(
-    container=docker.Container(
+    service=docker.Container(
         name='nginx',
-        image='nginx:stable',
+        image='nginx:stable-alpine',
         options=dict(
             ports='80:80',
         ),

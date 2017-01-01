@@ -1,147 +1,83 @@
 import json
-
-from cached_property import cached_property
-from frozendict import frozendict
+import warnings
 
 import fabricio
 
-from fabricio.utils import default_property
+from fabricio import utils
 
-from . import Image
+from .base import BaseService, Option, Attribute
 
 
-class Option(default_property):
+class ContainerNotFoundError(RuntimeError):
     pass
 
 
-class Attribute(default_property):
+class ContainerCannotBeRevertedError(RuntimeError):
     pass
 
 
-class Container(object):
+class Container(BaseService):
 
-    image = Image()
+    @Attribute
+    def cmd(self):
+        warnings.warn(
+            "'cmd' is deprecated and will be removed in ver. 0.4, "
+            "use 'command' instead", DeprecationWarning,
+        )
+        return None
 
-    cmd = Attribute()
+    @Attribute
+    def command(self):
+        command = self.cmd
+        if command:
+            warnings.warn(
+                "'cmd' is deprecated and will be removed in ver. 0.4, "
+                "use 'command' instead", RuntimeWarning,
+            )
+        return command
+
     stop_timeout = Attribute(default=10)
 
     user = Option()
-    ports = Option()
+    ports = Option(name='publish', safe=False)
     env = Option()
-    volumes = Option()
-    links = Option()
-    hosts = Option()
-    network = Option()
-    restart_policy = Option()
-    stop_signal = Option()
+    labels = Option(name='label')
+    volumes = Option(name='volume')
+    links = Option(name='link')
+    hosts = Option(name='add-host')
+    network = Option(name='net')
+    restart_policy = Option(name='restart')
+    stop_signal = Option(name='stop-signal')
 
-    def __init__(self, name, image=None, options=None, **attrs):
-        self.name = name
-        if image is not None:
-            self.image = image
-
-        options = options or {}
-        self.overridden_options = set()
-        is_default_option = self.default_options.__contains__
-        self.options = container_options = {}
-        for option, value in options.items():
-            if is_default_option(option):
-                setattr(self, option, value)
-            else:
-                container_options[option] = value
-
-        self.overridden_attributes = set()
-        is_attribute = self.attributes.__contains__
-        if attrs:
-            for attr, value in attrs.items():
-                if not is_attribute(attr):
-                    raise TypeError(
-                        'Unknown attribute: {attr}'.format(attr=attr)
-                    )
-                setattr(self, attr, value)
-
-    def __setattr__(self, attr, value):
-        if attr in self.default_options:
-            self.overridden_options.add(attr)
-        elif attr in self.attributes:
-            self.overridden_attributes.add(attr)
-        super(Container, self).__setattr__(attr, value)
-
-    def _get_options(self):
-        default_options_values = dict(
-            (option, getattr(self, option))
-            for option in self.default_options
-        )
-        return frozendict(self._options, **default_options_values)
-
-    def _set_options(self, options):
-        self._options = options
-
-    options = property(_get_options, _set_options)
-
-    @property
-    def safe_options(self):
-        return frozendict(self.options, ports=None)
-
-    @cached_property
-    def default_options(self):
-        return set(
-            attr
-            for cls in type(self).__mro__
-            for attr, value in vars(cls).items()
-            if isinstance(value, Option)
-        )
-
-    @cached_property
-    def attributes(self):
-        return set(
-            attr
-            for cls in type(self).__mro__
-            for attr, value in vars(cls).items()
-            if isinstance(value, Attribute)
-        )
-
-    def fork(self, name=None, image=None, options=None, **attrs):
-        if name is None:
-            name = self.name
-        image = image or self.image
-
-        fork_options = dict(
-            (
-                (option, getattr(self, option))
-                for option in self.overridden_options
-            ),
-            **self._options
-        )
-        if options:
-            fork_options.update(options)
-
-        if self.overridden_attributes:
-            attrs = dict(
-                (
-                    (attr, getattr(self, attr))
-                    for attr in self.overridden_attributes
-                ),
-                **attrs
+    def __init__(self, _name=None, **kwargs):
+        if _name:
+            warnings.warn(
+                'Passing container name using positional argument is '
+                'deprecated, this behaviour will be removed in v0.4, '
+                'use `name` keyword instead',
+                category=RuntimeWarning, stacklevel=2,
             )
+            kwargs.update(name=_name)
+        super(Container, self).__init__(**kwargs)
 
-        return self.__class__(name, image=image, options=fork_options, **attrs)
+    def fork(self, _name=None, **kwargs):
+        if _name:
+            warnings.warn(
+                'Passing container name using positional argument is '
+                'deprecated, this behaviour will be removed in v0.4, '
+                'use `name` keyword instead',
+                category=RuntimeWarning, stacklevel=2,
+            )
+            kwargs.update(name=_name)
+        return super(Container, self).fork(**kwargs)
 
-    def __str__(self):
-        return self.name
-
-    def __copy__(self):
-        return self.fork()
-
-    @property
+    @utils.default_property
     def info(self):
         command = 'docker inspect --type container {container}'
-        try:
-            info = fabricio.run(command.format(container=self))
-        except RuntimeError:
-            raise RuntimeError("Container '{container}' not found".format(
-                container=self,
-            ))
+        info = fabricio.run(
+            command.format(container=self),
+            abort_exception=ContainerNotFoundError,
+        )
         return json.loads(info)[0]
 
     def delete(
@@ -167,17 +103,30 @@ class Container(object):
 
     def run(self, tag=None, registry=None):
         self.image[registry:tag].run(
-            cmd=self.cmd,
+            command=self.command,
             temporary=False,
-            name=self.name,
+            name=self,
             options=self.options,
         )
 
-    def execute(self, cmd, ignore_errors=False, quiet=True, use_cache=False):
-        command = 'docker exec --tty --interactive {container} {cmd}'
+    def execute(
+        self,
+        command=None,
+        cmd=None,  # deprecated
+        quiet=True,
+        use_cache=False,
+    ):
+        if cmd:
+            warnings.warn(
+                "'cmd' argument deprecated and will be removed in v0.4, "
+                "use 'command' instead",
+                category=RuntimeWarning, stacklevel=2,
+            )
+        if not (command or cmd):
+            raise ValueError('Must provide command to execute')
+        exec_command = 'docker exec --tty --interactive {container} {command}'
         return fabricio.run(
-            command.format(container=self, cmd=cmd),
-            ignore_errors=ignore_errors,
+            exec_command.format(container=self, command=command or cmd),
             quiet=quiet,
             use_cache=use_cache,
         )
@@ -207,19 +156,19 @@ class Container(object):
         command = 'docker kill --signal {signal} {container}'
         fabricio.run(command.format(container=self, signal=signal))
 
+    @property
+    def image_id(self):
+        return self.info['Image']
+
     def update(self, tag=None, registry=None, force=False):
         if not force:
             try:
-                current_image_id = self.image.id
-            except RuntimeError:  # current container not found
-                pass
-            else:
-                new_image = self.image[registry:tag]
-                if current_image_id == new_image.id:
+                if self.image_id == self.image[registry:tag].info['Id']:
                     self.start()  # force starting container
                     return False
-        new_container = self.fork(name=self.name)
-        obsolete_container = self.get_backup_container()
+            except ContainerNotFoundError:
+                pass
+        obsolete_container = self.get_backup_version()
         try:
             obsolete_container.delete(delete_image=True)
         except RuntimeError:
@@ -231,29 +180,30 @@ class Container(object):
             pass  # current container not found
         else:
             backup_container.stop()
-        new_container.run(tag=tag, registry=registry)
+        self.run(tag=tag, registry=registry)
         return True
 
     def revert(self):
-        backup_container = self.get_backup_container()
-        if not backup_container.info:
-            return  # does backup container exist?
+        backup_container = self.get_backup_version()
+        try:
+            backup_container.info
+        except ContainerNotFoundError:
+            raise ContainerCannotBeRevertedError
         self.stop()
         backup_container.start()
         self.delete(delete_image=True)
         backup_container.rename(self.name)
 
     def get_backup_container(self):
+        warnings.warn(
+            'get_backup_container is deprecated and will be removed in v0.4, '
+            'use get_backup_version instead', DeprecationWarning,
+        )
+        warnings.warn(
+            'get_backup_container is deprecated and will be removed in v0.4, '
+            'use get_backup_version instead', RuntimeWarning, stacklevel=2,
+        )
+        return self.get_backup_version()
+
+    def get_backup_version(self):
         return self.fork(name='{container}_backup'.format(container=self))
-
-    def migrate(self, tag=None, registry=None):
-        pass
-
-    def migrate_back(self):
-        pass
-
-    def backup(self):
-        pass
-
-    def restore(self, backup_name=None):
-        pass

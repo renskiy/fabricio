@@ -4,13 +4,13 @@ Vagrant.configure('2') do |config|
 
   # public ports
   # {
-  #   8081 => 80,
+  #   8080 => 80,
   # }.each do |host, guest|
   #   config.vm.network :forwarded_port, guest: guest, host: host
   # end
 
   %w(
-    docker-nginx
+    docker
   ).each do |host_name|
     config.vm.define host_name do |host|
 

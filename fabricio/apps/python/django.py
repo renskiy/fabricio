@@ -1,34 +1,23 @@
 import itertools
 
-from cached_property import cached_property
-
 from fabricio import docker, utils
 
 
 class Migration(str):
 
-    def split_migration(self):
-        app, _, name = self.partition('.')
-        return app, name
-
-    @cached_property
-    def app(self):
-        app, self.name = self.split_migration()
-        return app
-
-    @cached_property
-    def name(self):
-        self.app, name = self.split_migration()
-        return name
+    def __init__(self, *args, **kwargs):
+        super(Migration, self).__init__(*args, **kwargs)
+        self.app, _, self.name = self.partition('.')
 
 
-class DjangoContainer(docker.Container):
+class DjangoMixin(docker.BaseService):
     """
     Be sure you use proper Dockerfile's WORKDIR directive
     (or another alternative) which points to the directory where
     manage.py placed
     """
 
+    @utils.once_per_command
     def migrate(self, tag=None, registry=None):
         self.image[registry:tag].run(
             'python manage.py migrate --noinput',
@@ -72,28 +61,40 @@ class DjangoContainer(docker.Container):
             if backup_migration is None:
                 return revert_migrations.values()
 
+    @utils.once_per_command
     def migrate_back(self):
-        migrations_cmd = 'python manage.py showmigrations --plan | egrep "^\[X\]" | awk "{print \$2}"'
-
-        backup_container = self.get_backup_container()
+        migrations_command = 'python manage.py showmigrations --plan ' \
+                             '| egrep "^\[X\]" ' \
+                             '| awk "{print \$2}"'
+        image = self.image
         options = self.safe_options
 
-        current_migrations = self.image.run(
-            cmd=migrations_cmd,
-            options=options,
-        )
-        backup_migrations = backup_container.image.run(
-            cmd=migrations_cmd,
-            options=options,
-        )
-        revert_migrations = self.get_revert_migrations(
-            current_migrations,
-            backup_migrations,
-        )
-
-        for migration in revert_migrations:
-            cmd = 'python manage.py migrate --no-input {app} {migration}'.format(
-                app=migration.app,
-                migration=migration.name,
+        with utils.patch(self, 'info', self.info, force_delete=True):
+            current_migrations = image.run(
+                migrations_command,
+                options=options,
             )
-            self.image.run(cmd=cmd, quiet=False, options=options)
+            backup_migrations = self.get_backup_version().image.run(
+                migrations_command,
+                options=options,
+            )
+
+            for migration in self.get_revert_migrations(
+                current_migrations,
+                backup_migrations,
+            ):
+                command = (
+                    'python manage.py migrate --no-input {app} {migration}'
+                ).format(
+                    app=migration.app,
+                    migration=migration.name,
+                )
+                image.run(command, quiet=False, options=options)
+
+
+class DjangoContainer(docker.Container, DjangoMixin):
+    pass
+
+
+class DjangoService(docker.Service, DjangoMixin):
+    pass
