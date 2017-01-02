@@ -18,7 +18,7 @@ def swarm_init():
                 ignore_errors=True,
             )
             join_token = fabricio.run(
-                'docker swarm join-token --quiet worker',
+                'docker swarm join-token --quiet manager',
                 ignore_errors=True,
             )
             swarm_init.worker_join_command = (
