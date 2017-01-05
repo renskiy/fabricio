@@ -1126,7 +1126,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         fab.env.parallel = True
         for case, data in cases.items():
             with self.subTest(case=case):
-                with mock.patch.object(docker.Container, 'restart') as restart:
+                with mock.patch.object(docker.Container, 'reload') as restart:
                     with mock.patch.object(
                         postgres.PostgresqlContainer,
                         'update',
@@ -1159,7 +1159,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 container.set_master_info()
 
     @mock.patch.object(postgres.PostgresqlContainer, 'update', return_value=False)
-    @mock.patch.object(postgres.PostgresqlContainer, 'restart')
+    @mock.patch.object(postgres.PostgresqlContainer, 'reload')
     @mock.patch.object(Event, 'clear')
     @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'update_recovery_config', return_value=True)
     def test_update_set_exception_info_if_any_happens(self, *args):
@@ -1172,7 +1172,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 mock=mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'update_recovery_config', side_effect=exception),
             ),
             container_restart_failed=dict(
-                mock=mock.patch.object(postgres.PostgresqlContainer, 'restart', side_effect=exception),
+                mock=mock.patch.object(postgres.PostgresqlContainer, 'reload', side_effect=exception),
             ),
         )
         container = postgres.StreamingReplicatedPostgresqlContainer(

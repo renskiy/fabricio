@@ -1,3 +1,7 @@
+import warnings
+
+import six
+
 from cached_property import cached_property
 from frozendict import frozendict
 
@@ -8,7 +12,14 @@ from .image import Image
 
 class Option(utils.default_property):
 
-    def __init__(self, func=None, default=None, name=None, safe=True):  # TODO safe_name=None
+    def __init__(
+        self,
+        func=None,
+        default=None,
+        name=None,
+        safe=True,
+        safe_name=None,
+    ):
         super(Option, self).__init__(func=func, default=default)
         self.name = name
         self.safe = safe
@@ -24,28 +35,22 @@ class BaseService(object):
 
     image = Image()
 
-    def __init__(self, image=None, options=None, **attrs):  # TODO safe_options=None
+    deprecated_options = {}
+
+    def __init__(self, image=None, options=None, safe_options=None, **attrs):
         if image is not None:
             self.image = image
-        options = options or {}
         self.overridden_options = set()
-        is_main_option = self._options.__contains__
-        self._additional_options = additional_options = {}
-        for option, value in options.items():
-            if is_main_option(option):
-                setattr(self, option, value)
-            else:
-                additional_options[option] = value
-
         self.overridden_attributes = set()
+        is_option = self._options.__contains__
         is_attribute = self._attributes.__contains__
-        if attrs:
-            for attr, value in attrs.items():
-                if not is_attribute(attr):
-                    raise TypeError(
-                        'Unknown attribute: {attr}'.format(attr=attr)
-                    )
-                setattr(self, attr, value)
+        self._other_options = other_options = options or {}
+        for option in list(six.moves.filter(is_option, other_options)):
+            setattr(self, option, other_options.pop(option))
+        for attr, value in attrs.items():
+            if not is_attribute(attr):
+                raise TypeError('Unknown attribute: {attr}'.format(attr=attr))
+            setattr(self, attr, value)
 
     def __setattr__(self, attr, value):
         if attr in self._options:
@@ -87,13 +92,20 @@ class BaseService(object):
 
     def _get_options(self, safe=False):
         options = self._safe_options if safe else self._options
-        return frozendict(
-            (
-                (option, getattr(self, attr))
-                for attr, option in options.items()
-            ),
-            **self._additional_options
-        )
+        result = {}
+        for attr, option in options.items():
+            if option in self.deprecated_options:
+                warnings.warn(
+                    "'{old_option}' option is deprecated and will be removed "
+                    "in v0.4, use '{new_option}' instead".format(
+                        old_option=option,
+                        new_option=self.deprecated_options[option],
+                    ),
+                    category=RuntimeWarning,
+                )
+                option = self.deprecated_options[option].replace('_', '-')
+            result[option] = getattr(self, attr) or result.get(option)
+        return frozendict(result, **self._other_options)
 
     @property
     def options(self):
@@ -110,7 +122,7 @@ class BaseService(object):
                 (option, getattr(self, option))
                 for option in self.overridden_options
             ),
-            **self._additional_options
+            **self._other_options
         )
         if options:
             fork_options.update(options)

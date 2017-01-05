@@ -390,7 +390,7 @@ class ContainerTestCase(unittest.TestCase):
                     container.stop(timeout=data['timeout'])
                     run.assert_called_once_with(data['expected_command'])
 
-    def test_restart(self):
+    def test_reload(self):
         cases = dict(
             default=dict(
                 timeout=None,
@@ -409,7 +409,7 @@ class ContainerTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 container = docker.Container(name='name')
                 with mock.patch.object(fabricio, 'run') as run:
-                    container.restart(timeout=data['timeout'])
+                    container.reload(timeout=data['timeout'])
                     run.assert_called_once_with(data['expected_command'])
 
     def test_rename(self):
@@ -1829,7 +1829,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": 1, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": 1, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
                 ),
                 args_parsers=[
                     docker_inspect_args_parser,
@@ -1861,7 +1861,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": 1, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": 1, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -1892,8 +1892,8 @@ class ServiceTestCase(unittest.TestCase):
                     },
                 ],
                 expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
-                    '"_backup_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": 1, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"',
+                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
+                    '"_backup_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": 1, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"',
                 ],
                 expected_result=True,
             ),
@@ -1937,7 +1937,7 @@ class ServiceTestCase(unittest.TestCase):
                     },
                 ],
                 expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
+                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                     '_backup_options={}',
                 ],
                 expected_result=True,
@@ -1946,7 +1946,7 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
-                    options=dict(labels=['label1=label1', 'label2=label2']),
+                    options=dict(label=['label1=label1', 'label2=label2']),
                 ),
                 update_kwargs=dict(),
                 side_effect=(
@@ -1983,7 +1983,7 @@ class ServiceTestCase(unittest.TestCase):
                     },
                 ],
                 expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": [\\"label1=label1\\", \\"label2=label2\\"], \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
+                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": [\\"label1=label1\\", \\"label2=label2\\"], \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                     '_backup_options={}',
                     'label1=label1',
                     'label2=label2',
@@ -2030,7 +2030,7 @@ class ServiceTestCase(unittest.TestCase):
                     },
                 ],
                 expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
+                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                     '_backup_options={}',
                 ],
                 expected_result=True,
@@ -2076,7 +2076,7 @@ class ServiceTestCase(unittest.TestCase):
                     },
                 ],
                 expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
+                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                 ],
                 expected_result=True,
             ),
@@ -2121,7 +2121,7 @@ class ServiceTestCase(unittest.TestCase):
                     },
                 ],
                 expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"network\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
+                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": 1, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": \\"10s\\", \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                 ],
                 expected_result=True,
             ),
@@ -2183,7 +2183,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': None,
                     'constraint-add': None,
                     'label-rm': None,
-                    'network': None,
                     'env-rm': None,
                     'publish-add': None,
                     'label-add': None,
@@ -2207,7 +2206,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': None,
                     'constraint-add': None,
                     'label-rm': None,
-                    'network': None,
                     'env-rm': None,
                     'publish-add': None,
                     'label-add': None,
@@ -2229,15 +2227,16 @@ class ServiceTestCase(unittest.TestCase):
                     name='service',
                     args='arg1 "arg2" \'arg3\'',
                     options=dict(
-                        ports='source:target',
-                        mounts='type=volume,destination=/path',
-                        labels='label=value',
+                        publish='source:target',
+                        mount='type=volume,destination=/path',
+                        label='label=value',
                         env='FOO=bar',
-                        constraints='node.role == manager',
-                        container_labels='label=value',
+                        constraint='node.role == manager',
+                        container_label='label=value',
                         network='network',
+                        mode='mode',
                         restart_condition='on-failure',
-                        stop_timeout=20,
+                        stop_grace_period=20,
                         custom_option='custom_value',
                         replicas=3,
                         user='user',
@@ -2248,7 +2247,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': 'FOO=bar',
                     'constraint-add': 'node.role == manager',
                     'label-rm': None,
-                    'network': None,
                     'env-rm': None,
                     'publish-add': 'source:target',
                     'label-add': 'label=value',
@@ -2271,15 +2269,16 @@ class ServiceTestCase(unittest.TestCase):
                     name='service',
                     args='arg1 "arg2" \'arg3\'',
                     options=dict(
-                        ports='8000:80',
-                        mounts='type=new_type,destination=/path',
-                        labels='label=new_value',
+                        publish='8000:80',
+                        mount='type=new_type,destination=/path',
+                        label='label=new_value',
                         env='FOO=baz',
-                        constraints='node.role == worker',
-                        container_labels='label=container_new_value',
+                        constraint='node.role == worker',
+                        container_label='label=container_new_value',
                         network='new_network',
+                        mode='mode',
                         restart_condition='any',
-                        stop_timeout=20,
+                        stop_grace_period=20,
                         custom_option='new_custom_value',
                         replicas=2,
                         user='new_user',
@@ -2327,7 +2326,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': 'FOO=baz',
                     'constraint-add': 'node.role == worker',
                     'label-rm': [],
-                    'network': None,
                     'env-rm': [],
                     'publish-add': '8000:80',
                     'label-add': 'label=new_value',
@@ -2349,23 +2347,23 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     options=dict(
-                        ports=[
+                        publish=[
                             'source:target',
                             'source2:target2',
                         ],
-                        mounts=[
+                        mount=[
                             'type=volume,destination=/path',
                             'type=volume,destination="/path2"',
                         ],
-                        labels=[
+                        label=[
                             'label=value',
                             'label2=value2',
                         ],
-                        container_labels=[
+                        container_label=[
                             'label=value',
                             'label2=value2',
                         ],
-                        constraints=[
+                        constraint=[
                             'node.role == manager',
                             'node.role == worker',
                         ],
@@ -2380,7 +2378,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': ['FOO=bar', 'FOO2=bar2'],
                     'constraint-add': ['node.role == manager', 'node.role == worker'],
                     'label-rm': None,
-                    'network': None,
                     'env-rm': None,
                     'publish-add': ['source:target', 'source2:target2'],
                     'label-add': ['label=value', 'label2=value2'],
@@ -2443,7 +2440,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': None,
                     'constraint-add': None,
                     'label-rm': ['label'],
-                    'network': None,
                     'env-rm': ['FOO'],
                     'publish-add': None,
                     'label-add': None,
@@ -2464,12 +2460,12 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     options=dict(
-                        ports='source2:target2',
-                        mounts='type=volume,destination=/path',
-                        labels='label=value',
+                        publish='source2:target2',
+                        mount='type=volume,destination=/path',
+                        label='label=value',
                         env='FOO=bar',
-                        constraints='node.role == manager',
-                        container_labels='label=value',
+                        constraint='node.role == manager',
+                        container_label='label=value',
                     ),
                 ),
                 service_info=dict(
@@ -2528,7 +2524,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': 'FOO=bar',
                     'constraint-add': 'node.role == manager',
                     'label-rm': ['label2'],
-                    'network': None,
                     'env-rm': ['FOO2'],
                     'publish-add': 'source2:target2',
                     'label-add': 'label=value',
@@ -2549,15 +2544,15 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     options=dict(
-                        ports=[
+                        publish=[
                             'source2:target2',
                             'source3:target3',
                         ],
-                        mounts=[
+                        mount=[
                             'type=volume,destination=/path',
                             'type=volume,destination="/path2"',
                         ],
-                        labels=[
+                        label=[
                             'label=value',
                             'label2=value2',
                         ],
@@ -2565,11 +2560,11 @@ class ServiceTestCase(unittest.TestCase):
                             'FOO=bar',
                             'FOO2=bar2',
                         ],
-                        constraints=[
+                        constraint=[
                             'node.role == manager',
                             'node.role == worker',
                         ],
-                        container_labels=[
+                        container_label=[
                             'label=value',
                             'label2=value2',
                         ],
@@ -2645,7 +2640,6 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': ['FOO=bar', 'FOO2=bar2'],
                     'constraint-add': ['node.role == manager', 'node.role == worker'],
                     'label-rm': ['label3'],
-                    'network': None,
                     'env-rm': ['FOO3'],
                     'publish-add': ['source2:target2', 'source3:target3'],
                     'label-add': ['label=value', 'label2=value2'],
@@ -2686,62 +2680,62 @@ class ServiceTestCase(unittest.TestCase):
                 expected_service_labels=[],
             ),
             existing_label_str=dict(
-                service_init_kwargs=dict(options=dict(labels='label=label')),
+                service_init_kwargs=dict(options=dict(label='label=label')),
                 kwargs={},
                 expected_service_labels=['label=label'],
             ),
             existing_label_list=dict(
-                service_init_kwargs=dict(options=dict(labels=['label1=label1', 'label2=label2'])),
+                service_init_kwargs=dict(options=dict(label=['label1=label1', 'label2=label2'])),
                 kwargs={},
                 expected_service_labels=['label1=label1', 'label2=label2'],
             ),
             existing_label_tuple=dict(
-                service_init_kwargs=dict(options=dict(labels=('label1=label1', 'label2=label2'))),
+                service_init_kwargs=dict(options=dict(label=('label1=label1', 'label2=label2'))),
                 kwargs={},
                 expected_service_labels=['label1=label1', 'label2=label2'],
             ),
             existing_label_str_add_json=dict(
-                service_init_kwargs=dict(options=dict(labels='label=label')),
+                service_init_kwargs=dict(options=dict(label='label=label')),
                 kwargs={'new_label': '{"foo": "bar"}'},
                 expected_service_labels=['label=label', 'new_label={\\"foo\\": \\"bar\\"}'],
             ),
             existing_label_str_add_one=dict(
-                service_init_kwargs=dict(options=dict(labels='label=label')),
+                service_init_kwargs=dict(options=dict(label='label=label')),
                 kwargs={'new_label': 'new_label'},
                 expected_service_labels=['label=label', 'new_label=new_label'],
             ),
             existing_label_object_add_one=dict(
-                service_init_kwargs=dict(options=dict(labels=42)),
+                service_init_kwargs=dict(options=dict(label=42)),
                 kwargs={'new_label': 'new_label'},
                 expected_service_labels=['42', 'new_label=new_label'],
             ),
             existing_label_list_add_one=dict(
-                service_init_kwargs=dict(options=dict(labels=['label1=label1', 'label2=label2'])),
+                service_init_kwargs=dict(options=dict(label=['label1=label1', 'label2=label2'])),
                 kwargs={'new_label': 'new_label'},
                 expected_service_labels=['label1=label1', 'label2=label2', 'new_label=new_label'],
             ),
             existing_label_tuple_add_one=dict(
-                service_init_kwargs=dict(options=dict(labels=('label1=label1', 'label2=label2'))),
+                service_init_kwargs=dict(options=dict(label=('label1=label1', 'label2=label2'))),
                 kwargs={'new_label': 'new_label'},
                 expected_service_labels=['label1=label1', 'label2=label2', 'new_label=new_label'],
             ),
             existing_label_str_add_two=dict(
-                service_init_kwargs=dict(options=dict(labels='label=label')),
+                service_init_kwargs=dict(options=dict(label='label=label')),
                 kwargs={'new_label1': 'new_label1', 'new_label2': 'new_label2'},
                 expected_service_labels=['label=label', 'new_label1=new_label1', 'new_label2=new_label2'],
             ),
             existing_label_object_add_two=dict(
-                service_init_kwargs=dict(options=dict(labels=42)),
+                service_init_kwargs=dict(options=dict(label=42)),
                 kwargs={'new_label1': 'new_label1', 'new_label2': 'new_label2'},
                 expected_service_labels=['42', 'new_label1=new_label1', 'new_label2=new_label2'],
             ),
             existing_label_list_add_two=dict(
-                service_init_kwargs=dict(options=dict(labels=['label1=label1', 'label2=label2'])),
+                service_init_kwargs=dict(options=dict(label=['label1=label1', 'label2=label2'])),
                 kwargs={'new_label1': 'new_label1', 'new_label2': 'new_label2'},
                 expected_service_labels=['label1=label1', 'label2=label2', 'new_label1=new_label1', 'new_label2=new_label2'],
             ),
             existing_label_tuple_add_two=dict(
-                service_init_kwargs=dict(options=dict(labels=('label1=label1', 'label2=label2'))),
+                service_init_kwargs=dict(options=dict(label=('label1=label1', 'label2=label2'))),
                 kwargs={'new_label1': 'new_label1', 'new_label2': 'new_label2'},
                 expected_service_labels=['label1=label1', 'label2=label2', 'new_label1=new_label1', 'new_label2=new_label2'],
             ),
@@ -2749,13 +2743,13 @@ class ServiceTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 service = docker.Service(**data['service_init_kwargs'])
-                old_labels_id = id(service.labels)
+                old_labels_id = id(service.label)
                 service._update_labels(**data['kwargs'])
                 for label in data['expected_service_labels']:
-                    self.assertIn(label, service.labels)
-                self.assertEqual(len(service.labels), len(data['expected_service_labels']))
+                    self.assertIn(label, service.label)
+                self.assertEqual(len(service.label), len(data['expected_service_labels']))
                 # make sure original container's labels not changed
-                self.assertNotEqual(id(service.labels), old_labels_id)
+                self.assertNotEqual(id(service.label), old_labels_id)
 
     def test__service_need_update(self):
         cases = dict(
@@ -3242,23 +3236,25 @@ class ServiceTestCase(unittest.TestCase):
                     command='command1 command2',
                     args='arg1 arg2',
                     options=dict(
-                        mounts=['mount1', 'mount2'],
-                        constraints=['constraint1', 'constraint2'],
-                        container_labels=['c_label1', 'c_label2'],
-                        labels=['label1', 'label2'],
+                        mount=['mount1', 'mount2'],
+                        constraint=['constraint1', 'constraint2'],
+                        container_label=['c_label1', 'c_label2'],
+                        label=['label1', 'label2'],
                         env=['en1', 'env2'],
-                        ports=['port1', 'port2'],
+                        publish=['port1', 'port2'],
                         replicas=5,
                         network='network',
+                        mode='mode',
                         restart_condition='restart_condition',
                         user='user',
-                        stop_timeout=20,
+                        stop_grace_period=20,
                     ),
                 ),
                 expected_args={
                     'executable': ['docker', 'service', 'create'],
                     'args': ['arg1', 'arg2'],
                     'network': 'network',
+                    'mode': 'mode',
                     'constraint': ['constraint1', 'constraint2'],
                     'mount': ['mount1', 'mount2'],
                     'replicas': '5',

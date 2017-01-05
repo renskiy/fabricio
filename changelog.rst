@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.3.17
+--------------
+
+- Change: ``docker.Container``: restart() => reload()
+- Change: ``docker.Service``: renamed options - labels => label, container_labels => container_label, constraints => constraint, mounts => mount, stop_timeout => stop_grace_period, ports => publish
+
 Release 0.3.16
 --------------
 

@@ -9,9 +9,9 @@ db = tasks.DockerTasks(
         pg_data='/data',
         pg_recovery_master_promotion_enabled=True,
         options=dict(
-            volumes='/data:/data',
+            volume='/data:/data',
             env='PGDATA=/data',
-            ports='5432:5432',
+            publish='5432:5432',
         ),
     ),
     hosts=AvailableVagrantHosts(guest_network_interface='eth1'),

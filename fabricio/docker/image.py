@@ -158,9 +158,6 @@ class Image(object):
         name=None,
         options=(),
     ):
-        override_options = {}
-        if temporary:
-            override_options['restart'] = None
         return utils.Options(
             options,
             name=name,
@@ -168,7 +165,6 @@ class Image(object):
             tty=temporary,
             interactive=temporary,
             detach=temporary is not None and not temporary,
-            **override_options
         )
 
     def run(

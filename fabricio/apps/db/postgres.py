@@ -269,7 +269,7 @@ class PostgresqlContainer(docker.Container):
         )
         if not container_updated:
             if main_config_updated:
-                self.restart()
+                self.reload()
             elif hba_config_updated:
                 self.signal('HUP')
             else:
@@ -310,7 +310,7 @@ class PostgresqlContainer(docker.Container):
             super(PostgresqlContainer, self).revert()
         except RuntimeError:
             if main_config_reverted:
-                self.restart()
+                self.reload()
             elif hba_config_reverted:
                 self.signal('HUP')
             else:
@@ -458,7 +458,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             ).update(force=force, tag=tag, registry=registry)
 
             if not container_updated and recovery_config_updated:
-                self.restart()
+                self.reload()
             self.master_obtained.set()  # one who first comes here is master
             return container_updated or recovery_config_updated
         except Exception as exception:

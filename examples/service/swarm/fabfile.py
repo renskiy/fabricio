@@ -39,7 +39,7 @@ nginx = tasks.DockerTasks(
         name='nginx',
         image='nginx:stable-alpine',
         options=dict(
-            ports='80:80',
+            publish='80:80',
             replicas=2,
         ),
     ),

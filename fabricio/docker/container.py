@@ -38,15 +38,30 @@ class Container(BaseService):
 
     stop_timeout = Attribute(default=10)
 
+    deprecated_options = {
+        'ports': 'publish',
+        'labels': 'label',
+        'volumes': 'volume',
+        'links': 'link',
+        'hosts': 'add_host',
+        'restart_policy': 'restart',
+    }
+
     user = Option()
-    ports = Option(name='publish', safe=False)
+    ports = Option(safe=False)  # deprecated
+    publish = Option(safe=False)
     env = Option()
-    labels = Option(name='label')
-    volumes = Option(name='volume')
-    links = Option(name='link')
-    hosts = Option(name='add-host')
+    labels = Option()  # deprecated
+    label = Option()
+    volumes = Option()  # deprecated
+    volume = Option()
+    links = Option()  # deprecated
+    link = Option()
+    hosts = Option()  # deprecated
+    add_host = Option(name='add-host')
     network = Option(name='net')
-    restart_policy = Option(name='restart')
+    restart_policy = Option(safe=False)  # deprecated
+    restart = Option(safe=False)
     stop_signal = Option(name='stop-signal')
 
     def __init__(self, _name=None, **kwargs):
@@ -141,7 +156,7 @@ class Container(BaseService):
         command = 'docker stop --time {timeout} {container}'
         fabricio.run(command.format(container=self, timeout=timeout))
 
-    def restart(self, timeout=None):
+    def reload(self, timeout=None):
         if timeout is None:
             timeout = self.stop_timeout
         command = 'docker restart --time {timeout} {container}'

@@ -6,7 +6,7 @@ my_nginx = tasks.ImageBuildDockerTasks(
         name='my_nginx',
         image='my_nginx',
         options=dict(
-            ports='80:80',
+            publish='80:80',
         ),
     ),
     hosts=AvailableVagrantHosts(),

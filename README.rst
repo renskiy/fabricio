@@ -6,6 +6,7 @@ Fabricio is a `Docker`_ deploy automation tool used along with the `Fabric`_.
 
 .. _Fabric: http://www.fabfile.org
 .. _Docker: https://www.docker.com
+.. _swarm mode: https://docs.docker.com/engine/swarm/
 
 .. image:: https://travis-ci.org/renskiy/fabricio.svg?branch=master
     :target: https://travis-ci.org/renskiy/fabricio
@@ -46,7 +47,7 @@ The most basic :code:`fabfile.py` you can use with the Fabricio is something lik
             name='nginx',
             image='nginx:stable',
             options={
-                'ports': '80:80',
+                'publish': '80:80',
             },
         ),
         hosts=['user@example.com'],
@@ -137,8 +138,8 @@ You can define as many roles and infrastructures as you need. The following exam
             name='balancer',
             image='registry.example.com/nginx:balancer',
             options={
-                'ports': ['80:80', '443:443'],
-                'volumes': '/etc/cert:/etc/cert:ro',
+                'publish': ['80:80', '443:443'],
+                'volume': '/etc/cert:/etc/cert:ro',
             },
         ),
         roles=['balancer'],
@@ -149,8 +150,8 @@ You can define as many roles and infrastructures as you need. The following exam
             name='web',
             image='registry.example.com/nginx:web',
             options={
-                'ports': '80:80',
-                'volumes': '/media:/media',
+                'publish': '80:80',
+                'volume': '/media:/media',
             },
         ),
         roles=['web'],
@@ -228,7 +229,7 @@ When your local Docker registry is up and run you can provide custom ``registry`
             name='nginx',
             image='nginx:stable',
             options={
-                'ports': '80:80',
+                'publish': '80:80',
             },
         ),
         registry='localhost:5000',
@@ -285,4 +286,25 @@ And of course, you can use your own private Docker registry:
         registry='registry.your_company.com',
         hosts=['user@example.com'],
         build_path='src',
+    )
+
+Docker services (swarm mode)
+============================
+
+Fabricio also can work with Docker services AKA (Also Known As) `swarm mode`_ (Docker 1.12+):
+
+.. code:: python
+
+    from fabricio import docker, tasks
+
+    nginx = tasks.DockerTasks(
+        service=docker.Service(
+            name='nginx',
+            image='nginx:stable',
+            options={
+                'publish': '8080:80',
+                'replicas': 3,
+            },
+        ),
+        hosts=['user@manager'],
     )

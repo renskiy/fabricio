@@ -26,7 +26,11 @@ class ServiceCannotBeRevertedError(RuntimeError):
     pass
 
 
-class RemovableOption(Option):
+class UpdateOption(Option):
+    pass
+
+
+class RemovableOption(UpdateOption):
 
     path = None
 
@@ -118,25 +122,29 @@ class Service(BaseService):
     command = Attribute()
     args = Attribute()
 
-    labels = Label(name='label', path='/Spec/Labels')
-    container_labels = Label(
+    label = Label(path='/Spec/Labels')
+    container_label = Label(
         name='container-label',
         path='/Spec/TaskTemplate/ContainerSpec/Labels',
         safe=False,
     )
-    constraints = RemovableOption(
-        name='constraint',
+    constraint = RemovableOption(
         path='/Spec/TaskTemplate/Placement/Constraints/*',
         safe=False,
     )
-    replicas = Option(default=1, safe=False)
-    mounts = Mount(name='mount', safe=False)
+    replicas = UpdateOption(default=1, safe=False)
+    mount = Mount(safe=False)
     network = Option()
-    restart_condition = Option(name='restart-condition', safe=False)
-    stop_timeout = Option(name='stop-grace-period', default='10s', safe=False)
+    mode = Option(safe=False)
+    restart_condition = UpdateOption(name='restart-condition', safe=False)
+    stop_grace_period = UpdateOption(
+        name='stop-grace-period',
+        default='10s',
+        safe=False,
+    )
     env = Env()
-    ports = Port(name='publish', safe=False)
-    user = Option()
+    publish = Port(safe=False)
+    user = UpdateOption()
 
     @utils.default_property
     def image_id(self):
@@ -154,7 +162,7 @@ class Service(BaseService):
         options = {}
         for cls in type(self).__mro__[::-1]:
             for attr, option in vars(cls).items():
-                if isinstance(option, Option):
+                if isinstance(option, UpdateOption):
                     def add_values(service, attr=attr):
                         return getattr(service, attr)
                     name = option.name or attr
@@ -174,8 +182,7 @@ class Service(BaseService):
                 for option, callback in self._update_options.items()
             ),
             args=self.args,
-            network=None,  # network can't be updated
-            **self._additional_options
+            **self._other_options
         )
 
     def _update_service(self, options):
@@ -428,7 +435,7 @@ class Service(BaseService):
         ).endswith('true')
 
     def _update_labels(self, **labels):
-        service_labels = self.labels
+        service_labels = self.label
         if not service_labels:
             service_labels = []
         elif isinstance(service_labels, six.string_types):
@@ -443,7 +450,7 @@ class Service(BaseService):
                 label=label,
                 value=value.replace('"', '\\"'),
             ))
-        self.labels = service_labels
+        self.label = service_labels
 
     class _RmValuesGetter(object):
 
