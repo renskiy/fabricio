@@ -1,5 +1,3 @@
-import warnings
-
 import six
 
 from cached_property import cached_property
@@ -34,8 +32,6 @@ class BaseService(object):
     name = Attribute()
 
     image = Image()
-
-    deprecated_options = {}
 
     def __init__(self, image=None, options=None, safe_options=None, **attrs):
         if image is not None:
@@ -92,20 +88,13 @@ class BaseService(object):
 
     def _get_options(self, safe=False):
         options = self._safe_options if safe else self._options
-        result = {}
-        for attr, option in options.items():
-            if option in self.deprecated_options:
-                warnings.warn(
-                    "'{old_option}' option is deprecated and will be removed "
-                    "in v0.4, use '{new_option}' instead".format(
-                        old_option=option,
-                        new_option=self.deprecated_options[option],
-                    ),
-                    category=RuntimeWarning,
-                )
-                option = self.deprecated_options[option].replace('_', '-')
-            result[option] = getattr(self, attr) or result.get(option)
-        return frozendict(result, **self._other_options)
+        return frozendict(
+            (
+                (option, getattr(self, attr))
+                for attr, option in options.items()
+            ),
+            **self._other_options
+        )
 
     @property
     def options(self):

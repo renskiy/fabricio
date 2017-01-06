@@ -1,6 +1,9 @@
 import json
 import warnings
 
+import six
+from frozendict import frozendict
+
 import fabricio
 
 from fabricio import utils
@@ -64,7 +67,7 @@ class Container(BaseService):
     restart = Option(safe=False)
     stop_signal = Option(name='stop-signal')
 
-    def __init__(self, _name=None, **kwargs):
+    def __init__(self, _name=None, options=None, **kwargs):
         if _name:
             warnings.warn(
                 'Passing container name using positional argument is '
@@ -73,7 +76,26 @@ class Container(BaseService):
                 category=RuntimeWarning, stacklevel=2,
             )
             kwargs.update(name=_name)
-        super(Container, self).__init__(**kwargs)
+        options = options or {}
+        for old_option, new_option in self.deprecated_options.items():
+            if old_option in options:
+                warnings.warn(
+                    "'{old_option}' option is deprecated and will be removed "
+                    "in v0.4, use '{new_option}' instead".format(
+                        old_option=old_option,
+                        new_option=new_option,
+                    ),
+                    category=RuntimeWarning, stacklevel=2,
+                )
+        super(Container, self).__init__(options=options, **kwargs)
+
+    def _get_options(self, safe=False):
+        options = dict(super(Container, self)._get_options(safe=safe))
+        for option in list(six.iterkeys(options)):
+            if option in self.deprecated_options:
+                new_option = self.deprecated_options[option].replace('_', '-')
+                options[new_option] = options.pop(option)
+        return frozendict(options)
 
     def fork(self, _name=None, **kwargs):
         if _name:
