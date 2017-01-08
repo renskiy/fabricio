@@ -9,7 +9,6 @@ hosts = AvailableVagrantHosts(guest_network_interface='eth1')
 
 @fab.task(name='swarm-init')
 @fab.serial
-@fab.hosts('fake_host')
 def swarm_init():
     def _swarm_init():
         if swarm_init.worker_join_command is None:
