@@ -198,7 +198,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'current_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
                     {
@@ -208,7 +208,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'backup_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                 ],
                 service_type=DjangoContainer,
@@ -241,7 +241,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -250,7 +250,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@backup',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                 ],
                 service_type=DjangoService,
@@ -277,7 +277,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'current_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
                     {
@@ -287,7 +287,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'backup_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                 ],
                 service_type=DjangoContainer,
@@ -312,7 +312,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -321,7 +321,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@backup',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                 ],
                 service_type=DjangoService,
@@ -366,7 +366,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'current_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
                     {
@@ -376,7 +376,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'backup_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -446,7 +446,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -455,7 +455,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@backup',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -525,7 +525,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'current_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     dict(args=['docker', 'inspect', '--type', 'container', 'name_backup']),
                     {
@@ -542,7 +542,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'backup_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -654,7 +654,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -667,7 +667,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@backup',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '\\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker'],
@@ -771,7 +771,6 @@ class DjangoContainerTestCase(unittest.TestCase):
         cases = dict(
             current_container_not_found=dict(
                 expected_exception=RuntimeError,
-                expected_error_message="Container 'name' not found",
                 side_effect=(
                     RuntimeError(),
                 ),
@@ -788,7 +787,6 @@ class DjangoContainerTestCase(unittest.TestCase):
             ),
             backup_container_not_found=dict(
                 expected_exception=RuntimeError,
-                expected_error_message="Container 'name_backup' not found",
                 side_effect=(
                     SucceededResult('[{"Image": "current_image_id"}]'),
                     SucceededResult(
@@ -814,7 +812,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'current_image_id',
-                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\[X\]"', '|', 'awk', '"{print', '\$2}"'],
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
                     {
                         'executable': ['docker', 'inspect'],

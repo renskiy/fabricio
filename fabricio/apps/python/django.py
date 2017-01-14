@@ -63,9 +63,12 @@ class DjangoMixin(docker.BaseService):
 
     @utils.once_per_command
     def migrate_back(self):
-        migrations_command = 'python manage.py showmigrations --plan ' \
-                             '| egrep "^\[X\]" ' \
-                             '| awk "{print \$2}"'
+        migrations_command = (
+            'python manage.py showmigrations --plan '  # execute plan
+            '| egrep "^\\[X\\]" '  # show only applied migrations
+            '| awk "{print $2}" '  # take migration name
+            '&& test ${PIPESTATUS[0]} -eq 0'  # fail if couldn't execute plan
+        )
         image = self.image
         options = self.safe_options
 

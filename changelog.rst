@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.3.18
+--------------
+
+- Fix: ``DjangoContainer`` and ``DjangoService``: fail if migration plan could not be retrieved
+- Fix: ``DjangoContainer`` and ``DjangoService``: fixed `migrate-back` command
+
 Release 0.3.17
 --------------
 
