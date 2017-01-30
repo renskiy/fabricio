@@ -11,11 +11,11 @@ from fabricio import utils
 from .base import BaseService, Option, Attribute
 
 
-class ContainerNotFoundError(RuntimeError):
+class ContainerError(RuntimeError):
     pass
 
 
-class ContainerCannotBeRevertedError(RuntimeError):
+class ContainerNotFoundError(ContainerError):
     pass
 
 
@@ -225,7 +225,7 @@ class Container(BaseService):
         try:
             backup_container.info
         except ContainerNotFoundError:
-            raise ContainerCannotBeRevertedError
+            raise ContainerError('backup container not found')
         self.stop()
         backup_container.start()
         self.delete(delete_image=True)

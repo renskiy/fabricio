@@ -1142,7 +1142,7 @@ class ContainerTestCase(unittest.TestCase):
     @mock.patch.object(fabricio, 'run')
     def test_revert_raises_error_if_backup_container_not_found(self, run, *args):
         container = docker.Container(name='name')
-        with self.assertRaises(docker.ContainerCannotBeRevertedError):
+        with self.assertRaises(docker.ContainerError):
             container.revert()
         run.assert_not_called()
 
@@ -3163,7 +3163,7 @@ class ServiceTestCase(unittest.TestCase):
                     __delete__=lambda *_: None,
                 ):
                     service = docker.Service()
-                    with self.assertRaises(docker.ServiceCannotBeRevertedError):
+                    with self.assertRaises(docker.ServiceError):
                         service.revert()
 
     def test__create_service(self):

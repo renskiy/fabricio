@@ -18,11 +18,11 @@ from .base import BaseService, Option, Attribute
 from .container import Container, ContainerNotFoundError
 
 
-class ServiceNotFoundError(RuntimeError):
+class ServiceError(RuntimeError):
     pass
 
 
-class ServiceCannotBeRevertedError(RuntimeError):
+class ServiceNotFoundError(ServiceError):
     pass
 
 
@@ -150,9 +150,15 @@ class Service(BaseService):
     def image_id(self):
         return self.info['Spec']['TaskTemplate']['ContainerSpec']['Image']
 
+    @property
+    def _backup_options(self):
+        try:
+            return self.info['Spec']['Labels'][self.backup_options_label_name]
+        except KeyError:
+            raise ServiceError('service backup info not found')
+
     def get_backup_version(self):
-        label_name = self.backup_options_label_name
-        backup_options = json.loads(self.info['Spec']['Labels'][label_name])
+        backup_options = json.loads(self._backup_options)
         backup_service = self.fork(image=backup_options['image'])
         backup_service.image_id = None
         return backup_service
@@ -373,18 +379,13 @@ class Service(BaseService):
     @utils.once_per_command
     def _revert(self):
         with utils.patch(self, 'info', self.info, force_delete=True):
-            try:
-                labels = self.info['Spec']['Labels']
-                backup_options = labels[self.backup_options_label_name]
-            except KeyError:
-                raise ServiceCannotBeRevertedError
-            decoded_backup_options = json.loads(backup_options)
+            decoded_backup_options = json.loads(self._backup_options)
             label_add = decoded_backup_options.get('label-add') or []
             if not isinstance(label_add, list):
                 label_add = [label_add]
             label_add.append('{label}={value}'.format(
                 label=self.current_options_label_name,
-                value=backup_options.replace('"', '\\"'),
+                value=self._backup_options.replace('"', '\\"'),
             ))
             decoded_backup_options['label-add'] = label_add
             update_options = self._options_revert_patch(decoded_backup_options)
