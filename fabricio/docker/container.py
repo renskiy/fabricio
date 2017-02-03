@@ -94,7 +94,9 @@ class Container(BaseService):
         for option in list(six.iterkeys(options)):
             if option in self.deprecated_options:
                 new_option = self.deprecated_options[option].replace('_', '-')
-                options[new_option] = options.pop(option)
+                option_value = options.pop(option)
+                if option_value:
+                    options[new_option] = option_value
         return frozendict(options)
 
     def fork(self, _name=None, **kwargs):
