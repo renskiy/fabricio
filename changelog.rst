@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.19
+--------------
+
+- Fix: fixed ``Container``'s deprecated options mapping
+
 Release 0.3.18
 --------------
 
