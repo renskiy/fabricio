@@ -2,10 +2,10 @@ from fabric import api as fab
 from fabricio import tasks, docker
 from fabricio.misc import AvailableVagrantHosts
 
-fab.env.roledefs = {
+fab.env.roledefs.update(
     # you can set default roles definitions here
-    'web': 'localhost',
-}
+    web='localhost',
+)
 
 
 @tasks.infrastructure
