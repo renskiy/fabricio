@@ -2238,8 +2238,7 @@ class ServiceTestCase(unittest.TestCase):
     def test_is_manager_returns_false_if_pull_error(self, *args):
         with mock.patch.object(fabricio, 'run') as run:
             service = docker.Service(name='service')
-            with service.pull_errors.get_lock():
-                service.pull_errors.value[fab.env.host] = True
+            service.pull_errors[fab.env.host] = True
             self.assertFalse(service.is_manager())
             run.assert_not_called()
 
@@ -2247,8 +2246,7 @@ class ServiceTestCase(unittest.TestCase):
     def test_is_manager_raises_error_if_all_pulls_failed(self, *args):
         with mock.patch.object(fabricio, 'run') as run:
             service = docker.Service(name='service')
-            with service.pull_errors.get_lock():
-                service.pull_errors.value[fab.env.host] = True
+            service.pull_errors[fab.env.host] = True
             with self.assertRaises(docker.ServiceError):
                 service.is_manager()
             run.assert_not_called()
@@ -2275,7 +2273,7 @@ class ServiceTestCase(unittest.TestCase):
                     service.pull_image()
                     self.assertEqual(
                         test_data['expected_pull_error'],
-                        service.pull_errors.value.get(fab.env.host),
+                        service.pull_errors.get(fab.env.host),
                     )
 
     def test_update_options(self, *args):

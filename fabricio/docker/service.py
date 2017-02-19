@@ -147,7 +147,7 @@ class Service(BaseService):
         super(Service, self).__init__(*args, **kwargs)
         self.manager_found = multiprocessing.Event()
         self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
-        self.pull_errors = multiprocessing.Value(ctypes.py_object, {})
+        self.pull_errors = multiprocessing.Manager().dict()
 
     @utils.default_property
     def image_id(self):
@@ -405,8 +405,7 @@ class Service(BaseService):
         try:
             return super(Service, self).pull_image(tag=tag, registry=registry)
         except (RuntimeError, NetworkError, CommandTimeout) as error:
-            with self.pull_errors.get_lock():
-                self.pull_errors.value[fab.env.host] = True
+            self.pull_errors[fab.env.host] = True
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
                 output=sys.stderr,
@@ -440,7 +439,7 @@ class Service(BaseService):
 
     def is_manager(self):
         try:
-            if self.pull_errors.value.get(fab.env.host, False):
+            if self.pull_errors.get(fab.env.host, False):
                 return False
             is_manager = fabricio.run(
                 "docker info 2>&1 | grep 'Is Manager:'",
