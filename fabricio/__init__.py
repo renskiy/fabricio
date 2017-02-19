@@ -14,13 +14,13 @@ def _command(
     command,
     ignore_errors=False,
     quiet=True,
-    hide=('running', ),
+    hide=('running', 'aborts'),
     show=(),
     abort_exception=RuntimeError,
     **kwargs
 ):
     if quiet:
-        hide += ('output', 'aborts', 'warnings')
+        hide += ('output', 'warnings')
     log('{method}: {command}'.format(
         method=fabric_method.__name__,
         command=command,
