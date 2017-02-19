@@ -132,16 +132,12 @@ class Service(BaseService):
         path='/Spec/TaskTemplate/Placement/Constraints/*',
         safe=False,
     )
-    replicas = UpdateOption(default=1, safe=False)
+    replicas = UpdateOption(safe=False)
     mount = Mount(safe=False)
     network = Option()
     mode = Option(safe=False)
     restart_condition = UpdateOption(name='restart-condition', safe=False)
-    stop_grace_period = UpdateOption(
-        name='stop-grace-period',
-        default='10s',
-        safe=False,
-    )
+    stop_grace_period = UpdateOption(name='stop-grace-period', safe=False)
     env = Env()
     publish = Port(safe=False)
     user = UpdateOption()
