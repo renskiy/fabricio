@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.3.20
+--------------
+
+- Change: use Docker's default values for ``--stop-grace-period`` and ``--replicas`` options
+- Enhancement: do not raise error if at least one Swarm manager was able to update the service
+- Enhancement: added ``upgrade`` command
+
 Release 0.3.19
 --------------
 
