@@ -438,11 +438,7 @@ class DockerTasks(Tasks):
         super(DockerTasks, self).__init__(**kwargs)
         self.service = service or container
         self.registry = docker.Registry(registry)
-        self.host_registry = docker.Registry(
-            'localhost:{port}'.format(port=ssh_tunnel_port)
-            if ssh_tunnel_port else
-            registry
-        )
+        self.ssh_tunnel_port = ssh_tunnel_port
         command_mode = bool(fab.env.tasks)
         self.backup.use_task_objects = command_mode or backup_commands
         self.restore.use_task_objects = command_mode or backup_commands
@@ -451,6 +447,14 @@ class DockerTasks(Tasks):
         self.revert.use_task_objects = command_mode
         self.prepare.use_task_objects = command_mode or registry is not None
         self.push.use_task_objects = command_mode or registry is not None
+
+    @property
+    def host_registry(self):
+        return docker.Registry(
+            'localhost:{port}'.format(port=self.ssh_tunnel_port)
+            if self.ssh_tunnel_port else
+            self.registry
+        )
 
     @property
     def image(self):
@@ -562,7 +566,8 @@ class DockerTasks(Tasks):
 
     @contextlib.contextmanager
     def remote_tunnel(self):
-        if self.host_registry and self.host_registry.host == 'localhost':
+        host_registry = self.host_registry
+        if host_registry and host_registry.host == 'localhost':
             if self.registry:
                 local_port = self.registry.port
                 local_host = self.registry.host
@@ -580,7 +585,7 @@ class DockerTasks(Tasks):
                     # printing debug messages by fab.remote_tunnel
 
                     with fab.remote_tunnel(
-                            remote_port=self.host_registry.port,
+                            remote_port=host_registry.port,
                             local_port=local_port,
                             local_host=local_host,
                     ):
