@@ -59,11 +59,10 @@ Type :code:`fab --list` in your terminal to see available Fabric commands:
 
     Available commands:
 
-        nginx           backup -> pull -> migrate -> update
-        nginx.deploy    backup -> pull -> migrate -> update
-        nginx.pull      pull Docker image from registry
-        nginx.rollback  rollback service to a previous version
-        nginx.update    update service to a new version
+        nginx           full service deploy (prepare -> push -> upgrade)
+        nginx.deploy    full service deploy (prepare -> push -> upgrade)
+        nginx.rollback  rollback service to a previous version (migrate-back -> revert)
+        nginx.upgrade   upgrade service to a new version (backup -> pull -> migrate -> update)
 
 Finally, to deploy such configuration you simply have to execute following bash command:
 
@@ -167,17 +166,15 @@ Here is the list of available commands:
         production.confirm  automatically confirm production infrastructure selection
         staging             select staging infrastructure to run task(s) on
         staging.confirm     automatically confirm staging infrastructure selection
-        balancer            backup -> pull -> migrate -> update
-        balancer.deploy     backup -> pull -> migrate -> update
-        balancer.pull       pull Docker image from registry
-        balancer.rollback   rollback service to a previous version
-        balancer.update     update service to a new version
-        web                 backup -> pull -> migrate -> update
-        web.deploy          backup -> pull -> migrate -> update
-        web.pull            pull Docker image from registry
-        web.rollback        rollback service to a previous version
-        web.update          update service to a new version
-        
+        balancer            full service deploy (prepare -> push -> upgrade)
+        balancer.deploy     full service deploy (prepare -> push -> upgrade)
+        balancer.rollback   rollback service to a previous version (migrate-back -> revert)
+        balancer.upgrade    upgrade service to a new version (backup -> pull -> migrate -> update)
+        web                 full service deploy (prepare -> push -> upgrade)
+        web.deploy          full service deploy (prepare -> push -> upgrade)
+        web.rollback        rollback service to a previous version (migrate-back -> revert)
+        web.upgrade         upgrade service to a new version (backup -> pull -> migrate -> update)
+
 'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 
 .. code:: bash
@@ -247,8 +244,8 @@ List of commands in this case updated with additional two commands:
 
 ::
 
-    nginx.prepare   prepare Docker image
-    nginx.push      push Docker image to registry
+    nginx.prepare   build Docker image
+    nginx.push      push built Docker image to the registry
     
 The first one pulls Image from the original registry and the second pushes it to the local registry which is used as main registry for all configuration's infrastructures.
 

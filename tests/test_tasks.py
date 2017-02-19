@@ -188,28 +188,43 @@ class DockerTasksTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 init_kwargs=dict(service='service'),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore'],
+                expected_commands_list=['upgrade', 'rollback', 'deploy'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore', 'pull', 'update', 'prepare', 'push'],
             ),
             prepare_tasks=dict(
                 init_kwargs=dict(service='service', registry='registry'),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'prepare', 'push'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore'],
+                expected_commands_list=['rollback', 'deploy', 'prepare', 'push', 'upgrade'],
+                unexpected_commands_list=['backup', 'restore', 'migrate', 'migrate-back', 'pull', 'update', 'revert'],
             ),
             migrate_tasks=dict(
                 init_kwargs=dict(service='service', migrate_commands=True),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'migrate', 'migrate-back'],
-                unexpected_commands_list=['revert', 'backup', 'restore', 'prepare', 'push'],
+                expected_commands_list=['rollback', 'deploy', 'migrate', 'migrate-back', 'upgrade'],
+                unexpected_commands_list=['backup', 'restore', 'prepare', 'push', 'pull', 'update', 'revert'],
             ),
             backup_tasks=dict(
                 init_kwargs=dict(service='service', backup_commands=True),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'prepare', 'push'],
+                expected_commands_list=['rollback', 'deploy', 'backup', 'restore', 'upgrade'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'revert'],
+            ),
+            revert_task=dict(
+                init_kwargs=dict(service='service', revert_command=True),
+                expected_commands_list=['rollback', 'deploy', 'revert', 'upgrade'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'backup', 'restore'],
+            ),
+            pull_task=dict(
+                init_kwargs=dict(service='service', pull_command=True),
+                expected_commands_list=['rollback', 'deploy', 'pull', 'upgrade'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'revert', 'update', 'backup', 'restore'],
+            ),
+            update_task=dict(
+                init_kwargs=dict(service='service', update_command=True),
+                expected_commands_list=['rollback', 'deploy', 'update', 'upgrade'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'revert', 'backup', 'restore'],
             ),
             all_tasks=dict(
-                init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry'),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push'],
-                unexpected_commands_list=['revert'],
+                init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True),
+                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade'],
+                unexpected_commands_list=[],
             ),
         )
         for case, data in cases.items():
@@ -307,58 +322,6 @@ class DockerTasksTestCase(unittest.TestCase):
             ),
             custom_registry_with_ssh_tunnel=dict(
                 deploy_kwargs=dict(),
-                init_kwargs=dict(registry='host:5000', ssh_tunnel_port=1234),
-                expected_calls=[
-                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
-                    mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
-                    mock.call.local('docker tag test:latest host:5000/test:latest', use_cache=True),
-                    mock.call.local('docker push host:5000/test:latest', quiet=False, use_cache=True),
-                    mock.call.local('docker rmi host:5000/test:latest', use_cache=True),
-                    mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='host'),
-                    mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.migrate(tag=None, registry='localhost:1234'),
-                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
-                ],
-                image_registry=None,
-            ),
-            custom_registry_skip_prepare=dict(
-                deploy_kwargs=dict(prepare='no'),
-                init_kwargs=dict(registry='host:5000'),
-                expected_calls=[
-                    mock.call.run('docker pull host:5000/test:latest', quiet=False),
-                    mock.call.migrate(tag=None, registry='host:5000'),
-                    mock.call.update(force=False, tag=None, registry='host:5000'),
-                ],
-                image_registry=None,
-            ),
-            custom_registry_skip_prepare_with_ssh_tunnel=dict(
-                deploy_kwargs=dict(prepare='no'),
-                init_kwargs=dict(registry='host:5000', ssh_tunnel_port=1234),
-                expected_calls=[
-                    mock.call.remote_tunnel(remote_port=1234, local_port=5000, local_host='host'),
-                    mock.call.run('docker pull localhost:1234/test:latest', quiet=False),
-                    mock.call.migrate(tag=None, registry='localhost:1234'),
-                    mock.call.update(force=False, tag=None, registry='localhost:1234'),
-                ],
-                image_registry=None,
-            ),
-            custom_registry_explicit_prepare=dict(
-                deploy_kwargs=dict(prepare='yes'),
-                init_kwargs=dict(registry='host:5000'),
-                expected_calls=[
-                    mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
-                    mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
-                    mock.call.local('docker tag test:latest host:5000/test:latest', use_cache=True),
-                    mock.call.local('docker push host:5000/test:latest', quiet=False, use_cache=True),
-                    mock.call.local('docker rmi host:5000/test:latest', use_cache=True),
-                    mock.call.run('docker pull host:5000/test:latest', quiet=False),
-                    mock.call.migrate(tag=None, registry='host:5000'),
-                    mock.call.update(force=False, tag=None, registry='host:5000'),
-                ],
-                image_registry=None,
-            ),
-            custom_registry_explicit_prepare_with_ssh_tunnel=dict(
-                deploy_kwargs=dict(prepare='yes'),
                 init_kwargs=dict(registry='host:5000', ssh_tunnel_port=1234),
                 expected_calls=[
                     mock.call.local('docker pull test:latest', quiet=False, use_cache=True),
@@ -1157,29 +1120,6 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry=None,
             ),
-            skip_prepare=dict(
-                deploy_kwargs=dict(prepare='no'),
-                init_kwargs=dict(),
-                expected_calls=[
-                    mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None, registry=None),
-                    mock.call.update(force=False, tag=None, registry=None),
-                ],
-                image_registry=None,
-            ),
-            explicit_prepare=dict(
-                deploy_kwargs=dict(prepare='yes'),
-                init_kwargs=dict(),
-                expected_calls=[
-                    mock.call.local('docker build --tag test:latest --pull .', quiet=False, use_cache=True),
-                    mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
-                    mock.call.local('docker push test:latest', quiet=False, use_cache=True),
-                    mock.call.run('docker pull test:latest', quiet=False),
-                    mock.call.migrate(tag=None, registry=None),
-                    mock.call.update(force=False, tag=None, registry=None),
-                ],
-                image_registry=None,
-            ),
             complex=dict(
                 deploy_kwargs=dict(force=True, backup=True, tag='tag'),
                 init_kwargs=dict(registry='host:4000', ssh_tunnel_port=1234, build_path='foo'),
@@ -1255,7 +1195,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
 
     def test_prepare_and_push_are_in_the_commands_list_by_default(self):
         init_kwargs = dict(service='service')
-        expected_commands_list = ['pull', 'rollback', 'update', 'deploy', 'prepare', 'push']
+        expected_commands_list = ['prepare', 'push']
         tasks_list = tasks.ImageBuildDockerTasks(**init_kwargs)
         docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
         for expected_command in expected_commands_list:

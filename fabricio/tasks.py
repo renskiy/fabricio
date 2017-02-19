@@ -427,6 +427,9 @@ class DockerTasks(Tasks):
         ssh_tunnel_port=None,
         migrate_commands=False,
         backup_commands=False,
+        pull_command=False,
+        update_command=False,
+        revert_command=False,
         **kwargs
     ):
         if container:
@@ -439,12 +442,16 @@ class DockerTasks(Tasks):
         self.service = service or container
         self.registry = docker.Registry(registry)
         self.ssh_tunnel_port = ssh_tunnel_port
+        # if there is at least one task to run then assume it is command mode,
+        # there is no other way to find this out
         command_mode = bool(fab.env.tasks)
         self.backup.use_task_objects = command_mode or backup_commands
         self.restore.use_task_objects = command_mode or backup_commands
         self.migrate.use_task_objects = command_mode or migrate_commands
         self.migrate_back.use_task_objects = command_mode or migrate_commands
-        self.revert.use_task_objects = command_mode
+        self.revert.use_task_objects = command_mode or revert_command
+        self.pull.use_task_objects = command_mode or pull_command
+        self.update.use_task_objects = command_mode or update_command
         self.prepare.use_task_objects = command_mode or registry is not None
         self.push.use_task_objects = command_mode or registry is not None
 
@@ -464,7 +471,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def revert(self):
         """
-        revert Docker service to a previous version
+        revert service container(s) to a previous version
         """
         self.service.revert()
 
@@ -472,7 +479,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def migrate(self, tag=None):
         """
-        apply migrations
+        apply new migrations
         """
         self.service.migrate(tag=tag, registry=self.host_registry)
 
@@ -488,7 +495,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def backup(self):
         """
-        backup data
+        backup service data
         """
         self.service.backup()
 
@@ -496,7 +503,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def restore(self, backup_name=None):
         """
-        restore data
+        restore service data
         """
         self.service.restore(backup_name=backup_name)
 
@@ -505,7 +512,7 @@ class DockerTasks(Tasks):
     @fab.roles()
     def rollback(self, migrate_back=True):
         """
-        rollback Docker service to a previous version
+        rollback service to a previous version (migrate-back -> revert)
         """
         if utils.strtobool(migrate_back):
             execute(self.migrate_back)
@@ -516,7 +523,7 @@ class DockerTasks(Tasks):
     @fab.roles()
     def prepare(self, tag=None):
         """
-        prepare Docker image
+        download Docker image from the original registry
         """
         if self.registry is None:
             return
@@ -543,7 +550,7 @@ class DockerTasks(Tasks):
     @fab.roles()
     def push(self, tag=None):
         """
-        push Docker image to registry
+        push downloaded Docker image to the registry
         """
         if self.registry is None:
             return
@@ -597,7 +604,7 @@ class DockerTasks(Tasks):
     @skip_unknown_host
     def pull(self, tag=None):
         """
-        pull Docker image from registry
+        pull Docker image from the registry
         """
         with self.remote_tunnel():
             self.pull_image(tag=tag)
@@ -616,6 +623,26 @@ class DockerTasks(Tasks):
         if not updated:
             fabricio.log('No changes detected, update skipped.')
 
+    @fab.task
+    @fab.hosts()
+    @fab.roles()
+    def upgrade(
+        self,
+        tag=None,
+        force=False,
+        backup=False,
+        migrate=True,
+    ):
+        """
+        upgrade service to a new version (backup -> pull -> migrate -> update)
+        """
+        if utils.strtobool(backup):
+            execute(self.backup)
+        execute(self.pull, tag=tag)
+        if utils.strtobool(migrate):
+            execute(self.migrate, tag=tag)
+        execute(self.update, tag=tag, force=force)
+
     @fab.task(default=True)
     @fab.hosts()
     @fab.roles()
@@ -623,22 +650,29 @@ class DockerTasks(Tasks):
         self,
         tag=None,
         force=False,
-        prepare=True,
+        prepare=None,  # deprecated
         backup=False,
         migrate=True,
     ):
         """
-        prepare -> push -> backup -> pull -> migrate -> update
+        full service deploy (prepare -> push -> upgrade)
         """
-        if utils.strtobool(prepare):
+        if prepare is not None:
+            warnings.warn(
+                "'prepare' param is deprecated and will be removed in v0.4, "
+                "use 'upgrade' command if you want to skip prepare/push steps",
+                category=RuntimeWarning,
+            )
+        if prepare is None or utils.strtobool(prepare):
             execute(self.prepare, tag=tag)
             execute(self.push, tag=tag)
-        if utils.strtobool(backup):
-            execute(self.backup)
-        execute(self.pull, tag=tag)
-        if utils.strtobool(migrate):
-            execute(self.migrate, tag=tag)
-        execute(self.update, tag=tag, force=force)
+        execute(
+            self.upgrade,
+            tag=tag,
+            force=force,
+            backup=backup,
+            migrate=migrate,
+        )
 
 
 class BuildDockerTasks(PullDockerTasks):
@@ -716,7 +750,7 @@ class ImageBuildDockerTasks(DockerTasks):
     @fab.roles()
     def prepare(self, tag=None, no_cache=False):
         """
-        prepare Docker image
+        build Docker image
         """
         options = utils.Options([
             ('tag', self.image[self.registry:tag]),
@@ -738,6 +772,6 @@ class ImageBuildDockerTasks(DockerTasks):
     @fab.roles()
     def push(self, tag=None):
         """
-        push Docker image to registry
+        push built Docker image to the registry
         """
         self.push_image(tag=tag)
