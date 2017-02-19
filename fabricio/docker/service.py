@@ -1,5 +1,7 @@
 import collections
+import ctypes
 import json
+import multiprocessing
 import re
 import sys
 
@@ -7,7 +9,8 @@ import dpath
 import six
 
 from cached_property import cached_property
-from fabric import colors
+from fabric import colors, api as fab
+from fabric.exceptions import CommandTimeout, NetworkError
 from frozendict import frozendict
 
 import fabricio
@@ -117,8 +120,6 @@ class Service(BaseService):
     current_options_label_name = '_current_options'
     backup_options_label_name = '_backup_options'
 
-    ignore_worker_errors = Attribute(default=True)
-
     command = Attribute()
     args = Attribute()
 
@@ -141,6 +142,12 @@ class Service(BaseService):
     env = Env()
     publish = Port(safe=False)
     user = UpdateOption()
+
+    def __init__(self, *args, **kwargs):
+        super(Service, self).__init__(*args, **kwargs)
+        self.manager_found = multiprocessing.Event()
+        self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
+        self.pull_errors = multiprocessing.Value(ctypes.py_object, {})
 
     @utils.default_property
     def image_id(self):
@@ -294,6 +301,7 @@ class Service(BaseService):
 
     def update(self, tag=None, registry=None, force=False):
         image = self.image[registry:tag]
+        is_manager = self.is_manager()
         with utils.patch(image, 'info', image.info, force_delete=True):
             try:
                 self._update_sentinels(image)
@@ -303,7 +311,7 @@ class Service(BaseService):
                     output=sys.stderr,
                     color=colors.red,
                 )
-            if not self.is_manager():
+            if not is_manager:
                 return False
             result = self._update(image.digest, force=force)
             return result or result is None
@@ -388,16 +396,22 @@ class Service(BaseService):
             self._update_service(utils.Options(update_options))
 
     def revert(self):
+        is_manager = self.is_manager()
         self._revert_sentinels()
-        if self.is_manager():
+        if is_manager:
             self._revert()
 
     def pull_image(self, tag=None, registry=None):
         try:
             return super(Service, self).pull_image(tag=tag, registry=registry)
-        except RuntimeError:
-            if not self.ignore_worker_errors or self.is_manager():
-                raise
+        except (RuntimeError, NetworkError, CommandTimeout) as error:
+            with self.pull_errors.get_lock():
+                self.pull_errors.value[fab.env.host] = True
+            fabricio.log(
+                'WARNING: {error}'.format(error=error),
+                output=sys.stderr,
+                color=colors.red,
+            )
 
     def migrate(self, tag=None, registry=None):
         if self.is_manager():
@@ -424,12 +438,33 @@ class Service(BaseService):
         )
         return json.loads(info)[0]
 
-    @staticmethod
-    def is_manager():
-        return fabricio.run(
-            "docker info 2>&1 | grep 'Is Manager:'",
-            use_cache=True,
-        ).endswith('true')
+    def is_manager(self):
+        try:
+            if self.pull_errors.value.get(fab.env.host, False):
+                return False
+            is_manager = fabricio.run(
+                "docker info 2>&1 | grep 'Is Manager:'",
+                use_cache=True,
+            ).endswith('true')
+            if is_manager:
+                self.manager_found.set()
+            return is_manager
+        except (RuntimeError, NetworkError, CommandTimeout) as error:
+            fabricio.log(
+                'WARNING: {error}'.format(error=error),
+                output=sys.stderr,
+                color=colors.red,
+            )
+            return False
+        finally:
+            with self.is_manager_call_count.get_lock():
+                self.is_manager_call_count.value += 1
+                if self.is_manager_call_count.value >= len(fab.env.all_hosts):
+                    if not self.manager_found.is_set():
+                        msg = 'Swarm manager with pulled image was not found'
+                        raise ServiceError(msg)
+                    self.manager_found.clear()
+                    self.is_manager_call_count.value = 0
 
     def _update_labels(self, **labels):
         service_labels = self.label

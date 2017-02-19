@@ -1774,24 +1774,90 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: false'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                 ],
                 expected_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
                     {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
                     },
+                ],
+                expected_result=False,
+                all_hosts=['host1', 'host2'],
+            ),
+            worker_without_manager=dict(
+                init_kwargs=dict(
+                    name='service',
+                    image='image:tag',
+                ),
+                update_kwargs=dict(),
+                side_effect=(
+                    SucceededResult('  Is Manager: false'),  # manager status
+                ),
+                args_parsers=[
+                    args_parser,
+                ],
+                expected_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                 ],
+                expected_result=docker.ServiceError,
+            ),
+            is_manager_fails=dict(
+                init_kwargs=dict(
+                    name='service',
+                    image='image:tag',
+                ),
+                update_kwargs=dict(),
+                side_effect=(
+                    RuntimeError(),  # manager status
+                ),
+                args_parsers=[
+                    args_parser,
+                ],
+                expected_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                ],
+                expected_result=docker.ServiceError,
+            ),
+            is_manager_fails_multiple_hosts=dict(
+                init_kwargs=dict(
+                    name='service',
+                    image='image:tag',
+                ),
+                update_kwargs=dict(),
+                side_effect=(
+                    RuntimeError(),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_inspect_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'image',
+                        'image_or_container': 'image:tag',
+                    },
+                ],
                 expected_result=False,
+                all_hosts=['host1', 'host2'],
             ),
             worker_failed_sentinels_update=dict(
                 init_kwargs=dict(
@@ -1800,25 +1866,26 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: false'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                 ],
                 expected_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
                     {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
                     },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
-                    },
                 ],
                 expected_result=False,
-                _update_sentinels_fails=True,
+                update_sentinels_fails=True,
+                all_hosts=['host1', 'host2'],
             ),
             no_changes=dict(
                 init_kwargs=dict(
@@ -1827,23 +1894,23 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -1859,25 +1926,25 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(force=True),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                     docker_service_update_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -1902,25 +1969,25 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{}"}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                     docker_service_update_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -1946,25 +2013,25 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{}"}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                     docker_service_update_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -1991,25 +2058,25 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(tag='custom_tag', registry='registry'),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{}"}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                     docker_service_update_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'registry/image:custom_tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -2034,25 +2101,25 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     docker.ServiceNotFoundError(),  # service info
                     SucceededResult(),  # service create
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                     docker_service_create_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'image:tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -2077,25 +2144,25 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(tag='custom_tag', registry='registry'),
                 side_effect=(
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     docker.ServiceNotFoundError(),  # service info
                     SucceededResult(),  # service create
                 ),
                 args_parsers=[
-                    docker_inspect_args_parser,
                     args_parser,
+                    docker_inspect_args_parser,
                     docker_entity_inspect_args_parser,
                     docker_service_create_args_parser,
                 ],
                 expected_args=[
                     {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                    },
+                    {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
                         'image_or_container': 'registry/image:custom_tag',
-                    },
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],
@@ -2152,15 +2219,64 @@ class ServiceTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 fab.env.command = '{0}__{1}'.format(self, case)
                 fabricio.run.cache.clear()  # reset Service.is_manager()
-                with mock.patch.object(fab, 'run', side_effect=test_command) as run:
-                    with mock.patch.object(docker.Service, '_update_sentinels') as _update_sentinels:
-                        if data.get('_update_sentinels_fails', False):
-                            _update_sentinels.side_effect = RuntimeError()
-                        run.__name__ = 'mocked_run'
-                        service = docker.Service(**data['init_kwargs'])
-                        result = service.update(**data['update_kwargs'])
-                        self.assertEqual(run.call_count, len(data['expected_args']))
-                        self.assertEqual(result, data['expected_result'])
+                with mock.patch.dict(fab.env, dict(all_hosts=data.get('all_hosts', ['host']))):
+                    with mock.patch.object(fab, 'run', side_effect=test_command) as run:
+                        with mock.patch.object(docker.Service, '_update_sentinels') as update_sentinels:
+                            if data.get('update_sentinels_fails', False):
+                                update_sentinels.side_effect = RuntimeError()
+                            run.__name__ = 'mocked_run'
+                            service = docker.Service(**data['init_kwargs'])
+                            expected_result = data['expected_result']
+                            try:
+                                result = service.update(**data['update_kwargs'])
+                                self.assertEqual(result, expected_result)
+                            except Exception as exception:
+                                self.assertIsInstance(exception, expected_result)
+                            self.assertEqual(run.call_count, len(data['expected_args']))
+
+    @mock.patch.dict(fab.env, dict(all_hosts=['host1', 'host2']))
+    def test_is_manager_returns_false_if_pull_error(self, *args):
+        with mock.patch.object(fabricio, 'run') as run:
+            service = docker.Service(name='service')
+            with service.pull_errors.get_lock():
+                service.pull_errors.value[fab.env.host] = True
+            self.assertFalse(service.is_manager())
+            run.assert_not_called()
+
+    @mock.patch.dict(fab.env, dict(all_hosts=['host']))
+    def test_is_manager_raises_error_if_all_pulls_failed(self, *args):
+        with mock.patch.object(fabricio, 'run') as run:
+            service = docker.Service(name='service')
+            with service.pull_errors.get_lock():
+                service.pull_errors.value[fab.env.host] = True
+            with self.assertRaises(docker.ServiceError):
+                service.is_manager()
+            run.assert_not_called()
+
+    def test_pull_image(self):
+        cases = dict(
+            no_errors=dict(
+                side_effect=(SucceededResult(), ),
+                expected_pull_error=None,
+            ),
+            error=dict(
+                side_effect=(RuntimeError(), ),
+                expected_pull_error=True,
+            ),
+        )
+        for case, test_data in cases.items():
+            with self.subTest(case=case):
+                service = docker.Service(name='service', image='image')
+                with mock.patch.object(
+                    fabricio,
+                    'run',
+                    side_effect=test_data['side_effect']
+                ):
+                    service.pull_image()
+                    self.assertEqual(
+                        test_data['expected_pull_error'],
+                        service.pull_errors.value.get(fab.env.host),
+                    )
 
     def test_update_options(self, *args):
         cases = dict(
@@ -3268,18 +3384,6 @@ class ServiceTestCase(unittest.TestCase):
                 ) as run:
                     service._create_service(image)
                     run.assert_called_once()
-
-    @mock.patch.object(fabricio, 'run', side_effect=RuntimeError())
-    def test_pull_image_raises_error_when_pull_failed_on_manager(self, run):
-        service = docker.Service(name='service', image='image:tag')
-        with mock.patch.object(docker.Service, 'is_manager', return_value=True):
-            with self.assertRaises(RuntimeError):
-                service.pull_image()
-            run.assert_called_once_with('docker pull image:tag', quiet=False)
-        run.reset_mock()
-        with mock.patch.object(docker.Service, 'is_manager', return_value=False):
-            service.pull_image()
-            run.assert_called_once_with('docker pull image:tag', quiet=False)
 
     def test__update_sentinels(self):
         cases = dict(
