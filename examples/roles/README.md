@@ -32,7 +32,9 @@ If no infrastructure selected then Fabricio will use Fabric's default roles defi
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel vagrant nginx
+    fab --parallel vagrant.confirm nginx
+    
+*Choosing infrastructure using parallel mode only available with `.confirm` suffix due to limitations of Fabric*
 
 ## Customization
 
