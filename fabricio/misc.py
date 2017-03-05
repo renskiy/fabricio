@@ -14,9 +14,16 @@ class AvailableVagrantHosts(object):
 
     def __init__(self, guest_network_interface=None):
         self.guest_network_interface = guest_network_interface
+        self.item = slice(None)
 
     def __iter__(self):
-        return iter(self.hosts)
+        return iter(self.hosts[self.item])
+
+    def __getitem__(self, item):
+        if not isinstance(item, slice):
+            raise TypeError('Indexing not supported, use slice instead')
+        self.item = item
+        return self
 
     def _get_ip(self):
         ip_command = (
