@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.3.21
+--------------
+
+- Fix: ``PostgresqlContainer``: fixed DB data 'volume' check
+- Enhancement: ``AvailableVagrantHosts``: added slicing support
+- Enhancement: ``DockerTasks``: added ability to override Docker registry account
+
 Release 0.3.20
 --------------
 
