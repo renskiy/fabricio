@@ -440,7 +440,7 @@ class DockerTasks(Tasks):
             )
         super(DockerTasks, self).__init__(**kwargs)
         self.service = service or container
-        self.registry = docker.Registry(registry)
+        self.registry = registry
         self.ssh_tunnel_port = ssh_tunnel_port
         # if there is at least one task to run then assume it is command mode,
         # there is no other way to find this out
@@ -454,6 +454,14 @@ class DockerTasks(Tasks):
         self.update.use_task_objects = command_mode or update_command
         self.prepare.use_task_objects = command_mode or registry is not None
         self.push.use_task_objects = command_mode or registry is not None
+
+    def _set_registry(self, registry):
+        self.__dict__['registry'] = docker.Registry(registry)
+
+    def _get_registry(self):
+        return self.__dict__.get('registry')
+
+    registry = property(_get_registry, _set_registry)
 
     @property
     def host_registry(self):
