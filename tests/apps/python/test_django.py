@@ -43,31 +43,31 @@ class DjangoContainerTestCase(unittest.TestCase):
                 service_init_kwargs=dict(name='name', image='image:tag'),
                 service_type=DjangoService,
             ),
-            container_with_tag_and_registry=dict(
+            container_with_tag_and_registry_and_account=dict(
                 expected_args={
                     'executable': ['docker'],
                     'run_or_create': ['run'],
                     'rm': True,
                     'tty': True,
                     'interactive': True,
-                    'image': 'registry/image:foo',
+                    'image': 'registry/account/image:foo',
                     'command': ['python', 'manage.py', 'migrate', '--noinput'],
                 },
-                kwargs=dict(tag='foo', registry='registry'),
+                kwargs=dict(tag='foo', registry='registry', account='account'),
                 service_init_kwargs=dict(name='name', image='image:tag'),
                 service_type=DjangoContainer,
             ),
-            service_with_tag_and_registry=dict(
+            service_with_tag_and_registry_and_account=dict(
                 expected_args={
                     'executable': ['docker'],
                     'run_or_create': ['run'],
                     'rm': True,
                     'tty': True,
                     'interactive': True,
-                    'image': 'registry/image:foo',
+                    'image': 'registry/account/image:foo',
                     'command': ['python', 'manage.py', 'migrate', '--noinput'],
                 },
-                kwargs=dict(tag='foo', registry='registry'),
+                kwargs=dict(tag='foo', registry='registry', account='account'),
                 service_init_kwargs=dict(name='name', image='image:tag'),
                 service_type=DjangoService,
             ),

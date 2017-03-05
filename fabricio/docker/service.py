@@ -299,8 +299,8 @@ class Service(BaseService):
         except RuntimeError:
             pass
 
-    def update(self, tag=None, registry=None, force=False):
-        image = self.image[registry:tag]
+    def update(self, tag=None, registry=None, account=None, force=False):
+        image = self.image[registry:tag:account]
         is_manager = self.is_manager()
         with utils.patch(image, 'info', image.info, force_delete=True):
             try:
@@ -401,9 +401,9 @@ class Service(BaseService):
         if is_manager:
             self._revert()
 
-    def pull_image(self, tag=None, registry=None):
+    def pull_image(self, *args, **kwargs):
         try:
-            return super(Service, self).pull_image(tag=tag, registry=registry)
+            return super(Service, self).pull_image(*args, **kwargs)
         except (RuntimeError, NetworkError, CommandTimeout) as error:
             self.pull_errors[fab.env.host] = True
             fabricio.log(
@@ -412,9 +412,9 @@ class Service(BaseService):
                 color=colors.red,
             )
 
-    def migrate(self, tag=None, registry=None):
+    def migrate(self, *args, **kwargs):
         if self.is_manager():
-            super(Service, self).migrate(tag=tag, registry=registry)
+            super(Service, self).migrate(*args, **kwargs)
 
     def migrate_back(self):
         if self.is_manager():
@@ -486,7 +486,6 @@ class Service(BaseService):
     class _RmValuesGetter(object):
 
         def __init__(self, option, attr):
-            # type: (RemovableOption, str) -> None
             self.option = option
             self.attr = attr
 

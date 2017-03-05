@@ -140,8 +140,8 @@ class Container(BaseService):
         if delete_image_callback:
             delete_image_callback()
 
-    def run(self, tag=None, registry=None):
-        self.image[registry:tag].run(
+    def run(self, tag=None, registry=None, account=None):
+        self.image[registry:tag:account].run(
             command=self.command,
             temporary=False,
             name=self,
@@ -199,10 +199,10 @@ class Container(BaseService):
     def image_id(self):
         return self.info['Image']
 
-    def update(self, tag=None, registry=None, force=False):
+    def update(self, tag=None, registry=None, account=None, force=False):
         if not force:
             try:
-                if self.image_id == self.image[registry:tag].info['Id']:
+                if self.image_id == self.image[registry:tag:account].info['Id']:
                     self.start()  # force starting container
                     return False
             except ContainerNotFoundError:
@@ -219,7 +219,7 @@ class Container(BaseService):
             pass  # current container not found
         else:
             backup_container.stop()
-        self.run(tag=tag, registry=registry)
+        self.run(tag=tag, registry=registry, account=account)
         return True
 
     def revert(self):

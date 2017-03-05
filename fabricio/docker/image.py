@@ -2,9 +2,9 @@ import functools
 import json
 import warnings
 
+import docker.auth
+import docker.utils
 import six
-
-from docker import utils as docker_utils, auth as docker_auth
 
 import fabricio
 
@@ -81,14 +81,18 @@ class Image(object):
 
     def __getitem__(self, item):
         if isinstance(item, slice):
-            registry, tag = item.start, item.stop
+            registry, tag, account = item.start, item.stop, item.step
         else:
-            registry, tag = None, item
+            registry, tag, account = None, item, None
         registry = registry or self.registry
+        name = account and '{account}/{name}'.format(
+            account=account,
+            name=self.name.split('/')[-1],
+        ) or self.name
         if self.use_digest and tag is None:
-            name = '{name}@{digest}'.format(name=self.name, digest=self.tag)
+            name = '{name}@{digest}'.format(name=name, digest=self.tag)
         else:
-            tag, name = tag or self.tag, self.name
+            tag = tag or self.tag
         return self.__class__(name=name, tag=tag, registry=registry)
 
     def get_field_name(self, owner_cls):
@@ -108,9 +112,9 @@ class Image(object):
 
     @staticmethod
     def parse_image_name(image):
-        repository, tag = docker_utils.parse_repository_tag(image)
-        registry, name = docker_auth.resolve_repository_name(repository)
-        if registry == docker_auth.INDEX_NAME:
+        repository, tag = docker.utils.parse_repository_tag(image)
+        registry, name = docker.auth.resolve_repository_name(repository)
+        if registry == docker.auth.INDEX_NAME:
             registry = None
         return registry, name, tag
 

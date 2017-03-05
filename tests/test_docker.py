@@ -10,12 +10,11 @@ from fabric import api as fab
 import fabricio
 
 from fabricio import docker
-from fabricio.docker import ImageNotFoundError
 from fabricio.docker.container import Option, Attribute
 from tests import SucceededResult, docker_run_args_parser, \
     docker_service_update_args_parser, \
     docker_entity_inspect_args_parser, docker_inspect_args_parser, \
-    docker_service_create_args_parser, args_parser, FailedResult
+    docker_service_create_args_parser, args_parser
 
 
 class TestContainer(docker.Container):
@@ -1011,7 +1010,7 @@ class ContainerTestCase(unittest.TestCase):
                 update_kwargs=dict(registry='registry'),
                 excpected_result=True,
             ),
-            regular_with_tag_and_registry=dict(
+            regular_complex=dict(
                 side_effect=(
                     SucceededResult('[{"Image": "image_id"}]'),  # current container info
                     SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
@@ -1025,16 +1024,16 @@ class ContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker inspect --type image registry/image:foo', abort_exception=docker.ImageNotFoundError),
+                    mock.call('docker inspect --type image registry/account/image:foo', abort_exception=docker.ImageNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name registry/image:foo ', quiet=True),
+                    mock.call('docker run --detach --name name registry/account/image:foo ', quiet=True),
                 ],
-                update_kwargs=dict(tag='foo', registry='registry'),
+                update_kwargs=dict(tag='foo', registry='registry', account='account'),
                 excpected_result=True,
             ),
             regular_without_backup_container=dict(
@@ -1438,34 +1437,29 @@ class ImageTestCase(unittest.TestCase):
             none=dict(
                 image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
                 item=None,
-                expected_tag='tag',
-                expected_registry='registry',
+                expected_str='registry/name:tag',
             ),
             tag=dict(
                 image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
                 item='custom_tag',
-                expected_tag='custom_tag',
-                expected_registry='registry',
+                expected_str='registry/name:custom_tag',
             ),
             digest_none=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 item=None,
-                expected_tag='digest',
-                expected_registry=None,
+                expected_str='name@digest',
             ),
             digest_tag=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 item='custom_tag',
-                expected_tag='custom_tag',
-                expected_registry=None,
+                expected_str='name:custom_tag',
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
                 image = docker.Image(**data['image_init_kwargs'])
                 new_image = image[data['item']]
-                self.assertEqual(data['expected_tag'], new_image.tag)
-                self.assertEqual(data['expected_registry'], new_image.registry)
+                self.assertEqual(data['expected_str'], str(new_image))
 
     def test_getitem_slice(self):
         cases = dict(
@@ -1473,65 +1467,78 @@ class ImageTestCase(unittest.TestCase):
                 image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
                 start=None,
                 stop=None,
-                expected_tag='tag',
-                expected_registry='registry',
+                step=None,
+                expected_str='registry/name:tag',
             ),
             tag=dict(
                 image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
                 start=None,
                 stop='custom_tag',
-                expected_tag='custom_tag',
-                expected_registry='registry',
+                step=None,
+                expected_str='registry/name:custom_tag',
             ),
             registry=dict(
                 image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
                 start='registry:5000',
                 stop=None,
-                expected_tag='tag',
-                expected_registry='registry:5000',
+                step=None,
+                expected_str='registry:5000/name:tag',
             ),
-            tag_and_registry=dict(
+            account=dict(
+                image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
+                start=None,
+                stop=None,
+                step='account',
+                expected_str='registry/account/name:tag',
+            ),
+            account_replace=dict(
+                image_init_kwargs=dict(name='original/name', tag='tag', registry='registry'),
+                start=None,
+                stop=None,
+                step='account',
+                expected_str='registry/account/name:tag',
+            ),
+            complex=dict(
                 image_init_kwargs=dict(name='name', tag='tag', registry='registry'),
                 start='127.0.0.1:5000',
                 stop='custom_tag',
-                expected_tag='custom_tag',
-                expected_registry='127.0.0.1:5000',
+                step='account',
+                expected_str='127.0.0.1:5000/account/name:custom_tag',
             ),
             digest_none=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 start=None,
                 stop=None,
-                expected_tag='digest',
-                expected_registry=None,
+                step=None,
+                expected_str='name@digest',
             ),
             digest_tag=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 start=None,
                 stop='custom_tag',
-                expected_tag='custom_tag',
-                expected_registry=None,
+                step=None,
+                expected_str='name:custom_tag',
             ),
             digest_registry=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 start='registry:5000',
                 stop=None,
-                expected_tag='digest',
-                expected_registry='registry:5000',
+                step=None,
+                expected_str='registry:5000/name@digest',
             ),
-            digest_tag_and_registry=dict(
+            digest_complex=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 start='127.0.0.1:5000',
                 stop='custom_tag',
-                expected_tag='custom_tag',
-                expected_registry='127.0.0.1:5000',
+                step='account',
+                expected_str='127.0.0.1:5000/account/name:custom_tag',
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
                 image = docker.Image(**data['image_init_kwargs'])
-                new_image = image[data['start']:data['stop']]
-                self.assertEqual(data['expected_tag'], new_image.tag)
-                self.assertEqual(data['expected_registry'], new_image.registry)
+                new_image = image[data['start']:data['stop']:data['step']]
+                self.assertEqual(data['expected_str'], str(new_image))
 
     def test_run(self):
         image = docker.Image('image')
@@ -2051,12 +2058,12 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_result=True,
             ),
-            updated_with_custom_tag_and_registry=dict(
+            updated_with_custom_tag_and_registry_and_account=dict(
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
                 ),
-                update_kwargs=dict(tag='custom_tag', registry='registry'),
+                update_kwargs=dict(tag='custom_tag', registry='registry', account='account'),
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
@@ -2076,7 +2083,7 @@ class ServiceTestCase(unittest.TestCase):
                     {
                         'executable': ['docker', 'inspect'],
                         'type': 'image',
-                        'image_or_container': 'registry/image:custom_tag',
+                        'image_or_container': 'registry/account/image:custom_tag',
                     },
                     {
                         'executable': ['docker', 'service', 'inspect'],

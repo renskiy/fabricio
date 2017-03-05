@@ -18,8 +18,8 @@ class DjangoMixin(docker.BaseService):
     """
 
     @utils.once_per_command
-    def migrate(self, tag=None, registry=None):
-        self.image[registry:tag].run(
+    def migrate(self, tag=None, registry=None, account=None):
+        self.image[registry:tag:account].run(
             'python manage.py migrate --noinput',
             quiet=False,
             options=self.safe_options,

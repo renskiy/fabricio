@@ -34,7 +34,7 @@ Any Fabricio command can be executed in parallel mode. This mode provides advant
 
 ## Customization
 
-`DockerTasks` takes a few additional optional arguments which can be use to customize your deploy process.
+`DockerTasks` takes a few additional optional arguments which can be used to customize your deploy process.
 
 ### Custom registry
 
@@ -43,6 +43,12 @@ This option usually used when target host has not direct access to image registr
     registry='custom-registry:5000'
 
 Of course, your host must have access to this custom registry.
+
+### Registry account
+
+This option let you to provide Docker registry account to use with custom or default registry. For example:
+
+    account='my_account'
 
 ### SSH tunneling
 

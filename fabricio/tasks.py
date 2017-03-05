@@ -424,6 +424,7 @@ class DockerTasks(Tasks):
         service=None,
         container=None,  # deprecated
         registry=None,
+        account=None,
         ssh_tunnel_port=None,
         migrate_commands=False,
         backup_commands=False,
@@ -441,6 +442,7 @@ class DockerTasks(Tasks):
         super(DockerTasks, self).__init__(**kwargs)
         self.service = service or container
         self.registry = registry
+        self.account = account
         self.ssh_tunnel_port = ssh_tunnel_port
         # if there is at least one task to run then assume it is command mode,
         # there is no other way to find this out
@@ -489,7 +491,11 @@ class DockerTasks(Tasks):
         """
         apply new migrations
         """
-        self.service.migrate(tag=tag, registry=self.host_registry)
+        self.service.migrate(
+            tag=tag,
+            registry=self.host_registry,
+            account=self.account,
+        )
 
     @fab.task(name='migrate-back')
     @skip_unknown_host
@@ -547,8 +553,9 @@ class DockerTasks(Tasks):
         fabricio.local(dangling_images_delete_command(), ignore_errors=True)
 
     def push_image(self, tag=None):
+        image = self.image[self.registry:tag:self.account]
         fabricio.local(
-            'docker push {image}'.format(image=self.image[self.registry:tag]),
+            'docker push {image}'.format(image=image),
             quiet=False,
             use_cache=True,
         )
@@ -562,7 +569,7 @@ class DockerTasks(Tasks):
         """
         if self.registry is None:
             return
-        tag_with_registry = str(self.image[self.registry:tag])
+        tag_with_registry = str(self.image[self.registry:tag:self.account])
         fabricio.local(
             'docker tag {image} {tag}'.format(
                 image=self.image[tag],
@@ -577,12 +584,15 @@ class DockerTasks(Tasks):
         )
 
     def pull_image(self, tag=None):
-        self.service.pull_image(tag=tag, registry=self.host_registry)
+        self.service.pull_image(
+            tag=tag,
+            registry=self.host_registry,
+            account=self.account,
+        )
 
     @contextlib.contextmanager
     def remote_tunnel(self):
-        host_registry = self.host_registry
-        if host_registry and host_registry.host == 'localhost':
+        if self.ssh_tunnel_port:
             if self.registry:
                 local_port = self.registry.port
                 local_host = self.registry.host
@@ -600,9 +610,9 @@ class DockerTasks(Tasks):
                     # printing debug messages by fab.remote_tunnel
 
                     with fab.remote_tunnel(
-                            remote_port=host_registry.port,
-                            local_port=local_port,
-                            local_host=local_host,
+                        remote_port=self.host_registry.port,
+                        local_port=local_port,
+                        local_host=local_host,
                     ):
                         yield
         else:
@@ -626,6 +636,7 @@ class DockerTasks(Tasks):
         updated = self.service.update(
             tag=tag,
             registry=self.host_registry,
+            account=self.account,
             force=utils.strtobool(force),
         )
         if not updated:
@@ -761,7 +772,7 @@ class ImageBuildDockerTasks(DockerTasks):
         build Docker image
         """
         options = utils.Options([
-            ('tag', self.image[self.registry:tag]),
+            ('tag', self.image[self.registry:tag:self.account]),
             ('no-cache', utils.strtobool(no_cache)),
             ('pull', True),
         ])

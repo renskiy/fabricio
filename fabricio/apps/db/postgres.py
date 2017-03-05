@@ -235,9 +235,9 @@ class PostgresqlContainer(docker.Container):
             use_sudo=True,
         )
 
-    def create_db(self, tag=None, registry=None):
+    def create_db(self, tag=None, registry=None, account=None):
         fabricio.log('PostgreSQL database not found, creating new...')
-        self.image[registry:tag].run(
+        self.image[registry:tag:account].run(
             # official PostgreSQL image executes 'postgres initdb' before
             # any 'postgres' command (see /docker-entrypoint.sh),
             # therefore if you use image other then official, you may need
@@ -247,9 +247,9 @@ class PostgresqlContainer(docker.Container):
             quiet=False,
         )
 
-    def update(self, force=False, tag=None, registry=None):
+    def update(self, tag=None, registry=None, account=None, force=False):
         if not self.db_exists():
-            self.create_db(tag=tag, registry=registry)
+            self.create_db(tag=tag, registry=registry, account=account)
 
         main_conf = os.path.join(self.pg_data, 'postgresql.conf')
         hba_conf = os.path.join(self.pg_data, 'pg_hba.conf')
@@ -266,6 +266,7 @@ class PostgresqlContainer(docker.Container):
             force=force,
             tag=tag,
             registry=registry,
+            account=account,
         )
         if not container_updated:
             if main_config_updated:
@@ -345,7 +346,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         data.exception = None
         self.instances = multiprocessing.JoinableQueue()
 
-    def copy_data_from_master(self, tag=None, registry=None):
+    def copy_data_from_master(self, tag=None, registry=None, account=None):
         pg_basebackup_command = (
             'pg_basebackup'
             ' --progress'
@@ -364,7 +365,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         command = "/bin/bash -c '{pg_basebackup_command}'".format(
             pg_basebackup_command=pg_basebackup_command,
         )
-        self.image[registry:tag].run(
+        self.image[registry:tag:account].run(
             command=command,
             options=self.options,
             quiet=False,
@@ -392,7 +393,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         fabricio.log('Found master: {host}'.format(host=fab.env.host))
         self.multiprocessing_data.master = fab.env.host
 
-    def update_recovery_config(self, tag=None, registry=None):
+    def update_recovery_config(self, tag=None, registry=None, account=None):
         db_exists = self.db_exists()
         recovery_conf_file = os.path.join(self.pg_data, 'recovery.conf')
         if db_exists:
@@ -429,14 +430,18 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             self.master_lock.release()
             self.master_obtained.wait()
         if not db_exists:
-            self.copy_data_from_master(tag=tag, registry=registry)
+            self.copy_data_from_master(
+                tag=tag,
+                registry=registry,
+                account=account,
+            )
         recovery_config = self.get_recovery_config()
         return self.update_config(
             content=recovery_config,
             path=os.path.join(self.pg_data, 'recovery.conf'),
         )
 
-    def update(self, force=False, tag=None, registry=None):
+    def update(self, tag=None, registry=None, account=None, force=False):
         if not fab.env.parallel:
             fab.abort(
                 'Master-slave configuration update requires parallel mode. '
@@ -450,12 +455,13 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             recovery_config_updated = self.update_recovery_config(
                 tag=tag,
                 registry=registry,
+                account=account,
             )
 
             container_updated = super(
                 StreamingReplicatedPostgresqlContainer,
                 self,
-            ).update(force=force, tag=tag, registry=registry)
+            ).update(force=force, tag=tag, registry=registry, account=account)
 
             if not container_updated and recovery_config_updated:
                 self.reload()

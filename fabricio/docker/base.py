@@ -136,16 +136,16 @@ class BaseService(object):
     def get_backup_version(self):
         raise NotImplementedError
 
-    def update(self, tag=None, registry=None, force=False):
+    def update(self, tag=None, registry=None, account=None, force=False):
         raise NotImplementedError
 
     def revert(self):
         raise NotImplementedError
 
-    def pull_image(self, tag=None, registry=None):
-        return self.image[registry:tag].pull()
+    def pull_image(self, tag=None, registry=None, account=None):
+        return self.image[registry:tag:account].pull()
 
-    def migrate(self, tag=None, registry=None):
+    def migrate(self, tag=None, registry=None, account=None):
         pass
 
     def migrate_back(self):

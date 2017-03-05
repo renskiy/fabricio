@@ -430,7 +430,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 parent_update_returned=True,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             no_change=dict(
@@ -442,7 +442,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[],
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=False,
             ),
             no_change_with_tag=dict(
@@ -454,7 +454,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[],
                 update_kwargs=dict(tag='tag'),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag='tag', registry=None),
+                expected_update_kwargs=dict(force=False, tag='tag', registry=None, account=None),
                 expected_result=False,
             ),
             no_change_with_registry=dict(
@@ -466,19 +466,31 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 expected_commands=[],
                 update_kwargs=dict(registry='registry'),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry='registry'),
+                expected_update_kwargs=dict(force=False, tag=None, registry='registry', account=None),
                 expected_result=False,
             ),
-            no_change_with_tag_and_registry=dict(
+            no_change_with_account=dict(
                 db_exists=True,
                 old_configs=[
                     'postgresql.conf',
                     'pg_hba.conf',
                 ],
                 expected_commands=[],
-                update_kwargs=dict(tag='tag', registry='registry'),
+                update_kwargs=dict(account='account'),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag='tag', registry='registry'),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account='account'),
+                expected_result=False,
+            ),
+            no_change_with_tag_and_registry_and_account=dict(
+                db_exists=True,
+                old_configs=[
+                    'postgresql.conf',
+                    'pg_hba.conf',
+                ],
+                expected_commands=[],
+                update_kwargs=dict(tag='tag', registry='registry', account='account'),
+                parent_update_returned=False,
+                expected_update_kwargs=dict(force=False, tag='tag', registry='registry', account='account'),
                 expected_result=False,
             ),
             forced=dict(
@@ -493,7 +505,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(force=True),
                 parent_update_returned=True,
-                expected_update_kwargs=dict(force=True, tag=None, registry=None),
+                expected_update_kwargs=dict(force=True, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             pg_hba_changed=dict(
@@ -522,7 +534,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             pg_hba_changed_backup_container_not_found=dict(
@@ -545,7 +557,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             pg_hba_changed_container_updated=dict(
@@ -560,7 +572,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 parent_update_returned=True,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             main_conf_changed=dict(
@@ -589,7 +601,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             main_conf_changed_backup_container_not_found=dict(
@@ -612,7 +624,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             main_conf_changed_container_updated=dict(
@@ -627,7 +639,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 parent_update_returned=True,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             configs_changed=dict(
@@ -656,7 +668,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             configs_changed_backup_container_not_found=dict(
@@ -679,7 +691,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             configs_changed_container_updated=dict(
@@ -694,7 +706,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ],
                 update_kwargs=dict(),
                 parent_update_returned=True,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
             ),
             from_scratch=dict(
@@ -717,7 +729,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
-                expected_update_kwargs=dict(force=False, tag=None, registry=None),
+                expected_update_kwargs=dict(force=False, tag=None, registry=None, account=None),
                 expected_result=True,
                 expected_db_creation=True,
             ),
