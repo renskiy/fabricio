@@ -1,4 +1,4 @@
-# Fabricio: Hello, World
+# Fabricio: Building Docker images
 
 This example shows how to deploy configuration consisting of a single container based on custom image which automatically built from provided [Dockerfile](Dockerfile).
 
@@ -8,6 +8,10 @@ This example shows how to deploy configuration consisting of a single container 
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 * [Docker](https://www.docker.com/products/overview) for Linux/Mac/Windows
 * Docker registry which runs locally on 5000 port, this can be reached out by executing following docker command: `docker run --name registry --publish 5000:5000 --detach registry:2`
+
+### Virtual Machine creation
+
+Run `vagrant up` and wait until VM will be created.
 
 ## Files
 * __Dockerfile__, used for building image

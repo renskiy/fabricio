@@ -45,7 +45,6 @@ class AvailableVagrantHosts(object):
     def hosts(self):
         keys = fab.env.key_filename = []
         hosts = []
-        fab.local('vagrant up')
         ssh_configs_data = fab.local('vagrant ssh-config', capture=True)
         ssh_configs = map(
             lambda config: dict(map(

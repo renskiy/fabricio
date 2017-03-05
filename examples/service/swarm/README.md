@@ -1,11 +1,15 @@
 # Fabricio: Docker Swarm
 
-This example shows how to deploy Docker Swarm configuration consisting of a single service based on [official Nginx image](https://hub.docker.com/_/nginx/).
+This example shows how to deploy Docker swarm mode configuration consisting of a single service based on [official Nginx image](https://hub.docker.com/_/nginx/).
 
 ## Requirements
 * Fabricio 0.3.17 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
+
+### Virtual Machines creation
+
+Run `vagrant up` and wait until VMs will be created.
 
 ## Files
 * __fabfile.py__, Fabricio configuration
@@ -18,7 +22,7 @@ This example shows how to deploy Docker Swarm configuration consisting of a sing
 
 ## Deploy
 
-Before proceed you must initialize Docker Swarm cluster first by running following command:
+Before proceed you must initialize Docker swarm cluster first by running following command:
 
     fab swarm-init
     

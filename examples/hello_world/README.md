@@ -7,6 +7,10 @@ This example shows how to deploy basic configuration consisting of a single cont
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 
+### Virtual Machine creation
+
+Run `vagrant up` and wait until VM will be created.
+
 ## Files
 * __fabfile.py__, Fabricio configuration
 * __README.md__, this file
