@@ -205,10 +205,6 @@ class PostgresqlContainer(docker.Container):
 
     stop_timeout = 30
 
-    def __init__(self, *args, **kwargs):
-        super(PostgresqlContainer, self).__init__(*args, **kwargs)
-        assert self.volumes, 'provide volume for your data'
-
     @staticmethod
     def update_config(content, path):
         old_file = six.BytesIO()
@@ -248,6 +244,8 @@ class PostgresqlContainer(docker.Container):
         )
 
     def update(self, tag=None, registry=None, account=None, force=False):
+        if 'volume' not in self.options:
+            raise ValueError('Make sure you provide volume for DB data')
         if not self.db_exists():
             self.create_db(tag=tag, registry=registry, account=account)
 
