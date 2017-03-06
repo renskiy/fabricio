@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.22
+--------------
+
+- Fix: ``Service``: fixed failover during update
+
 Release 0.3.21
 --------------
 

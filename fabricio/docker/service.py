@@ -20,6 +20,8 @@ from fabricio import utils
 from .base import BaseService, Option, Attribute
 from .container import Container, ContainerNotFoundError
 
+host_errors = (RuntimeError, NetworkError, CommandTimeout)
+
 
 class ServiceError(RuntimeError):
     pass
@@ -215,6 +217,8 @@ class Service(BaseService):
 
     @utils.once_per_command
     def _update(self, image, force=False):
+        if image is None:
+            raise ServiceError('cannot create or update service')
         try:
             service_info = self.info
         except ServiceNotFoundError:
@@ -302,18 +306,21 @@ class Service(BaseService):
     def update(self, tag=None, registry=None, account=None, force=False):
         image = self.image[registry:tag:account]
         is_manager = self.is_manager()
-        with utils.patch(image, 'info', image.info, force_delete=True):
-            try:
+        image_info = None
+        try:
+            image_info = image.info
+            with utils.patch(image, 'info', image_info, force_delete=True):
                 self._update_sentinels(image)
-            except RuntimeError as error:
-                fabricio.log(
-                    'WARNING: {error}'.format(error=error),
-                    output=sys.stderr,
-                    color=colors.red,
-                )
-            if not is_manager:
-                return False
-            result = self._update(image.digest, force=force)
+        except host_errors as error:
+            fabricio.log(
+                'WARNING: {error}'.format(error=error),
+                output=sys.stderr,
+                color=colors.red,
+            )
+        if not is_manager:
+            return False
+        with utils.patch(image, 'info', image_info, force_delete=True):
+            result = self._update(image_info and image.digest, force=force)
             return result or result is None
 
     def _service_need_update(self, options_old, options_new):
@@ -404,7 +411,7 @@ class Service(BaseService):
     def pull_image(self, *args, **kwargs):
         try:
             return super(Service, self).pull_image(*args, **kwargs)
-        except (RuntimeError, NetworkError, CommandTimeout) as error:
+        except host_errors as error:
             self.pull_errors[fab.env.host] = True
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
@@ -448,7 +455,7 @@ class Service(BaseService):
             if is_manager:
                 self.manager_found.set()
             return is_manager
-        except (RuntimeError, NetworkError, CommandTimeout) as error:
+        except host_errors as error:
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
                 output=sys.stderr,
