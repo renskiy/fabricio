@@ -1,3 +1,4 @@
+import copy
 import os
 import re
 
@@ -15,14 +16,26 @@ class AvailableVagrantHosts(object):
     def __init__(self, guest_network_interface=None):
         self.guest_network_interface = guest_network_interface
         self.item = slice(None)
+        self.additional_hosts = []
 
     def __iter__(self):
-        return iter(self.hosts[self.item])
+        return iter(self.hosts[self.item] + self.additional_hosts)
 
     def __getitem__(self, item):
         if not isinstance(item, slice):
             raise TypeError('Indexing not supported, use slice instead')
         self.item = item
+        return self
+
+    def __add__(self, other):
+        clone = copy.copy(self)
+        clone.additional_hosts = other
+        return clone
+
+    __radd__ = __add__
+
+    def __iadd__(self, other):
+        self.additional_hosts = other
         return self
 
     def _get_ip(self):
