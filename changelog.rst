@@ -5,6 +5,7 @@ Release 0.3.22
 --------------
 
 - Fix: ``Service``: fixed failover during update
+- Enhancement: ``DockerTasks``: use proxy registry when custom registry account used
 - Enhancement: ``AvailableVagrantHosts``: added "+" and "+=" operators support
 
 Release 0.3.21

@@ -539,7 +539,7 @@ class DockerTasks(Tasks):
         """
         download Docker image from the original registry
         """
-        if self.registry is None:
+        if self.registry is None and self.account is None:
             return
         fabricio.local(
             'docker pull {image}'.format(image=self.image[tag]),
@@ -567,7 +567,7 @@ class DockerTasks(Tasks):
         """
         push downloaded Docker image to the registry
         """
-        if self.registry is None:
+        if self.registry is None and self.account is None:
             return
         tag_with_registry = str(self.image[self.registry:tag:self.account])
         fabricio.local(
