@@ -16,7 +16,7 @@ def swarm_init():
     def _swarm_init():
         if swarm_init.worker_join_command is None:
             fabricio.run(
-                'docker swarm init',
+                'docker swarm init --advertise-addr {0}'.format(fab.env.host),
                 ignore_errors=True,
             )
             join_token = fabricio.run(
