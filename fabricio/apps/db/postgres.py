@@ -232,20 +232,25 @@ class PostgresqlContainer(docker.Container):
         )
 
     def create_db(self, tag=None, registry=None, account=None):
+        """
+        Official PostgreSQL Docker image executes 'postgres initdb' before
+        any command starting with 'postgres' (see /docker-entrypoint.sh),
+        therefore if you use custom image, you probably have to implement
+        your own `create_db()`
+        """
         fabricio.log('PostgreSQL database not found, creating new...')
         self.image[registry:tag:account].run(
-            # official PostgreSQL image executes 'postgres initdb' before
-            # any 'postgres' command (see /docker-entrypoint.sh),
-            # therefore if you use image other then official, you may need
-            # implement your own `create_db()`
-            'postgres --version',
+            'postgres --version',  # create new DB (see method description)
             options=self.safe_options,
             quiet=False,
         )
 
     def update(self, tag=None, registry=None, account=None, force=False):
         if 'volume' not in self.options:
-            raise ValueError('Make sure you provide volume for DB data')
+            fab.abort(
+                'Make sure you provide volume for DB data, '
+                'Fabricio cannot work properly without it'
+            )
         if not self.db_exists():
             self.create_db(tag=tag, registry=registry, account=account)
 
