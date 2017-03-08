@@ -62,7 +62,7 @@ class AvailableVagrantHosts(object):
         ssh_configs = map(
             lambda config: dict(map(
                 lambda row: row.lstrip().split(' ', 1),
-                config.splitlines()
+                config.strip().splitlines()
             )),
             re.split('(?ms).(?=Host )', ssh_configs_data),
         )
