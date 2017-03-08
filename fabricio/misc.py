@@ -64,7 +64,7 @@ class AvailableVagrantHosts(object):
                 lambda row: row.lstrip().split(' ', 1),
                 config.splitlines()
             )),
-            re.split('(?m)\s*^$\s*', ssh_configs_data),
+            re.split('(?ms).(?=Host )', ssh_configs_data),
         )
         for ssh_config in ssh_configs:
             keys.append(ssh_config['IdentityFile'])
