@@ -4,7 +4,7 @@ Changelog
 Release 0.3.24
 --------------
 
-- Fix: ``AvailableVagrantHosts``: fixed vagrant hosts parsing under Windows
+- Fix: ``AvailableVagrantHosts``: fixed vagrant hosts parsing on Windows
 
 Release 0.3.22
 --------------
