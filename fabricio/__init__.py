@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import hashlib
 import sys
 import warnings
@@ -40,14 +42,21 @@ def run(
     stdout=sys.stdout,
     stderr=sys.stderr,
     use_cache=False,
+    cache_salt='',
     cache_key='',
     **kwargs
 ):
+    if cache_key:
+        warnings.warn(
+            "'cache_key' param is deprecated and will be removed in v0.4, "
+            "use 'cache_salt' instead", RuntimeWarning, stacklevel=2,
+        )
+        cache_salt = cache_salt or cache_key
     if use_cache:
         md5 = hashlib.md5()
         md5.update(command)
         md5.update(fab.env.host or '')
-        md5.update(cache_key)
+        md5.update(cache_salt)
         cache_key = md5.digest()
         if cache_key in run.cache:
             return run.cache[cache_key]
@@ -65,20 +74,37 @@ def run(
 run.cache = {}
 
 
-def local(command, use_cache=False, **kwargs):
+def local(
+    command,
+    stdout=sys.stdout,
+    stderr=sys.stderr,
+    quiet=True,
+    capture=False,
+    use_cache=False,
+    cache_salt='',
+    **kwargs
+):
     if use_cache:
         md5 = hashlib.md5()
         md5.update(command)
+        md5.update(cache_salt)
         cache_key = md5.digest()
         if cache_key in local.cache:
             return local.cache[cache_key]
     result = _command(
         fabric_method=fab.local,
         command=command,
+        capture=capture,
+        quiet=quiet,
         **kwargs
     )
     if use_cache:
         local.cache[cache_key] = result
+    if capture and not quiet:
+        if result:
+            print(result, file=stdout)
+        if result.stderr:
+            print(result.stderr, file=stderr)
     return result
 local.cache = {}
 

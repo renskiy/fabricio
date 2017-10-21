@@ -32,6 +32,14 @@ Also you can use `vagrant.confirm` command to skip confirmation dialog and start
 
 If no infrastructure selected then Fabricio will use Fabric's default roles definition (see `fabfile.py` for details). Also if there is no hosts found for a role then any task which needs to be executed on a remote host will be skipped.
 
+## Deploy to localhost
+
+Same configuration can be deployed to `localhost` infrastructure even without SSH daemon enabled locally:
+
+    fab localhost nginx
+    
+This is possible due to Python "monkey patch" applied inside the `localhost` infrastructure definition (see [fabfile.py](fabfile.py#L28)).
+
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:

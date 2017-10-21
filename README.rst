@@ -30,7 +30,7 @@ Features
 
 See changelog_ for detailed info.
 
-.. _changelog: changelog.rst
+.. _changelog: https://github.com/renskiy/fabricio/blob/master/changelog.rst
 
 Basic example
 =============
@@ -74,7 +74,7 @@ To display detailed info about command (including available options) use followi
 
 See also Fabricio `examples and recipes`_.
 
-.. _examples and recipes: examples/
+.. _examples and recipes: https://github.com/renskiy/fabricio/tree/master/examples
 
 Requirements
 ============

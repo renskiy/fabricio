@@ -101,12 +101,12 @@ class FabricioTestCase(unittest.TestCase):
             fabricio.run('command', use_cache=True)
             self.assertEqual(run.call_count, 1)
 
-            fabricio.run('command', cache_key='key1', use_cache=True)
+            fabricio.run('command', cache_salt='key1', use_cache=True)
             self.assertEqual(run.call_count, 2)
-            fabricio.run('command', cache_key='key1', use_cache=True)
+            fabricio.run('command', cache_salt='key1', use_cache=True)
             self.assertEqual(run.call_count, 2)
 
-            fabricio.run('command', cache_key='key2', use_cache=True)
+            fabricio.run('command', cache_salt='key2', use_cache=True)
             self.assertEqual(run.call_count, 3)
-            fabricio.run('command', cache_key='key2', use_cache=True)
+            fabricio.run('command', cache_salt='key2', use_cache=True)
             self.assertEqual(run.call_count, 3)
