@@ -5,7 +5,7 @@ from fabricio.misc import AvailableVagrantHosts
 db = tasks.DockerTasks(
     service=StreamingReplicatedPostgresqlContainer(
         name='postgres',
-        image='postgres:9.6-alpine',
+        image='postgres:10-alpine',
         pg_data='/data',
         pg_recovery_master_promotion_enabled=True,
         options=dict(

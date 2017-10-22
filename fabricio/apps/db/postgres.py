@@ -355,7 +355,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             'pg_basebackup'
             ' --progress'
             ' --write-recovery-conf'
-            ' --xlog-method=stream'
+            ' -X stream'
             ' --pgdata=$PGDATA'
             ' --host={host}'
             ' --username={user}'
