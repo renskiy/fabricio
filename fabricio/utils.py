@@ -4,7 +4,6 @@ import ctypes
 import functools
 import hashlib
 import multiprocessing
-import re
 
 from distutils import util as distutils
 
@@ -16,6 +15,7 @@ except ImportError:
 import six
 
 from fabric import api as fab
+from six.moves import shlex_quote
 
 DEFAULT = object()
 
@@ -51,19 +51,12 @@ class default_property(object):
         return self
 
 
-class Options(OrderedDict):  # TODO OrderedDict => dict
-
-    quoting_required_regex = re.compile('[\s"\']+')
-
-    def quote_option_value(self, value):
-        if value and not self.quoting_required_regex.search(value):
-            return value
-        return '"{value}"'.format(value=value.replace('"', '\\"'))
+class Options(OrderedDict):
 
     def make_option(self, option, value=None):
         option = '--' + option
         if value is not None:
-            option += ' ' + self.quote_option_value(six.text_type(value))
+            option += '=' + shlex_quote(six.text_type(value))
         return option
 
     def make_options(self):
@@ -86,7 +79,7 @@ class Options(OrderedDict):  # TODO OrderedDict => dict
 
 
 def strtobool(value):
-    return bool(distutils.strtobool(str(value)))
+    return distutils.strtobool(str(value))
 
 
 class Item(six.text_type):

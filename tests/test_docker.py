@@ -1,8 +1,8 @@
 # coding: utf-8
-import json
+import re
+import shlex
 
 import mock
-import re
 import unittest2 as unittest
 
 from fabric import api as fab
@@ -23,6 +23,8 @@ class TestContainer(docker.Container):
 
 
 class ContainerTestCase(unittest.TestCase):
+
+    maxDiff = None
 
     def test_options(self):
         cases = dict(
@@ -927,7 +929,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name image:tag ', quiet=True),
+                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(force=True),
                 excpected_result=True,
@@ -953,7 +955,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name image:tag ', quiet=True),
+                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -979,7 +981,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name image:foo ', quiet=True),
+                    mock.call('docker run --detach --name=name image:foo ', quiet=True),
                 ],
                 update_kwargs=dict(tag='foo'),
                 excpected_result=True,
@@ -1005,7 +1007,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name registry/image:tag ', quiet=True),
+                    mock.call('docker run --detach --name=name registry/image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(registry='registry'),
                 excpected_result=True,
@@ -1031,7 +1033,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name registry/account/image:foo ', quiet=True),
+                    mock.call('docker run --detach --name=name registry/account/image:foo ', quiet=True),
                 ],
                 update_kwargs=dict(tag='foo', registry='registry', account='account'),
                 excpected_result=True,
@@ -1051,7 +1053,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name image:tag ', quiet=True),
+                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -1067,7 +1069,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name name image:tag ', quiet=True),
+                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(force=True),
                 excpected_result=True,
@@ -1083,7 +1085,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rename name name_backup'),
-                    mock.call('docker run --detach --name name image:tag ', quiet=True),
+                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -1790,7 +1792,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -1815,7 +1817,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                 ],
                 expected_result=docker.ServiceError,
@@ -1834,7 +1836,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                 ],
                 expected_result=docker.ServiceError,
@@ -1855,7 +1857,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -1882,7 +1884,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -1903,6 +1905,38 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0="}}}]'),  # service info
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_inspect_args_parser,
+                    docker_entity_inspect_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
+                    },
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'image',
+                        'image_or_container': 'image:tag',
+                    },
+                    {
+                        'executable': ['docker', 'service', 'inspect'],
+                        'service': 'service',
+                    },
+                ],
+                expected_result=False,
+            ),
+            no_changes_json=dict(
+                init_kwargs=dict(
+                    name='service',
+                    image='image:tag',
+                ),
+                update_kwargs=dict(),
+                side_effect=(
+                    SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
                 ),
                 args_parsers=[
@@ -1912,7 +1946,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -1935,7 +1969,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0="}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -1946,7 +1980,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -1961,11 +1995,54 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'label-add': [
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_backup_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                        ],
                     },
                 ],
-                expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null}"',
-                    '"_backup_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"',
+                expected_result=True,
+            ),
+            forced_json=dict(
+                init_kwargs=dict(
+                    name='service',
+                    image='image:tag',
+                ),
+                update_kwargs=dict(force=True),
+                side_effect=(
+                    SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult(),  # service update
+                ),
+                args_parsers=[
+                    args_parser,
+                    docker_inspect_args_parser,
+                    docker_entity_inspect_args_parser,
+                    docker_service_update_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
+                    },
+                    {
+                        'executable': ['docker', 'inspect'],
+                        'type': 'image',
+                        'image_or_container': 'image:tag',
+                    },
+                    {
+                        'executable': ['docker', 'service', 'inspect'],
+                        'service': 'service',
+                    },
+                    {
+                        'executable': ['docker', 'service', 'update'],
+                        'image': 'digest',
+                        'service': 'service',
+                        'label-add': [
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_backup_options={"env-add": null, "constraint-add": null, "args": null, "label-rm": null, "env-rm": null, "publish-add": null, "label-add": null, "replicas": null, "mount-rm": null, "container-label-rm": null, "user": null, "publish-rm": null, "mount-add": null, "constraint-rm": null, "stop-grace-period": null, "restart-condition": null, "container-label-add": null, "image": "digest"}',
+                        ],
+                    },
                 ],
                 expected_result=True,
             ),
@@ -1989,7 +2066,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -2004,11 +2081,11 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'label-add': [
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_backup_options={}',
+                        ],
                     },
-                ],
-                expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null}"',
-                    '_backup_options={}',
                 ],
                 expected_result=True,
             ),
@@ -2033,7 +2110,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -2048,13 +2125,13 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'label-add': [
+                            'label1=label1',
+                            'label2=label2',
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IFsibGFiZWwxPWxhYmVsMSIsICJsYWJlbDI9bGFiZWwyIl0sICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_backup_options={}',
+                        ],
                     },
-                ],
-                expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": [\\"label1=label1\\", \\"label2=label2\\"], \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null}"',
-                    '_backup_options={}',
-                    'label1=label1',
-                    'label2=label2',
                 ],
                 expected_result=True,
             ),
@@ -2078,7 +2155,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -2093,11 +2170,11 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'label-add': [
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_backup_options={}',
+                        ],
                     },
-                ],
-                expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null}"',
-                    '_backup_options={}',
                 ],
                 expected_result=True,
             ),
@@ -2121,7 +2198,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -2137,10 +2214,10 @@ class ServiceTestCase(unittest.TestCase):
                         'image': ['digest'],
                         'name': 'service',
                         'args': [],
+                        'label': [
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                        ],
                     },
-                ],
-                expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                 ],
                 expected_result=True,
             ),
@@ -2164,7 +2241,7 @@ class ServiceTestCase(unittest.TestCase):
                 ],
                 expected_args=[
                     {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', "'Is Manager:'"],
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
                         'executable': ['docker', 'inspect'],
@@ -2180,40 +2257,18 @@ class ServiceTestCase(unittest.TestCase):
                         'image': ['digest'],
                         'name': 'service',
                         'args': [],
+                        'label': [
+                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                        ],
                     },
-                ],
-                expected_service_labels=[
-                    '"_current_options={\\"env-add\\": null, \\"constraint-add\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"image\\": \\"digest\\", \\"args\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"replicas\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null}"',
                 ],
                 expected_result=True,
             ),
         )
-        current_options_re = re.compile('"_current_options=(.*)"')
-
         def test_command(command, **kwargs):
-            args = re.findall('".+?(?<!\\\\)"|\'.+?(?<!\\\\)\'|[^\s]+', command)
+            args = shlex.split(command)
             parser = next(args_parsers)
             options = vars(parser.parse_args(args))
-            labels = None
-            if command.startswith('docker service create'):
-                labels = options.pop('label', [])
-            elif command.startswith('docker service update'):
-                labels = options.pop('label-add', [])
-            if labels is not None:
-                self.assertEqual(len(labels), len(data['expected_service_labels']))
-                for expected_label in data['expected_service_labels']:
-                    match = current_options_re.match(expected_label)
-                    if match:
-                        expected_value = json.loads(match.group(1).replace('\\', ''))
-                        value = None
-                        for label in labels:
-                            match = current_options_re.match(label)
-                            if match:
-                                value = json.loads(match.group(1).replace('\\', ''))
-                                break
-                        self.assertEqual(expected_value, value)
-                    else:
-                        self.assertIn(expected_label.replace('\\', '\\\\'), labels)
             self.assertDictEqual(options, next(expected_args))
             result = next(side_effect)
             if isinstance(result, Exception):
@@ -2237,7 +2292,11 @@ class ServiceTestCase(unittest.TestCase):
                             try:
                                 result = service.update(**data['update_kwargs'])
                                 self.assertEqual(result, expected_result)
+                            except AssertionError:
+                                raise
                             except Exception as exception:
+                                if not issubclass(expected_result, Exception):
+                                    raise
                                 self.assertIsInstance(exception, expected_result)
                             self.assertEqual(run.call_count, len(data['expected_args']))
 
@@ -2806,7 +2865,7 @@ class ServiceTestCase(unittest.TestCase):
             existing_label_str_add_json=dict(
                 service_init_kwargs=dict(options=dict(label='label=label')),
                 kwargs={'new_label': '{"foo": "bar"}'},
-                expected_service_labels=['label=label', 'new_label={\\"foo\\": \\"bar\\"}'],
+                expected_service_labels=['label=label', 'new_label={"foo": "bar"}'],
             ),
             existing_label_str_add_one=dict(
                 service_init_kwargs=dict(options=dict(label='label=label')),
@@ -3401,7 +3460,7 @@ class ServiceTestCase(unittest.TestCase):
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rename service_current service_backup'),
                     mock.call('docker rm service_revert'),
-                    mock.call('docker create --name service_current image:tag'),
+                    mock.call('docker create --name=service_current image:tag'),
                     mock.call(
                         'docker rmi $(docker images --no-trunc --quiet image)',
                         ignore_errors=True),
@@ -3426,7 +3485,7 @@ class ServiceTestCase(unittest.TestCase):
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rename service_current service_backup'),
                     mock.call('docker rm service_revert'),
-                    mock.call('docker create --name service_current image:tag'),
+                    mock.call('docker create --name=service_current image:tag'),
                     mock.call(
                         'docker rmi $(docker images --no-trunc --quiet image)',
                         ignore_errors=True),
@@ -3461,7 +3520,7 @@ class ServiceTestCase(unittest.TestCase):
                     mock.call('docker rm service_backup'),
                     mock.call('docker rename service_current service_backup'),
                     mock.call('docker rm service_revert'),
-                    mock.call('docker create --name service_current image:tag'),
+                    mock.call('docker create --name=service_current image:tag'),
                     mock.call(
                         'docker rmi $(docker images --no-trunc --quiet image)',
                         ignore_errors=True),
@@ -3481,7 +3540,7 @@ class ServiceTestCase(unittest.TestCase):
                 expected_calls=[
                     mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
                     mock.call('docker rm service_revert'),
-                    mock.call('docker create --name service_current image:tag'),
+                    mock.call('docker create --name=service_current image:tag'),
                     mock.call('docker rmi $(docker images --no-trunc --quiet image)', ignore_errors=True),
                 ],
                 side_effect=(
@@ -3500,7 +3559,7 @@ class ServiceTestCase(unittest.TestCase):
                     mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
                     mock.call('docker rename service_current service_backup'),
                     mock.call('docker rm service_revert'),
-                    mock.call('docker create --name service_current registry/image:foo'),
+                    mock.call('docker create --name=service_current registry/image:foo'),
                     mock.call('docker rmi $(docker images --no-trunc --quiet registry/image)', ignore_errors=True),
                 ],
                 side_effect=(

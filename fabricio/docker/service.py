@@ -5,6 +5,8 @@ import multiprocessing
 import re
 import sys
 
+from base64 import b64encode, b64decode
+
 import dpath
 import six
 
@@ -163,7 +165,7 @@ class Service(BaseService):
             raise ServiceError('service backup info not found')
 
     def get_backup_version(self):
-        backup_options = json.loads(self._backup_options)
+        backup_options = self._decode_options(self._backup_options)
         backup_service = self.fork(image=backup_options['image'])
         backup_service.image_id = None
         return backup_service
@@ -226,19 +228,19 @@ class Service(BaseService):
 
         with utils.patch(self, 'info', service_info, force_delete=True):
             labels = service_info.get('Spec', {}).get('Labels', {})
-            current_options = labels.pop(self.current_options_label_name, '{}')
+            current_options = labels.pop(self.current_options_label_name, '')
             labels.pop(self.backup_options_label_name, None)
 
             update_options = dict(self.update_options, image=image)
 
             if force or self._service_need_update(
-                options_old=json.loads(current_options),
+                options_old=self._decode_options(current_options),
                 options_new=update_options,
             ):
-                new_labels = {self.current_options_label_name: json.dumps(
-                    update_options,
-                    default=six.text_type
-                )}
+                new_labels = {
+                    self.current_options_label_name:
+                    self._encode_options(update_options),
+                }
                 if service_info:
                     new_labels[self.backup_options_label_name] = current_options
                 self._update_labels(**new_labels)
@@ -390,7 +392,7 @@ class Service(BaseService):
     @utils.once_per_command
     def _revert(self):
         with utils.patch(self, 'info', self.info, force_delete=True):
-            decoded_backup_options = json.loads(self._backup_options)
+            decoded_backup_options = self._decode_options(self._backup_options)
             label_add = decoded_backup_options.get('label-add') or []
             if not isinstance(label_add, list):
                 label_add = [label_add]
@@ -472,6 +474,18 @@ class Service(BaseService):
                     self.manager_found.clear()
                     self.is_manager_call_count.value = 0
 
+    @staticmethod
+    def _encode_options(decoded_options):
+        return b64encode(json.dumps(decoded_options, default=six.text_type))
+
+    @staticmethod
+    def _decode_options(encoded_options):
+        try:
+            return json.loads(encoded_options or '{}')
+        except ValueError:
+            pass
+        return json.loads(b64decode(encoded_options) or '{}')
+
     def _update_labels(self, **labels):
         service_labels = self.label
         if not service_labels:
@@ -484,10 +498,7 @@ class Service(BaseService):
             except TypeError:
                 service_labels = [six.text_type(service_labels)]
         for label, value in labels.items():
-            service_labels.append("{label}={value}".format(
-                label=label,
-                value=value.replace('"', '\\"'),
-            ))
+            service_labels.append("{0}={1}".format(label, value))
         self.label = service_labels
 
     class _RmValuesGetter(object):

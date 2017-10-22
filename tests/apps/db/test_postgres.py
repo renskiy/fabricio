@@ -30,6 +30,8 @@ class TestContainer(postgres.PostgresqlContainer):
 
 class PostgresqlBackupMixinTestCase(unittest.TestCase):
 
+    maxDiff = None
+
     class BackupContainer(docker.Container, postgres.PostgresqlBackupMixin):
         pass
 
@@ -72,7 +74,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image_id',
-                        'command': ['pg_dump', '--username', 'postgres', '--if-exists', '--create', '--clean', '--format', 'c', '--jobs', '1', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_dump', '--username=postgres', '--if-exists', '--create', '--clean', '--format=c', '--jobs=1', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 service_type=self.BackupContainer,
@@ -99,7 +101,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['pg_dump', '--username', 'postgres', '--if-exists', '--create', '--clean', '--format', 'c', '--jobs', '1', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_dump', '--username=postgres', '--if-exists', '--create', '--clean', '--format=c', '--jobs=1', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 service_type=self.BackupService,
@@ -137,7 +139,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image_id',
-                        'command': ['pg_dump', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--format', 't', '--dbname', 'test_db', '--compress', '9', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_dump', '--username=user', '--host=localhost', '--port=5432', '--if-exists', '--create', '--clean', '--format=t', '--dbname=test_db', '--compress=9', '--jobs=2', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 service_type=self.BackupContainer,
@@ -171,7 +173,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['pg_dump', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--format', 't', '--dbname', 'test_db', '--compress', '9', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_dump', '--username=user', '--host=localhost', '--port=5432', '--if-exists', '--create', '--clean', '--format=t', '--dbname=test_db', '--compress=9', '--jobs=2', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 service_type=self.BackupService,
@@ -231,7 +233,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image_id',
-                        'command': ['pg_restore', '--username', 'postgres', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '4', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_restore', '--username=postgres', '--if-exists', '--create', '--clean', '--dbname=template1', '--jobs=4', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 args_parsers=[
@@ -257,7 +259,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['pg_restore', '--username', 'postgres', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '4', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_restore', '--username=postgres', '--if-exists', '--create', '--clean', '--dbname=template1', '--jobs=4', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 args_parsers=[
@@ -287,7 +289,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image_id',
-                        'command': ['pg_restore', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_restore', '--username=user', '--host=localhost', '--port=5432', '--if-exists', '--create', '--clean', '--dbname=template1', '--jobs=2', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 args_parsers=[
@@ -320,7 +322,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
                         'tty': True,
                         'interactive': True,
                         'image': 'image@digest',
-                        'command': ['pg_restore', '--username', 'user', '--host', 'localhost', '--port', '5432', '--if-exists', '--create', '--clean', '--dbname', 'template1', '--jobs', '2', '--file', '/data/backup/postgres/backup.dump'],
+                        'command': ['pg_restore', '--username=user', '--host=localhost', '--port=5432', '--if-exists', '--create', '--clean', '--dbname=template1', '--jobs=2', '--file=/data/backup/postgres/backup.dump'],
                     },
                 ],
                 args_parsers=[
