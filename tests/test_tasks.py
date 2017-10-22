@@ -1326,7 +1326,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
         def test_docker_build_command(command, **kwargs):
             if not command.startswith('docker build'):
                 return
-            args = command.split()
+            args = shlex.split(command)
             actual_docker_build_command = vars(docker_build_args_parser.parse_args(args))
             self.assertDictEqual(
                 expected_docker_build_command,

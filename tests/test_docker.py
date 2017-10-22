@@ -1,5 +1,4 @@
 # coding: utf-8
-import re
 import shlex
 
 import mock
@@ -488,7 +487,7 @@ class ContainerTestCase(unittest.TestCase):
         )
 
         def test_command(command, *args, **kwargs):
-            options = docker_run_args_parser.parse_args(command.split())
+            options = docker_run_args_parser.parse_args(shlex.split(command))
             self.assertDictEqual(vars(options), params['expected_args'])
         for case, params in cases.items():
             with self.subTest(case=case):
@@ -1710,7 +1709,7 @@ class ImageTestCase(unittest.TestCase):
         )
 
         def test_command(command, *args, **kwargs):
-            options = docker_run_args_parser.parse_args(command.split())
+            options = docker_run_args_parser.parse_args(shlex.split(command))
             self.assertDictEqual(vars(options), data['expected_args'])
         for case, data in cases.items():
             with self.subTest(case=case):
@@ -2325,6 +2324,7 @@ class ServiceTestCase(unittest.TestCase):
                 expected_result=True,
             ),
         )
+
         def test_command(command, **kwargs):
             args = shlex.split(command)
             parser = next(args_parsers)
@@ -3421,7 +3421,7 @@ class ServiceTestCase(unittest.TestCase):
                     'image': ['image:tag'],
                     'name': 'service',
                     'args': [],
-                    'command': '"command"',
+                    'command': 'command',
                 },
             ),
             custom_args=dict(
@@ -3431,7 +3431,7 @@ class ServiceTestCase(unittest.TestCase):
                     'image': ['image:tag'],
                     'name': 'service',
                     'args': ['arg1', 'arg2'],
-                    'command': '""',
+                    'command': '',
                 },
             ),
             custom_command_and_args=dict(
@@ -3445,7 +3445,7 @@ class ServiceTestCase(unittest.TestCase):
                     'image': ['image:tag'],
                     'name': 'service',
                     'args': ['arg1', 'arg2'],
-                    'command': '"command"',
+                    'command': 'command',
                 },
             ),
             complex=dict(
@@ -3479,7 +3479,7 @@ class ServiceTestCase(unittest.TestCase):
                     'publish': ['port1', 'port2'],
                     'label': ['label1', 'label2'],
                     'container-label': ['c_label1', 'c_label2'],
-                    'command': '"command1 command2"',
+                    'command': 'command1 command2',
                     'user': 'user',
                     'env': ['en1', 'env2'],
                     'stop-grace-period': '20',
@@ -3491,10 +3491,7 @@ class ServiceTestCase(unittest.TestCase):
         )
 
         def test_command(command, *args, **kwargs):
-            args = re.findall(
-                '".+?(?<!\\\\)"|\'.+?(?<!\\\\)\'|[^\s]+',
-                command,
-            )
+            args = shlex.split(command)
             options = docker_service_create_args_parser.parse_args(args)
             self.assertDictEqual(vars(options), data['expected_args'])
         image = docker.Image('image:tag')
