@@ -84,15 +84,27 @@ class Image(object):
             registry, tag, account = item.start, item.stop, item.step
         else:
             registry, tag, account = None, item, None
-        registry = registry or self.registry
-        name = account and '{account}/{name}'.format(
+
+        # tag can override image registry and/or name
+        _registry, _name, _tag = self.parse_image_name(tag)
+        if not _tag:
+            if _registry:
+                _tag = 'latest'
+            else:
+                _tag, _name = _name, None
+
+        registry = _registry or registry or self.registry
+        name = _name or account and '{account}/{name}'.format(
             account=account,
             name=self.name.split('/')[-1],
         ) or self.name
-        if self.use_digest and tag is None:
+        tag = _tag or tag
+
+        if self.use_digest and not tag:
             name = '{name}@{digest}'.format(name=name, digest=self.tag)
         else:
             tag = tag or self.tag
+
         return self.__class__(name=name, tag=tag, registry=registry)
 
     def get_field_name(self, owner_cls):
@@ -112,6 +124,8 @@ class Image(object):
 
     @staticmethod
     def parse_image_name(image):
+        if not image:
+            return None, None, None
         repository, tag = docker.utils.parse_repository_tag(image)
         registry, name = docker.auth.resolve_repository_name(repository)
         if registry == docker.auth.INDEX_NAME:

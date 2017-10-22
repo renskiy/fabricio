@@ -1456,6 +1456,31 @@ class ImageTestCase(unittest.TestCase):
                 item='custom_tag',
                 expected_str='name:custom_tag',
             ),
+            override_name=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='name:tag',
+                expected_str='default/name:tag',
+            ),
+            override_name_and_account=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='account/name:tag',
+                expected_str='default/account/name:tag',
+            ),
+            override_name_and_registry=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='localhost:5000/name:tag',
+                expected_str='localhost:5000/name:tag',
+            ),
+            override_name_and_registry_skip_tag=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='localhost:5000/name',
+                expected_str='localhost:5000/name:latest',
+            ),
+            override_name_and_registry_skip_tag_digest=dict(
+                image_init_kwargs=dict(name='name@digest'),
+                item='localhost:5000/name',
+                expected_str='localhost:5000/name:latest',
+            ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
@@ -1506,6 +1531,41 @@ class ImageTestCase(unittest.TestCase):
                 stop='custom_tag',
                 step='account',
                 expected_str='127.0.0.1:5000/account/name:custom_tag',
+            ),
+            override_name=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                start='127.0.0.1:5000',
+                stop='name:tag',
+                step='account',
+                expected_str='127.0.0.1:5000/name:tag',
+            ),
+            override_name_and_account=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                start='127.0.0.1:5000',
+                stop='acc/name:tag',
+                step='account',
+                expected_str='127.0.0.1:5000/acc/name:tag',
+            ),
+            override_name_and_registry=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                start='127.0.0.1:5000',
+                stop='localhost:5000/name:tag',
+                step='account',
+                expected_str='localhost:5000/name:tag',
+            ),
+            override_name_and_registry_skip_tag=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                start='127.0.0.1:5000',
+                stop='localhost:5000/name',
+                step='account',
+                expected_str='localhost:5000/name:latest',
+            ),
+            override_name_and_registry_skip_tag_digest=dict(
+                image_init_kwargs=dict(name='name@digest'),
+                start='127.0.0.1:5000',
+                stop='localhost:5000/name',
+                step='account',
+                expected_str='localhost:5000/name:latest',
             ),
             digest_none=dict(
                 image_init_kwargs=dict(name='name@digest'),

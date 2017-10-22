@@ -4,12 +4,14 @@ Changelog
 Release 0.3.25
 --------------
 
-- Change: ``ImageBuildDockerTasks.prepare`` can now take any option each of which, except ``tag``, will be passed to ``docker build`` command
+- Change: ``ImageBuildDockerTasks.prepare`` can now take any option each of which will be passed to ``docker build`` command
 - Change: all options values are passed using '--option=value' template instead of '--option value'
 - Change: ``docker.Service``: labels with current and backup options are encoded using base64 codec instead of raw JSON
 - Fix: improved options quoting
+- Fix: ``fabricio.local()`` can show command's output when ``capture`` param enabled
 - Enhancement: ``StreamingReplicatedPostgresqlContainer``: added compatibility with PostgreSQL 10
 - Enhancement: ``fabricio.local()`` and ``fabricio.run()`` have common set of params now
+- Enhancement: ``DockerTasks``: ``tag`` param may contain full image name (e.g. ``registry/account/name:tag``)
 
 Release 0.3.24
 --------------
