@@ -154,6 +154,7 @@ class Container(BaseService):
         cmd=None,  # deprecated
         quiet=True,
         use_cache=False,
+        options=(),
     ):
         if cmd:
             warnings.warn(
@@ -163,9 +164,18 @@ class Container(BaseService):
             )
         if not (command or cmd):
             raise ValueError('Must provide command to execute')
-        exec_command = 'docker exec --tty --interactive {container} {command}'
+
+        options = utils.Options(options)
+        options.setdefault('tty', True)
+        options.setdefault('interactive', True)
+
+        exec_command = 'docker exec {options} {container} {command}'
         return fabricio.run(
-            exec_command.format(container=self, command=command or cmd),
+            exec_command.format(
+                container=self,
+                command=command or cmd,
+                options=options,
+            ),
             quiet=quiet,
             use_cache=use_cache,
         )

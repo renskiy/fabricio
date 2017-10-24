@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.3.26
+--------------
+
+- Enhancement: ``docker.Container.execute()`` can take additional options
+
 Release 0.3.25
 --------------
 
