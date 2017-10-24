@@ -3,6 +3,7 @@ import ctypes
 import json
 import multiprocessing
 import re
+import shlex
 import sys
 
 from base64 import b64encode, b64decode
@@ -33,11 +34,7 @@ class ServiceNotFoundError(ServiceError):
     pass
 
 
-class UpdateOption(Option):
-    pass
-
-
-class RemovableOption(UpdateOption):
+class RemovableOption(Option):
 
     path = None
 
@@ -70,53 +67,72 @@ class RemovableOption(UpdateOption):
         return map(self.value_type, new_values)
 
 
-class Label(RemovableOption):
+class LabelOption(RemovableOption):
 
     class value_type(utils.Item):
 
-        def get_comparison_value(self):
+        @cached_property
+        def comparison_value(self):
             # fetch label key
             return self.split('=', 1)[0]
 
 
-class Env(Label):
+class EnvOption(LabelOption):
 
     path = '/Spec/TaskTemplate/ContainerSpec/Env/*'
 
     def get_current_values(self, *args, **kwargs):
-        values = super(Env, self).get_current_values(*args, **kwargs)
+        values = super(EnvOption, self).get_current_values(*args, **kwargs)
         return map(
-            self.value_type.get_comparison_value,
+            lambda value: value.comparison_value,
             map(self.value_type, values),
         )
 
 
-class Port(RemovableOption):
+class PortOption(RemovableOption):
 
     path = '/Spec/EndpointSpec/Ports/*/TargetPort'
 
     class value_type(utils.Item):
 
-        def get_comparison_value(self):
+        @cached_property
+        def comparison_value(self):
             # fetch target port
             return self.rsplit('/', 1)[0].rsplit(':', 1)[-1]
 
 
-class Mount(RemovableOption):
+class MountOption(RemovableOption):
 
     path = '/Spec/TaskTemplate/ContainerSpec/Mounts/*/Target'
 
     class value_type(utils.Item):
 
-        comparison_value_re = re.compile(
-            'destination=(?P<quote>[\'"]?)(?P<dst>.*?)(?P=quote)(?:,|$)',
-            flags=re.UNICODE,
-        )
+        split_re = re.compile(r'(?<!\\),')
 
-        def get_comparison_value(self):
+        @cached_property
+        def comparison_value(self):
             # fetch target path
-            match = self.comparison_value_re.search(self)
-            return match and match.group('dst')
+            value_parts = self.split_re.split(self)
+            for part in value_parts:
+                if not part.startswith('destination='):
+                    continue
+                destination = shlex.split(part.split('=', 1)[-1])
+                if len(destination) > 1:
+                    raise ValueError('wrong destination value: %s' % self)
+                # removing \x00 necessary for Python 2.6
+                return destination and destination[0].replace('\x00', '')
+
+
+class NetworkOption(RemovableOption):
+
+    path = '/Spec/TaskTemplate/Networks/*/Target'
+
+    class value_type(utils.Item):
+
+        @cached_property
+        def comparison_value(self):
+            command = "docker network inspect --format '{{.Id}}' " + self
+            return fabricio.run(command)
 
 
 class Service(BaseService):
@@ -126,32 +142,44 @@ class Service(BaseService):
 
     command = Attribute()
     args = Attribute()
+    mode = Attribute()
+    native_rollback = Attribute(default=True)  # TODO prefer to use `docker service rollback`
 
-    label = Label(path='/Spec/Labels')
-    container_label = Label(
+    label = LabelOption(path='/Spec/Labels', safe=True)
+    container_label = LabelOption(
         name='container-label',
         path='/Spec/TaskTemplate/ContainerSpec/Labels',
-        safe=False,
     )
     constraint = RemovableOption(
         path='/Spec/TaskTemplate/Placement/Constraints/*',
-        safe=False,
     )
-    replicas = UpdateOption(safe=False)
-    mount = Mount(safe=False)
-    network = Option()
-    mode = Option(safe=False)
-    restart_condition = UpdateOption(name='restart-condition', safe=False)
-    stop_grace_period = UpdateOption(name='stop-grace-period', safe=False)
-    env = Env()
-    publish = Port(safe=False)
-    user = UpdateOption()
+    replicas = Option()
+    mount = MountOption(safe=True)
+    network = NetworkOption(safe=True)
+    restart_condition = Option(name='restart-condition')
+    stop_grace_period = Option(name='stop-grace-period')
+    env = EnvOption(safe=True)
+    publish = PortOption()
+    user = Option(safe=True)
+
+    # config = RemovableOption()  # TODO
+    # dns = RemovableOption(safe=True)  # TODO
+    # dns_option = RemovableOption(name='dns-option', safe=True)  # TODO
+    # dns_search = RemovableOption(name='dns-search', safe=True)  # TODO
+    # placement_pref = RemovableOption(name='placement-pref')  # TODO
+    # group = RemovableOption(safe_name='group-add')  # TODO
+    # host = RemovableOption(safe_name=add-host)  # TODO
+    # secret = RemovableOption(safe_name='security-opt')  # TODO
 
     def __init__(self, *args, **kwargs):
         super(Service, self).__init__(*args, **kwargs)
         self.manager_found = multiprocessing.Event()
         self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
         self.pull_errors = multiprocessing.Manager().dict()
+
+    @property
+    def cmd(self):
+        return ' '.join([self.command or '', self.args or '']).strip()
 
     @utils.default_property
     def image_id(self):
@@ -175,7 +203,7 @@ class Service(BaseService):
         options = {}
         for cls in type(self).__mro__[::-1]:
             for attr, option in vars(cls).items():
-                if isinstance(option, UpdateOption):
+                if isinstance(option, Option):
                     def add_values(service, attr=attr):
                         return getattr(service, attr)
                     name = option.name or attr
@@ -189,13 +217,18 @@ class Service(BaseService):
 
     @property
     def update_options(self):
-        return frozendict(
+        evaluated_options = dict(
             (
                 (option, callback(self))
                 for option, callback in self._update_options.items()
             ),
-            args=self.args,
+            args=self.cmd,
             **self._other_options
+        )
+        return frozendict(
+            (option, value)
+            for option, value in evaluated_options.items()
+            if value is not None
         )
 
     def _update_service(self, options):
@@ -205,16 +238,11 @@ class Service(BaseService):
         ))
 
     def _create_service(self, image):
-        command = 'docker service create {options} {image} {command} {args}'
+        command = 'docker service create {options} {image} {cmd}'
         fabricio.run(command.format(
-            options=utils.Options(self.options, name=self),
+            options=utils.Options(self.options, name=self, mode=self.mode),
             image=image,
-            command=(
-                '"{0}"'.format((self.command or '').replace('"', '\\"'))
-                if self.command or self.args else
-                ''
-            ),
-            args=self.args or '',
+            cmd=self.cmd,
         ))
 
     @utils.once_per_command
@@ -398,7 +426,7 @@ class Service(BaseService):
                 label_add = [label_add]
             label_add.append('{label}={value}'.format(
                 label=self.current_options_label_name,
-                value=self._backup_options.replace('"', '\\"'),
+                value=self._backup_options,
             ))
             decoded_backup_options['label-add'] = label_add
             update_options = self._options_revert_patch(decoded_backup_options)
@@ -511,4 +539,4 @@ class Service(BaseService):
             return self.option.get_values_to_remove(
                 service_info=service.info,
                 new_values=getattr(service, attr or self.attr),
-            )
+            ) or None

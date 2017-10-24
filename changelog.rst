@@ -4,6 +4,11 @@ Changelog
 Release 0.3.26
 --------------
 
+- Change: ``docker.Service``: ``mode`` is now an attribute, not an option
+- Change: ``docker.Option`` is unsafe by default
+- Change: ``docker.BaseService.safe_options`` does not include custom options
+- Enhancement: ``docker.Service``: ``network`` option can be updated
+- Enhancement: ``docker.Service`` skips empty options
 - Enhancement: ``docker.Container.execute()`` can take additional options
 
 Release 0.3.25

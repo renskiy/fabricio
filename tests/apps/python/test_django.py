@@ -123,6 +123,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                     'rm': True,
                     'tty': True,
                     'interactive': True,
+                    'mount': 'mounts',
                     'image': 'image:tag',
                     'command': ['python', 'manage.py', 'migrate', '--noinput'],
                 },
@@ -132,6 +133,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                     image='image:tag',
                     command='command',
                     args='args',
+                    mode='mode',
 
                     options=dict(
                         user='user',
@@ -146,7 +148,6 @@ class DjangoContainerTestCase(unittest.TestCase):
                         replicas='replicas',
                         constraint='constraints',
                         container_label='container_labels',
-                        mode='mode',
                     ),
                 ),
                 service_type=DjangoService,
@@ -614,6 +615,7 @@ class DjangoContainerTestCase(unittest.TestCase):
 
                         ports='ports',
                         restart_policy='restart_policy',
+                        custom='custom',
                     ),
                     command='command',
                     stop_timeout='stop_timeout',
@@ -653,6 +655,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'rm': True,
                         'tty': True,
                         'interactive': True,
+                        'mount': 'mounts',
                         'image': 'image@digest',
                         'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
@@ -666,6 +669,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'rm': True,
                         'tty': True,
                         'interactive': True,
+                        'mount': 'mounts',
                         'image': 'image@backup',
                         'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', '"^\\[X\\]"', '|', 'awk', '"{print', '$2}"', '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
                     },
@@ -679,6 +683,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'rm': True,
                         'tty': True,
                         'interactive': True,
+                        'mount': 'mounts',
                         'image': 'image@digest',
                         'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
                     },
@@ -692,6 +697,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'rm': True,
                         'tty': True,
                         'interactive': True,
+                        'mount': 'mounts',
                         'image': 'image@digest',
                         'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
                     },
@@ -705,6 +711,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         'rm': True,
                         'tty': True,
                         'interactive': True,
+                        'mount': 'mounts',
                         'image': 'image@digest',
                         'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
                     },
@@ -720,6 +727,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     command='command',
                     args='args',
+                    mode='mode',
 
                     options=dict(
                         user='user',
@@ -734,7 +742,7 @@ class DjangoContainerTestCase(unittest.TestCase):
                         replicas='replicas',
                         constraint='constraints',
                         container_label='container_labels',
-                        mode='mode',
+                        custom='custom',
                     ),
                 ),
                 service_type=DjangoService,

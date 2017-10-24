@@ -1964,7 +1964,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0="}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ=="}}}]'),  # service info
                 ),
                 args_parsers=[
                     args_parser,
@@ -1996,7 +1996,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"image\\": \\"digest\\", \\"args\\": \\"\\"}"}}}]'),  # service info
                 ),
                 args_parsers=[
                     args_parser,
@@ -2028,7 +2028,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0="}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ=="}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2054,9 +2054,10 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'args': '',
                         'label-add': [
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
-                            '_backup_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_backup_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
                         ],
                     },
                 ],
@@ -2071,7 +2072,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"env-add\\": null, \\"constraint-add\\": null, \\"args\\": null, \\"label-rm\\": null, \\"env-rm\\": null, \\"publish-add\\": null, \\"label-add\\": null, \\"replicas\\": null, \\"mount-rm\\": null, \\"container-label-rm\\": null, \\"user\\": null, \\"publish-rm\\": null, \\"mount-add\\": null, \\"constraint-rm\\": null, \\"stop-grace-period\\": null, \\"restart-condition\\": null, \\"container-label-add\\": null, \\"image\\": \\"digest\\"}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"image\\": \\"digest\\", \\"args\\": \\"\\"}"}}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2097,9 +2098,10 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'args': '',
                         'label-add': [
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
-                            '_backup_options={"env-add": null, "constraint-add": null, "args": null, "label-rm": null, "env-rm": null, "publish-add": null, "label-add": null, "replicas": null, "mount-rm": null, "container-label-rm": null, "user": null, "publish-rm": null, "mount-add": null, "constraint-rm": null, "stop-grace-period": null, "restart-condition": null, "container-label-add": null, "image": "digest"}',
+                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_backup_options={"image": "digest", "args": ""}',
                         ],
                     },
                 ],
@@ -2140,19 +2142,21 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'args': '',
                         'label-add': [
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
                             '_backup_options={}',
                         ],
                     },
                 ],
                 expected_result=True,
             ),
-            updated_with_custom_labels=dict(
+            updated_with_custom_labels_and_args=dict(
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
                     options=dict(label=['label1=label1', 'label2=label2']),
+                    args='foo bar',
                 ),
                 update_kwargs=dict(),
                 side_effect=(
@@ -2187,9 +2191,10 @@ class ServiceTestCase(unittest.TestCase):
                         'label-add': [
                             'label1=label1',
                             'label2=label2',
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IFsibGFiZWwxPWxhYmVsMSIsICJsYWJlbDI9bGFiZWwyIl0sICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_current_options=eyJsYWJlbC1hZGQiOiBbImxhYmVsMT1sYWJlbDEiLCAibGFiZWwyPWxhYmVsMiJdLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImFyZ3MiOiAiZm9vIGJhciJ9',
                             '_backup_options={}',
                         ],
+                        'args': 'foo bar',
                     },
                 ],
                 expected_result=True,
@@ -2229,8 +2234,9 @@ class ServiceTestCase(unittest.TestCase):
                         'executable': ['docker', 'service', 'update'],
                         'image': 'digest',
                         'service': 'service',
+                        'args': '',
                         'label-add': [
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
                             '_backup_options={}',
                         ],
                     },
@@ -2274,7 +2280,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
                         ],
                     },
                 ],
@@ -2317,7 +2323,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            '_current_options=eyJlbnYtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtYWRkIjogbnVsbCwgImNvbnN0cmFpbnQtcm0iOiBudWxsLCAiZW52LXJtIjogbnVsbCwgInB1Ymxpc2gtYWRkIjogbnVsbCwgImxhYmVsLWFkZCI6IG51bGwsICJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6IG51bGwsICJtb3VudC1ybSI6IG51bGwsICJjb250YWluZXItbGFiZWwtcm0iOiBudWxsLCAidXNlciI6IG51bGwsICJyZXBsaWNhcyI6IG51bGwsICJwdWJsaXNoLXJtIjogbnVsbCwgIm1vdW50LWFkZCI6IG51bGwsICJsYWJlbC1ybSI6IG51bGwsICJzdG9wLWdyYWNlLXBlcmlvZCI6IG51bGwsICJyZXN0YXJ0LWNvbmRpdGlvbiI6IG51bGwsICJjb250YWluZXItbGFiZWwtYWRkIjogbnVsbH0=',
+                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
                         ],
                     },
                 ],
@@ -2408,46 +2414,28 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(name='name'),
                 service_info=dict(),
                 expected={
-                    'env-add': None,
-                    'constraint-add': None,
-                    'label-rm': None,
-                    'env-rm': None,
-                    'publish-add': None,
-                    'label-add': None,
-                    'args': None,
-                    'mount-rm': None,
-                    'container-label-rm': None,
-                    'user': None,
-                    'replicas': None,
-                    'publish-rm': None,
-                    'mount-add': None,
-                    'constraint-rm': None,
-                    'stop-grace-period': None,
-                    'restart-condition': None,
-                    'container-label-add': None,
+                    'args': '',
                 },
             ),
             empty_args=dict(
-                init_kwargs=dict(name='name', args=''),
+                init_kwargs=dict(name='name', command='', args=''),
                 service_info=dict(),
                 expected={
-                    'env-add': None,
-                    'constraint-add': None,
-                    'label-rm': None,
-                    'env-rm': None,
-                    'publish-add': None,
-                    'label-add': None,
                     'args': '',
-                    'mount-rm': None,
-                    'container-label-rm': None,
-                    'user': None,
-                    'replicas': None,
-                    'publish-rm': None,
-                    'mount-add': None,
-                    'constraint-rm': None,
-                    'stop-grace-period': None,
-                    'restart-condition': None,
-                    'container-label-add': None,
+                },
+            ),
+            command=dict(
+                init_kwargs=dict(name='name', command='command'),
+                service_info=dict(),
+                expected={
+                    'args': 'command',
+                },
+            ),
+            args_and_command=dict(
+                init_kwargs=dict(name='name', command='command', args='arg1 arg2'),
+                service_info=dict(),
+                expected={
+                    'args': 'command arg1 arg2',
                 },
             ),
             new_option_value=dict(
@@ -2462,35 +2450,31 @@ class ServiceTestCase(unittest.TestCase):
                         constraint='node.role == manager',
                         container_label='label=value',
                         network='network',
-                        mode='mode',
                         restart_condition='on-failure',
                         stop_grace_period=20,
                         custom_option='custom_value',
                         replicas=3,
                         user='user',
                     ),
+                    mode='mode',
                 ),
                 service_info=dict(),
                 expected={
                     'env-add': 'FOO=bar',
                     'constraint-add': 'node.role == manager',
-                    'label-rm': None,
-                    'env-rm': None,
                     'publish-add': 'source:target',
                     'label-add': 'label=value',
                     'args': 'arg1 "arg2" \'arg3\'',
-                    'mount-rm': None,
-                    'container-label-rm': None,
                     'user': 'user',
                     'replicas': 3,
-                    'publish-rm': None,
                     'mount-add': 'type=volume,destination=/path',
-                    'constraint-rm': None,
+                    'network-add': 'network',
                     'stop-grace-period': 20,
                     'restart-condition': 'on-failure',
                     'custom_option': 'custom_value',
                     'container-label-add': 'label=value',
                 },
+                networks_ids=['network_id'],
             ),
             changed_option_value=dict(
                 init_kwargs=dict(
@@ -2504,13 +2488,13 @@ class ServiceTestCase(unittest.TestCase):
                         constraint='node.role == worker',
                         container_label='label=container_new_value',
                         network='new_network',
-                        mode='mode',
                         restart_condition='any',
                         stop_grace_period=20,
                         custom_option='new_custom_value',
                         replicas=2,
                         user='new_user',
                     ),
+                    mode='mode',
                 ),
                 service_info=dict(
                     Spec=dict(
@@ -2538,6 +2522,11 @@ class ServiceTestCase(unittest.TestCase):
                                     'node.role == manager',
                                 ],
                             ),
+                            Networks=[
+                                {
+                                    'Target': 'old_network_id',
+                                },
+                            ],
                         ),
                         EndpointSpec=dict(
                             Ports=[
@@ -2553,23 +2542,21 @@ class ServiceTestCase(unittest.TestCase):
                 expected={
                     'env-add': 'FOO=baz',
                     'constraint-add': 'node.role == worker',
-                    'label-rm': [],
-                    'env-rm': [],
                     'publish-add': '8000:80',
                     'label-add': 'label=new_value',
                     'args': 'arg1 "arg2" \'arg3\'',
-                    'mount-rm': [],
-                    'container-label-rm': [],
                     'user': 'new_user',
                     'replicas': 2,
-                    'publish-rm': [],
                     'mount-add': 'type=new_type,destination=/path',
+                    'network-add': 'new_network',
+                    'network-rm': ['old_network_id'],
                     'constraint-rm': ['node.role == manager'],
                     'stop-grace-period': 20,
                     'restart-condition': 'any',
                     'custom_option': 'new_custom_value',
                     'container-label-add': 'label=container_new_value',
                 },
+                networks_ids=['new_network_id'],
             ),
             new_options_values=dict(
                 init_kwargs=dict(
@@ -2599,28 +2586,24 @@ class ServiceTestCase(unittest.TestCase):
                             'FOO=bar',
                             'FOO2=bar2',
                         ],
+                        network=[
+                            'network1',
+                            'network2',
+                        ],
                     ),
                 ),
                 service_info=dict(),
                 expected={
                     'env-add': ['FOO=bar', 'FOO2=bar2'],
                     'constraint-add': ['node.role == manager', 'node.role == worker'],
-                    'label-rm': None,
-                    'env-rm': None,
                     'publish-add': ['source:target', 'source2:target2'],
                     'label-add': ['label=value', 'label2=value2'],
-                    'args': None,
-                    'mount-rm': None,
-                    'container-label-rm': None,
-                    'user': None,
-                    'replicas': None,
-                    'publish-rm': None,
                     'mount-add': ['type=volume,destination=/path', 'type=volume,destination="/path2"'],
-                    'constraint-rm': None,
-                    'stop-grace-period': None,
-                    'restart-condition': None,
                     'container-label-add': ['label=value', 'label2=value2'],
+                    'network-add': ['network1', 'network2'],
+                    'args': '',
                 },
+                networks_ids=['network1_id', 'network2_id'],
             ),
             remove_option_value=dict(
                 init_kwargs=dict(
@@ -2652,6 +2635,11 @@ class ServiceTestCase(unittest.TestCase):
                                     'node.role == manager',
                                 ],
                             ),
+                            Networks=[
+                                {
+                                    'Target': 'old_network_id',
+                                },
+                            ],
                         ),
                         EndpointSpec=dict(
                             Ports=[
@@ -2665,23 +2653,14 @@ class ServiceTestCase(unittest.TestCase):
                     ),
                 ),
                 expected={
-                    'env-add': None,
-                    'constraint-add': None,
+                    'args': '',
                     'label-rm': ['label'],
                     'env-rm': ['FOO'],
-                    'publish-add': None,
-                    'label-add': None,
-                    'args': None,
                     'mount-rm': ['/path'],
                     'container-label-rm': ['label'],
-                    'user': None,
-                    'replicas': None,
                     'publish-rm': ['target'],
-                    'mount-add': None,
+                    'network-rm': ['old_network_id'],
                     'constraint-rm': ['node.role == manager'],
-                    'stop-grace-period': None,
-                    'restart-condition': None,
-                    'container-label-add': None,
                 },
             ),
             remove_single_option_value_from_two=dict(
@@ -2694,6 +2673,7 @@ class ServiceTestCase(unittest.TestCase):
                         env='FOO=bar',
                         constraint='node.role == manager',
                         container_label='label=value',
+                        network='network2',
                     ),
                 ),
                 service_info=dict(
@@ -2731,6 +2711,14 @@ class ServiceTestCase(unittest.TestCase):
                                     'node.role == worker',
                                 ],
                             ),
+                            Networks=[
+                                {
+                                    'Target': 'network1_id',
+                                },
+                                {
+                                    'Target': 'network2_id',
+                                },
+                            ],
                         ),
                         EndpointSpec=dict(
                             Ports=[
@@ -2749,24 +2737,23 @@ class ServiceTestCase(unittest.TestCase):
                     ),
                 ),
                 expected={
+                    'args': '',
                     'env-add': 'FOO=bar',
                     'constraint-add': 'node.role == manager',
                     'label-rm': ['label2'],
                     'env-rm': ['FOO2'],
                     'publish-add': 'source2:target2',
                     'label-add': 'label=value',
-                    'args': None,
                     'mount-rm': ['/path2'],
                     'container-label-rm': ['label2'],
-                    'user': None,
-                    'replicas': None,
                     'publish-rm': ['target'],
+                    'network-add': 'network2',
+                    'network-rm': ['network1_id'],
                     'mount-add': 'type=volume,destination=/path',
                     'constraint-rm': ['node.role == worker'],
-                    'stop-grace-period': None,
-                    'restart-condition': None,
                     'container-label-add': 'label=value',
                 },
+                networks_ids=['network2_id'],
             ),
             remove_single_option_value_from_three=dict(
                 init_kwargs=dict(
@@ -2795,6 +2782,10 @@ class ServiceTestCase(unittest.TestCase):
                         container_label=[
                             'label=value',
                             'label2=value2',
+                        ],
+                        network=[
+                            'network1',
+                            'network2',
                         ],
                     ),
                 ),
@@ -2833,7 +2824,7 @@ class ServiceTestCase(unittest.TestCase):
                                         Source='/source3',
                                         Target='/path3',
                                     ),
-                                ]
+                                ],
                             ),
                             Placement=dict(
                                 Constraints=[
@@ -2842,6 +2833,17 @@ class ServiceTestCase(unittest.TestCase):
                                     'constraint',
                                 ],
                             ),
+                            Networks=[
+                                {
+                                    'Target': 'network1_id',
+                                },
+                                {
+                                    'Target': 'network2_id',
+                                },
+                                {
+                                    'Target': 'network3_id',
+                                },
+                            ],
                         ),
                         EndpointSpec=dict(
                             Ports=[
@@ -2865,24 +2867,23 @@ class ServiceTestCase(unittest.TestCase):
                     ),
                 ),
                 expected={
+                    'args': '',
                     'env-add': ['FOO=bar', 'FOO2=bar2'],
                     'constraint-add': ['node.role == manager', 'node.role == worker'],
                     'label-rm': ['label3'],
                     'env-rm': ['FOO3'],
                     'publish-add': ['source2:target2', 'source3:target3'],
                     'label-add': ['label=value', 'label2=value2'],
-                    'args': None,
                     'mount-rm': ['/path3'],
                     'container-label-rm': ['label3'],
-                    'user': None,
-                    'replicas': None,
                     'publish-rm': ['target'],
                     'mount-add': ['type=volume,destination=/path', 'type=volume,destination="/path2"'],
                     'constraint-rm': ['constraint'],
-                    'stop-grace-period': None,
-                    'restart-condition': None,
                     'container-label-add': ['label=value', 'label2=value2'],
+                    'network-add': ['network1', 'network2'],
+                    'network-rm': ['network3_id'],
                 },
+                networks_ids=['network1_id', 'network2_id'],
             ),
         )
         for case, data in cases.items():
@@ -2895,10 +2896,15 @@ class ServiceTestCase(unittest.TestCase):
                     __delete__=lambda *_: None,
                 ):
                     service = docker.Service(**data['init_kwargs'])
-                    self.assertDictEqual(
-                        dict(service.update_options),
-                        data['expected'],
-                    )
+                    with mock.patch.object(
+                        fabricio,
+                        'run',
+                        side_effect=data.get('networks_ids', []),
+                    ):
+                        self.assertDictEqual(
+                            dict(service.update_options),
+                            data['expected'],
+                        )
 
     def test__update_labels(self):
         cases = dict(
@@ -3238,7 +3244,7 @@ class ServiceTestCase(unittest.TestCase):
                     'env-add': ['FOO=baz'],
                     'constraint-add': ['foo'],
                     'constraint-rm': ['bar'],
-                    'label-add': ['bar=FOO', '_current_options={\\"custom-option\\": \\"another value\\", \\"constraint-add\\": [\\"foo\\"], \\"publish-add\\": [\\"8000:8000\\"], \\"image\\": \\"another value\\", \\"args\\": \\"another value\\", \\"user\\": \\"another value\\", \\"mount-add\\": [\\"type=volume,destination=/path\\"], \\"container-label-add\\": [\\"bar=FOO\\"], \\"restart-condition\\": \\"another value\\", \\"env-add\\": [\\"FOO=baz\\"], \\"label-add\\": \\"bar=FOO\\", \\"stop-grace-period\\": \\"another value\\"}'],
+                    'label-add': ['bar=FOO', '_current_options={"custom-option": "another value", "constraint-add": ["foo"], "publish-add": ["8000:8000"], "image": "another value", "args": "another value", "user": "another value", "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "restart-condition": "another value", "env-add": ["FOO=baz"], "label-add": "bar=FOO", "stop-grace-period": "another value"}'],
                     'label-rm': ['_backup_options'],
                     'container-label-add': ['bar=FOO'],
                     'publish-add': ['8000:8000'],
@@ -3263,7 +3269,7 @@ class ServiceTestCase(unittest.TestCase):
                 expected_result={
                     'env-add': ['FOO=baz'],
                     'constraint-add': ['foo'],
-                    'label-add': ['bar=FOO', '_current_options={\\"env-add\\": [\\"FOO=baz\\"], \\"constraint-add\\": [\\"foo\\"], \\"constraint-rm\\": [\\"bar\\"], \\"custom-option\\": \\"another value\\", \\"env-rm\\": [\\"BAR\\"], \\"publish-add\\": [\\"8000:8000\\"], \\"label-add\\": [\\"bar=FOO\\"], \\"image\\": \\"another value\\", \\"args\\": \\"another value\\", \\"label-rm\\": [\\"bar\\"], \\"mount-rm\\": [\\"/path\\"], \\"container-label-rm\\": [\\"bar\\"], \\"user\\": \\"another value\\", \\"publish-rm\\": [\\"8000\\"], \\"mount-add\\": [\\"type=volume,destination=/path\\"], \\"container-label-add\\": [\\"bar=FOO\\"], \\"stop-grace-period\\": \\"another value\\", \\"restart-condition\\": \\"another value\\", \\"custom-rm\\": \\"rm\\", \\"custom-add\\": \\"add\\"}'],
+                    'label-add': ['bar=FOO', '_current_options={"env-add": ["FOO=baz"], "constraint-add": ["foo"], "constraint-rm": ["bar"], "custom-option": "another value", "env-rm": ["BAR"], "publish-add": ["8000:8000"], "label-add": ["bar=FOO"], "image": "another value", "args": "another value", "label-rm": ["bar"], "mount-rm": ["/path"], "container-label-rm": ["bar"], "user": "another value", "publish-rm": ["8000"], "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "stop-grace-period": "another value", "restart-condition": "another value", "custom-rm": "rm", "custom-add": "add"}'],
                     'label-rm': ['_backup_options'],
                     'container-label-add': ['bar=FOO'],
                     'custom-option': 'another value',
@@ -3336,7 +3342,7 @@ class ServiceTestCase(unittest.TestCase):
                 expected_result={
                     'env-add': ['FOO=foo'],
                     'constraint-add': ['foo'],
-                    'label-add': ['FOO=foo', '_current_options={\\"env-add\\": [\\"FOO=foo\\"], \\"constraint-add\\": [\\"foo\\"], \\"publish-add\\": [\\"8080:8080\\"], \\"label-add\\": [\\"FOO=foo\\"], \\"mount-add\\": [\\"destination=/\\"], \\"container-label-add\\": [\\"FOO=foo\\"]}'],
+                    'label-add': ['FOO=foo', '_current_options={"env-add": ["FOO=foo"], "constraint-add": ["foo"], "publish-add": ["8080:8080"], "label-add": ["FOO=foo"], "mount-add": ["destination=/"], "container-label-add": ["FOO=foo"]}'],
                     'container-label-add': ['FOO=foo'],
                     'publish-add': ['8080:8080'],
                     'mount-add': ['destination=/'],
@@ -3420,8 +3426,7 @@ class ServiceTestCase(unittest.TestCase):
                     'executable': ['docker', 'service', 'create'],
                     'image': ['image:tag'],
                     'name': 'service',
-                    'args': [],
-                    'command': 'command',
+                    'args': ['command'],
                 },
             ),
             custom_args=dict(
@@ -3431,7 +3436,6 @@ class ServiceTestCase(unittest.TestCase):
                     'image': ['image:tag'],
                     'name': 'service',
                     'args': ['arg1', 'arg2'],
-                    'command': '',
                 },
             ),
             custom_command_and_args=dict(
@@ -3444,8 +3448,7 @@ class ServiceTestCase(unittest.TestCase):
                     'executable': ['docker', 'service', 'create'],
                     'image': ['image:tag'],
                     'name': 'service',
-                    'args': ['arg1', 'arg2'],
-                    'command': 'command',
+                    'args': ['command', 'arg1', 'arg2'],
                 },
             ),
             complex=dict(
@@ -3462,15 +3465,15 @@ class ServiceTestCase(unittest.TestCase):
                         publish=['port1', 'port2'],
                         replicas=5,
                         network='network',
-                        mode='mode',
                         restart_condition='restart_condition',
                         user='user',
                         stop_grace_period=20,
                     ),
+                    mode='mode',
                 ),
                 expected_args={
                     'executable': ['docker', 'service', 'create'],
-                    'args': ['arg1', 'arg2'],
+                    'args': ['command1', 'command2', 'arg1', 'arg2'],
                     'network': 'network',
                     'mode': 'mode',
                     'constraint': ['constraint1', 'constraint2'],
@@ -3479,7 +3482,6 @@ class ServiceTestCase(unittest.TestCase):
                     'publish': ['port1', 'port2'],
                     'label': ['label1', 'label2'],
                     'container-label': ['c_label1', 'c_label2'],
-                    'command': 'command1 command2',
                     'user': 'user',
                     'env': ['en1', 'env2'],
                     'stop-grace-period': '20',

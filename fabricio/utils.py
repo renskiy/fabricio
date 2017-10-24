@@ -4,6 +4,7 @@ import ctypes
 import functools
 import hashlib
 import multiprocessing
+import warnings
 
 from distutils import util as distutils
 
@@ -85,12 +86,24 @@ def strtobool(value):
 class Item(six.text_type):
 
     def __hash__(self):
-        return hash(self.get_comparison_value())
+        return hash(self.comparison_value)
 
     def __eq__(self, other):
-        return self.get_comparison_value() == other
+        return self.comparison_value == other
 
     def get_comparison_value(self):
+        warnings.warn(
+            'get_comparison_value is deprecated and will be removed in v0.4, '
+            'use comparison_value property instead', DeprecationWarning,
+        )
+        warnings.warn(
+            'get_comparison_value is deprecated and will be removed in v0.4, '
+            'use comparison_value property instead', RuntimeWarning,
+        )
+        return self.comparison_value
+
+    @property
+    def comparison_value(self):
         raise NotImplementedError
 
 

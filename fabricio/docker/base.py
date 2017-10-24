@@ -15,7 +15,7 @@ class Option(utils.default_property):
         func=None,
         default=None,
         name=None,
-        safe=True,
+        safe=False,
         safe_name=None,
     ):
         super(Option, self).__init__(func=func, default=default)
@@ -75,7 +75,7 @@ class BaseService(object):
             for mro in cls.__mro__[::-1]
             for attr, option in vars(mro).items()
             if isinstance(option, Option)
-            and (not safe or safe and option.safe)
+            and (safe and option.safe or not safe)
         )
 
     @cached_property
@@ -93,7 +93,7 @@ class BaseService(object):
                 (option, getattr(self, attr))
                 for attr, option in options.items()
             ),
-            **self._other_options
+            **(not safe and self._other_options or {})
         )
 
     @property

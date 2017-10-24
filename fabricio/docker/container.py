@@ -50,22 +50,22 @@ class Container(BaseService):
         'restart_policy': 'restart',
     }
 
-    user = Option()
-    ports = Option(safe=False)  # deprecated
-    publish = Option(safe=False)
-    env = Option()
-    labels = Option()  # deprecated
-    label = Option()
-    volumes = Option()  # deprecated
-    volume = Option()
-    links = Option()  # deprecated
-    link = Option()
-    hosts = Option()  # deprecated
-    add_host = Option(name='add-host')
-    network = Option(name='net')
-    restart_policy = Option(safe=False)  # deprecated
-    restart = Option(safe=False)
-    stop_signal = Option(name='stop-signal')
+    user = Option(safe=True)
+    ports = Option()  # deprecated
+    publish = Option()
+    env = Option(safe=True)
+    labels = Option(safe=True)  # deprecated
+    label = Option(safe=True)
+    volumes = Option(safe=True)  # deprecated
+    volume = Option(safe=True)
+    links = Option(safe=True)  # deprecated
+    link = Option(safe=True)
+    hosts = Option(safe=True)  # deprecated
+    add_host = Option(name='add-host', safe=True)
+    network = Option(name='net', safe=True)
+    restart_policy = Option()  # deprecated
+    restart = Option()
+    stop_signal = Option(name='stop-signal', safe=True)
 
     def __init__(self, _name=None, options=None, **kwargs):
         if _name:
