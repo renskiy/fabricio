@@ -6,7 +6,7 @@ from cached_property import cached_property
 from fabric import api as fab
 
 
-class AvailableVagrantHosts(object):
+class AvailableVagrantHosts(object):  # pragma: no cover
     """
     Returns list of IP addresses of available vagrant VMs in the current dir.
 
