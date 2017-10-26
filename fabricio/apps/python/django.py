@@ -1,12 +1,14 @@
 import itertools
 
+from six.moves import map
+
 from fabricio import docker, utils
 
 
 class Migration(str):
 
     def __init__(self, *args, **kwargs):
-        super(Migration, self).__init__(*args, **kwargs)
+        super(Migration, self).__init__(**kwargs)
         self.app, _, self.name = self.partition('.')
 
 
@@ -35,16 +37,16 @@ class DjangoMixin(docker.BaseService):
         return Migration(migration.app + '.zero')
 
     def get_revert_migrations(self, current_migrations, backup_migrations):
-        current_migrations, all_migrations = itertools.tee(reversed(map(
+        current_migrations, all_migrations = itertools.tee(reversed(list(map(
             Migration,
             current_migrations.splitlines(),
-        )))
+        ))))
         all_migrations = list(all_migrations)
 
-        backup_migrations = reversed(map(
+        backup_migrations = reversed(list(map(
             Migration,
             backup_migrations.splitlines(),
-        ))
+        )))
 
         revert_migrations = utils.OrderedDict()
 

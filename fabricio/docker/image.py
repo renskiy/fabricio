@@ -1,6 +1,5 @@
 import functools
 import json
-import warnings
 
 import docker.auth
 import docker.utils
@@ -158,15 +157,8 @@ class Image(object):
             ignore_errors=True,
         )
 
-    def delete(self, force=False, ignore_errors=True, deferred=False):
+    def delete(self, force=False, ignore_errors=True):
         delete_callback = self.get_delete_callback(force=force)
-        if deferred:
-            warnings.warn(
-                'deferred argument is deprecated and will be removed in v0.4, '
-                'use get_delete_callback() instead',
-                category=RuntimeWarning, stacklevel=2,
-            )
-            return delete_callback
         return delete_callback(ignore_errors=ignore_errors)
 
     @classmethod
@@ -188,31 +180,16 @@ class Image(object):
     def run(
         self,
         command=None,
-        cmd=None,  # deprecated
         name=None,
         temporary=True,
         options=(),
         quiet=True,
-        **kwargs  # deprecated
     ):
-        if kwargs:
-            warnings.warn(
-                'Container options must be provided in `options` arg, '
-                'kwargs behavior will be removed in v0.4',
-                category=RuntimeWarning, stacklevel=2,
-            )
-            options = dict(options, **kwargs)
-        if cmd:
-            warnings.warn(
-                "'cmd' argument deprecated and will be removed in v0.4, "
-                "use 'command' instead",
-                category=RuntimeWarning, stacklevel=2,
-            )
         run_command = 'docker run {options} {image} {command}'
         return fabricio.run(
             run_command.format(
                 image=self,
-                command=command or cmd or '',
+                command=command or '',
                 options=self.make_container_options(
                     temporary=temporary,
                     name=name,

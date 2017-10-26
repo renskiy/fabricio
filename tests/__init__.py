@@ -1,4 +1,5 @@
 import argparse
+import shlex
 
 
 class SucceededResult(str):
@@ -107,3 +108,17 @@ docker_build_args_parser.add_argument('--force-rm', nargs='?', const=True, type=
 docker_build_args_parser.add_argument('--custom')
 docker_build_args_parser.add_argument('--custom-bool', nargs='?', const=True, type=int, dest='custom-bool')
 docker_build_args_parser.add_argument('path')
+
+
+class Command(object):
+
+    def __init__(self, parser, args):
+        self.parser = parser
+        self.args = args
+
+    def __eq__(self, command):
+        command_args = vars(self.parser.parse_args(shlex.split(command)))
+        return self.args == command_args
+
+    def __ne__(self, command):
+        return not self.__eq__(command)

@@ -1,3 +1,4 @@
+import shlex
 import sys
 
 from multiprocessing.synchronize import Event
@@ -15,6 +16,10 @@ from fabricio.apps.db import postgres
 from fabricio import docker
 from tests import SucceededResult, FailedResult, docker_run_args_parser, \
     docker_inspect_args_parser, args_parser
+
+
+class BytesIO(six.BytesIO):
+    pass
 
 
 class TestContainer(postgres.PostgresqlContainer):
@@ -182,7 +187,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
 
         def test_command(command, *args, **kwargs):
             parser = next(args_parsers)
-            options = parser.parse_args(command.split())
+            options = parser.parse_args(shlex.split(command))
             self.assertDictEqual(vars(options), next(expected_args))
             return next(side_effect)
         for case, data in cases.items():
@@ -213,8 +218,9 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 service = service_type(name='name')
                 with fab.settings(abort_exception=AbortException):
-                    with self.assertRaises(AbortException):
-                        service.backup()
+                    with mock.patch.object(fab, 'abort', side_effect=AbortException):
+                        with self.assertRaises(AbortException):
+                            service.backup()
 
     @mock.patch.object(docker.Service, 'is_manager', return_value=True)
     def test_restore(self, *args):
@@ -349,7 +355,7 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
 
         def test_command(command, *args, **kwargs):
             parser = next(args_parsers)
-            options = parser.parse_args(command.split())
+            options = parser.parse_args(shlex.split(command))
             self.assertDictEqual(vars(options), next(expected_args))
             return next(side_effect)
         for case, data in cases.items():
@@ -380,8 +386,9 @@ class PostgresqlBackupMixinTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 service = service_type(name='name')
                 with fab.settings(abort_exception=AbortException):
-                    with self.assertRaises(AbortException):
-                        service.restore(backup_name='backup.dump')
+                    with mock.patch.object(fab, 'abort', side_effect=AbortException):
+                        with self.assertRaises(AbortException):
+                            service.restore(backup_name='backup.dump')
 
     @mock.patch.object(docker.Service, 'is_manager', return_value=True)
     def test_restore_raises_error_if_backup_filename_not_provided(self, *args):
@@ -414,6 +421,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         self.fab_settings.__exit__(None, None, None)
         sys.stderr = self.stderr
 
+    @mock.patch('six.BytesIO', BytesIO)
     @mock.patch.object(fab, 'get')
     @mock.patch.object(fab, 'put')
     @mock.patch.object(postgres.PostgresqlContainer, 'create_db')
@@ -423,8 +431,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             updated_without_config_change=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('rm -f /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -438,8 +446,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             no_change=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[],
                 update_kwargs=dict(),
@@ -450,8 +458,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             no_change_with_tag=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[],
                 update_kwargs=dict(tag='tag'),
@@ -462,8 +470,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             no_change_with_registry=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[],
                 update_kwargs=dict(registry='registry'),
@@ -474,8 +482,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             no_change_with_account=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[],
                 update_kwargs=dict(account='account'),
@@ -486,8 +494,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             no_change_with_tag_and_registry_and_account=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[],
                 update_kwargs=dict(tag='tag', registry='registry', account='account'),
@@ -498,8 +506,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             forced=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'pg_hba.conf',
+                    b'postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('rm -f /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -513,8 +521,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             pg_hba_changed=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
@@ -542,8 +550,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             pg_hba_changed_backup_container_not_found=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
@@ -565,8 +573,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             pg_hba_changed_container_updated=dict(
                 db_exists=True,
                 old_configs=[
-                    'postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
@@ -580,8 +588,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             main_conf_changed=dict(
                 db_exists=True,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -609,8 +617,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             main_conf_changed_backup_container_not_found=dict(
                 db_exists=True,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -632,8 +640,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             main_conf_changed_container_updated=dict(
                 db_exists=True,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -647,8 +655,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             configs_changed=dict(
                 db_exists=True,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -676,8 +684,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             configs_changed_backup_container_not_found=dict(
                 db_exists=True,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -699,8 +707,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             configs_changed_container_updated=dict(
                 db_exists=True,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -714,8 +722,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             from_scratch=dict(
                 db_exists=False,
                 old_configs=[
-                    'old_postgresql.conf',
-                    'old_pg_hba.conf',
+                    b'old_postgresql.conf',
+                    b'old_pg_hba.conf',
                 ],
                 expected_commands=[
                     mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -739,8 +747,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 postgres.open.side_effect = (
-                    six.BytesIO('postgresql.conf'),
-                    six.BytesIO('pg_hba.conf'),
+                    six.BytesIO(b'postgresql.conf'),
+                    six.BytesIO(b'pg_hba.conf'),
                 )
                 container = TestContainer(
                     name='name',
@@ -904,6 +912,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
 
 class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
 
+    maxDiff = None
+
     def setUp(self):
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
@@ -938,7 +948,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='master',
                 expected_result=True,
                 set_master='master',
-                expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
+                expected_recovery_conf=b"primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_commands=[],
             ),
             slave_with_existing_recovery_conf=dict(
@@ -949,14 +959,14 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_result=True,
                 set_master='master',
                 old_recovery_conf=(
-                    "custom_setting = 'custom_setting'\n"
-                    "primary_conninfo = 'host=old_master port=5432 user=postgres'\n"
-                    "custom_setting2 = 'custom_setting2'\n"
+                    b"custom_setting = 'custom_setting'\n"
+                    b"primary_conninfo = 'host=old_master port=5432 user=postgres'\n"
+                    b"custom_setting2 = 'custom_setting2'\n"
                 ),
                 expected_recovery_conf=(
-                    "custom_setting = 'custom_setting'\n"
-                    "custom_setting2 = 'custom_setting2'\n"
-                    "primary_conninfo = 'host=master port=5432 user=postgres'\n"
+                    b"custom_setting = 'custom_setting'\n"
+                    b"custom_setting2 = 'custom_setting2'\n"
+                    b"primary_conninfo = 'host=master port=5432 user=postgres'\n"
                 ),
                 expected_commands=[],
             ),
@@ -967,7 +977,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='master',
                 expected_result=True,
                 set_master='master',
-                expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
+                expected_recovery_conf=b"primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_args={
                     'executable': ['docker'],
                     'run_or_create': ['run'],
@@ -977,7 +987,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                     'tty': True,
                     'interactive': True,
                     'image': 'image:latest',
-                    'command': ['/bin/bash', '-c', "'pg_basebackup", '--progress', '--write-recovery-conf', '-X', 'stream', '--pgdata=$PGDATA', '--host=master', '--username=postgres', "--port=5432'"],
+                    'command': ['/bin/bash', '-c', 'pg_basebackup --progress --write-recovery-conf -X stream --pgdata=$PGDATA --host=master --username=postgres --port=5432'],
                 },
             ),
             master_promotion_from_scratch=dict(
@@ -1002,21 +1012,21 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         )
 
         def test_command(command, *args, **kwargs):
-            options = docker_run_args_parser.parse_args(command.split())
+            options = docker_run_args_parser.parse_args(shlex.split(command))
             self.assertDictEqual(vars(options), data['expected_args'])
         for case, data in cases.items():
             with self.subTest(case=case):
                 run.reset_mock()
                 run.side_effect = data.get('expected_args') and test_command
                 postgres.open = mock.MagicMock(
-                    return_value=six.BytesIO(data.get('old_recovery_conf', '')),
+                    return_value=six.BytesIO(data.get('old_recovery_conf', b'')),
                 )
                 db_exists.return_value = data['db_exists']
                 recovery_exists.return_value = data['recovery_exists']
                 fab.env.host = data['host']
                 container = postgres.StreamingReplicatedPostgresqlContainer(
                     name='name', image='image', pg_data='/data',
-                    options=dict(volumes='/data:/data'),
+                    options=dict(volume='/data:/data'),
                     **data.get('init_kwargs', {})
                 )
                 if 'set_master' in data:
@@ -1041,7 +1051,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     @mock.patch.object(fabricio, 'run')
     def test_update_recovery_config_does_not_promote_new_master_without_db_if_slave_with_db_exists(self, run, *args):
         def test_command(command, *args, **kwargs):
-            options = docker_run_args_parser.parse_args(command.split())
+            options = docker_run_args_parser.parse_args(shlex.split(command))
             self.assertDictEqual(
                 vars(options),
                 {
@@ -1053,13 +1063,13 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                     'tty': True,
                     'interactive': True,
                     'image': 'image:latest',
-                    'command': ['/bin/bash', '-c', "'pg_basebackup", '--progress', '--write-recovery-conf', '-X', 'stream', '--pgdata=$PGDATA', '--host=promoted_master', '--username=postgres', "--port=5432'"],
+                    'command': ['/bin/bash', '-c', 'pg_basebackup --progress --write-recovery-conf -X stream --pgdata=$PGDATA --host=promoted_master --username=postgres --port=5432'],
                 },
             )
         run.side_effect = test_command
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', image='image', pg_data='/data',
-            options=dict(volumes='/data:/data'),
+            options=dict(volume='/data:/data'),
         )
         container.multiprocessing_data.db_exists = True
         container.multiprocessing_data.master = 'promoted_master'
@@ -1075,8 +1085,9 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             options=dict(volumes='/data:/data'),
         )
         with fab.settings(abort_exception=AbortException):
-            with self.assertRaises(AbortException):
-                container.update_recovery_config()
+            with mock.patch.object(fab, 'abort', side_effect=AbortException):
+                with self.assertRaises(AbortException):
+                    container.update_recovery_config()
 
     def test_update_raises_error_when_not_parallel_mode(self):
         class AbortException(Exception):
@@ -1087,8 +1098,9 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         )
         fab.env.parallel = False
         with fab.settings(abort_exception=AbortException):
-            with self.assertRaises(AbortException):
-                container.update()
+            with mock.patch.object(fab, 'abort', side_effect=AbortException):
+                with self.assertRaises(AbortException):
+                    container.update()
 
     def test_revert_disabled_by_default(self):
         class AbortException(Exception):
@@ -1098,8 +1110,9 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             options=dict(volumes='/data:/data'),
         )
         with fab.settings(abort_exception=AbortException):
-            with self.assertRaises(AbortException):
-                container.revert()
+            with mock.patch.object(fab, 'abort', side_effect=AbortException):
+                with self.assertRaises(AbortException):
+                    container.revert()
 
     @mock.patch.object(postgres.PostgresqlContainer, 'revert')
     def test_revert_can_be_enabled(self, parent_revert):
@@ -1169,8 +1182,9 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         )
         container.multiprocessing_data.exception = Exception('exception')
         with fab.settings(abort_exception=AbortException):
-            with self.assertRaises(AbortException):
-                container.set_master_info()
+            with mock.patch.object(fab, 'abort', side_effect=AbortException):
+                with self.assertRaises(AbortException):
+                    container.set_master_info()
 
     @mock.patch.object(postgres.PostgresqlContainer, 'update', return_value=False)
     @mock.patch.object(postgres.PostgresqlContainer, 'reload')

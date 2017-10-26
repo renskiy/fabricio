@@ -15,6 +15,7 @@ from cached_property import cached_property
 from fabric import colors, api as fab
 from fabric.exceptions import CommandTimeout, NetworkError
 from frozendict import frozendict
+from six.moves import map
 
 import fabricio
 
@@ -57,7 +58,7 @@ class RemovableOption(Option):
         if not current_values:
             return None
         new_values = self.normalize_new_values(new_values)
-        return list(set(map(str, current_values)).difference(new_values))
+        return list(utils.OrderedSet(map(str, current_values)) - new_values)
 
     def normalize_new_values(self, new_values):
         if new_values is None:
@@ -265,13 +266,13 @@ class Service(BaseService):
                 options_old=self._decode_options(current_options),
                 options_new=update_options,
             ):
-                new_labels = {
+                new_labels = utils.OrderedDict({
                     self.current_options_label_name:
                     self._encode_options(update_options),
-                }
+                })
                 if service_info:
                     new_labels[self.backup_options_label_name] = current_options
-                self._update_labels(**new_labels)
+                self._update_labels(new_labels)
 
                 if service_info:
                     options = utils.Options(self.update_options, image=image)
@@ -503,8 +504,10 @@ class Service(BaseService):
                     self.is_manager_call_count.value = 0
 
     @staticmethod
-    def _encode_options(decoded_options):
-        return b64encode(json.dumps(decoded_options, default=six.text_type))
+    def _encode_options(options):
+        options = utils.OrderedDict(sorted(options.items()))
+        options_string = json.dumps(options, default=six.text_type).encode()
+        return b64encode(options_string).decode()
 
     @staticmethod
     def _decode_options(encoded_options):
@@ -512,9 +515,9 @@ class Service(BaseService):
             return json.loads(encoded_options or '{}')
         except ValueError:
             pass
-        return json.loads(b64decode(encoded_options) or '{}')
+        return json.loads(b64decode(encoded_options).decode() or '{}')
 
-    def _update_labels(self, **labels):
+    def _update_labels(self, labels):
         service_labels = self.label
         if not service_labels:
             service_labels = []

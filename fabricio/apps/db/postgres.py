@@ -1,6 +1,5 @@
 import multiprocessing
 import os
-import warnings
 
 from datetime import datetime
 
@@ -31,21 +30,7 @@ class PostgresqlBackupMixin(docker.BaseService):
 
     db_port = Attribute()
 
-    @Attribute
-    def db_backup_folder(self):
-        warnings.warn(
-            'db_backup_folder is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_dir instead', DeprecationWarning,
-        )
-        return None
-
-    @Attribute
-    def db_backup_dir(self):
-        warnings.warn(
-            'db_backup_folder is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_dir instead', RuntimeWarning,
-        )
-        return self.db_backup_folder
+    db_backup_dir = Attribute()
 
     db_backup_format = Attribute(default='c')
 
@@ -53,23 +38,9 @@ class PostgresqlBackupMixin(docker.BaseService):
 
     db_backup_workers = Attribute(default=1)
 
-    @Attribute
-    def db_backup_name(self):
-        warnings.warn(
-            'db_backup_name is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_filename instead', DeprecationWarning,
-        )
-        return '{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump'
-
     db_restore_workers = Attribute(default=4)
 
-    @Attribute
-    def db_backup_filename(self):
-        warnings.warn(
-            'db_backup_name is deprecated and will be removed in ver. 0.4, '
-            'use db_backup_filename instead', RuntimeWarning,
-        )
-        return self.db_backup_name
+    db_backup_filename = Attribute(default='{datetime:%Y-%m-%dT%H:%M:%S.%f}.dump')
 
     @property
     def db_connection_options(self):
@@ -153,53 +124,11 @@ class PostgresqlBackupMixin(docker.BaseService):
 
 class PostgresqlContainer(docker.Container):
 
-    @Attribute
-    def postgresql_conf(self):
-        warnings.warn(
-            'postgresql_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_conf instead', DeprecationWarning,
-        )
-        return 'postgresql.conf'
+    pg_conf = Attribute(default='postgresql.conf')
 
-    @Attribute
-    def pg_conf(self):
-        warnings.warn(
-            'postgresql_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_conf instead', RuntimeWarning,
-        )
-        return self.postgresql_conf
+    pg_hba = Attribute(default='pg_hba.conf')
 
-    @Attribute
-    def pg_hba_conf(self):
-        warnings.warn(
-            'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_hba instead', DeprecationWarning,
-        )
-        return 'pg_hba.conf'
-
-    @Attribute
-    def pg_hba(self):
-        warnings.warn(
-            'pg_hba_conf is deprecated and will be removed in ver. 0.4, '
-            'use pg_hba instead', RuntimeWarning,
-        )
-        return self.pg_hba_conf
-
-    @Attribute
-    def data(self):
-        warnings.warn(
-            'data is deprecated and will be removed in ver. 0.4, '
-            'use pg_data instead', DeprecationWarning,
-        )
-        return NotImplemented
-
-    @Attribute
-    def pg_data(self):
-        warnings.warn(
-            'data is deprecated and will be removed in ver. 0.4, '
-            'use pg_data instead', RuntimeWarning,
-        )
-        return self.data
+    pg_data = Attribute(default=NotImplemented)
 
     stop_signal = 'INT'
 
@@ -328,7 +257,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
 
     pg_recovery_primary_conninfo = Attribute(
         default="primary_conninfo = 'host={host} port={port} user={user}'"
-    )
+    )  # type: str
 
     pg_recovery_port = Attribute(default=5432)
 
@@ -381,13 +310,13 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             host=self.multiprocessing_data.master,
             port=self.pg_recovery_port,
             user=self.pg_recovery_user,
-        )
+        ).encode()
         recovery_config_items = [
             row for row in recovery_config.splitlines()
-            if not row.startswith('primary_conninfo')
+            if not row.startswith(b'primary_conninfo')
         ]
         recovery_config_items.append(primary_conninfo)
-        return '\n'.join(recovery_config_items) + '\n'
+        return b'\n'.join(recovery_config_items) + b'\n'
 
     def set_master_info(self):
         if self.multiprocessing_data.exception is not None:

@@ -82,9 +82,12 @@ Requirements
 Local
 -----
 
-- Python 2.6 or 2.7
-- `Fabric`_ 1.x
+- Python 2.6+ or Python 3.4+*
 - (optional) Docker 1.9+ for building Docker images
+
+\* `Fabric3`_ is used for compatibility with Python 3
+
+.. _Fabric3: https://github.com/mathiasertl/fabric/
 
 Remote
 ------

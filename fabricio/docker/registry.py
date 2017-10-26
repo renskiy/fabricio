@@ -6,6 +6,6 @@ class Registry(str):
         return super(Registry, cls).__new__(cls, value, *args, **kwargs)
 
     def __init__(self, *args, **kwargs):
-        super(Registry, self).__init__(*args, **kwargs)
+        super(Registry, self).__init__(**kwargs)
         self.host, _, port = self.partition(':')
         self.port = port and int(port)

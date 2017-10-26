@@ -2,11 +2,14 @@ from __future__ import print_function
 
 import hashlib
 import sys
-import warnings
 
 from fabric import colors, api as fab
 
 from fabricio import utils
+
+VERSION = (0, 4)
+
+__version__ = '.'.join(map(str, VERSION))
 
 fab.env.setdefault('infrastructure', None)
 
@@ -43,20 +46,13 @@ def run(
     stderr=sys.stderr,
     use_cache=False,
     cache_salt='',
-    cache_key='',
     **kwargs
 ):
-    if cache_key:
-        warnings.warn(
-            "'cache_key' param is deprecated and will be removed in v0.4, "
-            "use 'cache_salt' instead", RuntimeWarning, stacklevel=2,
-        )
-        cache_salt = cache_salt or cache_key
     if use_cache:
         md5 = hashlib.md5()
-        md5.update(command)
-        md5.update(fab.env.host or '')
-        md5.update(cache_salt)
+        md5.update(command.encode())
+        md5.update((fab.env.host or '').encode())
+        md5.update(cache_salt.encode())
         cache_key = md5.digest()
         if cache_key in run.cache:
             return run.cache[cache_key]
@@ -86,8 +82,8 @@ def local(
 ):
     if use_cache:
         md5 = hashlib.md5()
-        md5.update(command)
-        md5.update(cache_salt)
+        md5.update(command.encode())
+        md5.update(cache_salt.encode())
         cache_key = md5.digest()
         if cache_key in local.cache:
             return local.cache[cache_key]
@@ -134,19 +130,3 @@ def remove_file(path, sudo=False, force=True, ignore_errors=False):
         sudo=sudo,
         ignore_errors=ignore_errors,
     )
-
-
-def move(*args, **kwargs):
-    warnings.warn(
-        "'move' is deprecated and will be removed in v0.4, "
-        "use 'move_file' instead", DeprecationWarning,
-    )
-    return move_file(*args, **kwargs)
-
-
-def remove(*args, **kwargs):
-    warnings.warn(
-        "'remove' is deprecated and will be removed in v0.4, "
-        "use 'remove_file' instead", DeprecationWarning,
-    )
-    return remove_file(*args, **kwargs)

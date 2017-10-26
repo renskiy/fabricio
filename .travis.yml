@@ -5,9 +5,13 @@ sudo: false
 python:
     - "2.6"
     - "2.7"
+    - "3.4"
+    - "3.5"
+    - "3.6"
+    - "nightly"
 
 install:
-    - pip install -r requirements.txt
+    - pip install --editable .[test]
     - pip install coveralls
 
 script:

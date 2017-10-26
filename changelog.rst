@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Release 0.4
+-----------
+
+- Change: removed all deprecation warnings
+- Enhancement: added compatibility with Python 3 (`#63`_)
+
+.. _#63: https://github.com/renskiy/fabricio/issues/63
+
 Release 0.3.26
 --------------
 
@@ -9,7 +17,9 @@ Release 0.3.26
 - Change: ``docker.BaseService.safe_options`` does not include custom options
 - Enhancement: ``docker.Service``: ``network`` option can be updated
 - Enhancement: ``docker.Service`` skips empty options
-- Enhancement: ``docker.Container.execute()`` can take additional options
+- Enhancement: ``docker.Container.execute()`` can take additional options (`#125`_)
+
+.. _#125: https://github.com/renskiy/fabricio/issues/125
 
 Release 0.3.25
 --------------

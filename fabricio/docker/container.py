@@ -1,8 +1,4 @@
 import json
-import warnings
-
-import six
-from frozendict import frozendict
 
 import fabricio
 
@@ -21,23 +17,7 @@ class ContainerNotFoundError(ContainerError):
 
 class Container(BaseService):
 
-    @Attribute
-    def cmd(self):
-        warnings.warn(
-            "'cmd' is deprecated and will be removed in ver. 0.4, "
-            "use 'command' instead", DeprecationWarning,
-        )
-        return None
-
-    @Attribute
-    def command(self):
-        command = self.cmd
-        if command:
-            warnings.warn(
-                "'cmd' is deprecated and will be removed in ver. 0.4, "
-                "use 'command' instead", RuntimeWarning,
-            )
-        return command
+    command = Attribute()
 
     stop_timeout = Attribute(default=10)
 
@@ -51,64 +31,15 @@ class Container(BaseService):
     }
 
     user = Option(safe=True)
-    ports = Option()  # deprecated
     publish = Option()
     env = Option(safe=True)
-    labels = Option(safe=True)  # deprecated
     label = Option(safe=True)
-    volumes = Option(safe=True)  # deprecated
     volume = Option(safe=True)
-    links = Option(safe=True)  # deprecated
     link = Option(safe=True)
-    hosts = Option(safe=True)  # deprecated
     add_host = Option(name='add-host', safe=True)
     network = Option(name='net', safe=True)
-    restart_policy = Option()  # deprecated
     restart = Option()
     stop_signal = Option(name='stop-signal', safe=True)
-
-    def __init__(self, _name=None, options=None, **kwargs):
-        if _name:
-            warnings.warn(
-                'Passing container name using positional argument is '
-                'deprecated, this behaviour will be removed in v0.4, '
-                'use `name` keyword instead',
-                category=RuntimeWarning, stacklevel=2,
-            )
-            kwargs.update(name=_name)
-        options = options or {}
-        for old_option, new_option in self.deprecated_options.items():
-            if old_option in options:
-                warnings.warn(
-                    "'{old_option}' option is deprecated and will be removed "
-                    "in v0.4, use '{new_option}' instead".format(
-                        old_option=old_option,
-                        new_option=new_option,
-                    ),
-                    category=RuntimeWarning, stacklevel=2,
-                )
-        super(Container, self).__init__(options=options, **kwargs)
-
-    def _get_options(self, safe=False):
-        options = dict(super(Container, self)._get_options(safe=safe))
-        for option in list(six.iterkeys(options)):
-            if option in self.deprecated_options:
-                new_option = self.deprecated_options[option].replace('_', '-')
-                option_value = options.pop(option)
-                if option_value:
-                    options[new_option] = option_value
-        return frozendict(options)
-
-    def fork(self, _name=None, **kwargs):
-        if _name:
-            warnings.warn(
-                'Passing container name using positional argument is '
-                'deprecated, this behaviour will be removed in v0.4, '
-                'use `name` keyword instead',
-                category=RuntimeWarning, stacklevel=2,
-            )
-            kwargs.update(name=_name)
-        return super(Container, self).fork(**kwargs)
 
     @utils.default_property
     def info(self):
@@ -151,18 +82,11 @@ class Container(BaseService):
     def execute(
         self,
         command=None,
-        cmd=None,  # deprecated
         quiet=True,
         use_cache=False,
         options=(),
     ):
-        if cmd:
-            warnings.warn(
-                "'cmd' argument deprecated and will be removed in v0.4, "
-                "use 'command' instead",
-                category=RuntimeWarning, stacklevel=2,
-            )
-        if not (command or cmd):
+        if not command:
             raise ValueError('Must provide command to execute')
 
         options = utils.Options(options)
@@ -173,7 +97,7 @@ class Container(BaseService):
         return fabricio.run(
             exec_command.format(
                 container=self,
-                command=command or cmd,
+                command=command,
                 options=options,
             ),
             quiet=quiet,
@@ -242,17 +166,6 @@ class Container(BaseService):
         backup_container.start()
         self.delete(delete_image=True)
         backup_container.rename(self.name)
-
-    def get_backup_container(self):
-        warnings.warn(
-            'get_backup_container is deprecated and will be removed in v0.4, '
-            'use get_backup_version instead', DeprecationWarning,
-        )
-        warnings.warn(
-            'get_backup_container is deprecated and will be removed in v0.4, '
-            'use get_backup_version instead', RuntimeWarning, stacklevel=2,
-        )
-        return self.get_backup_version()
 
     def get_backup_version(self):
         return self.fork(name='{container}_backup'.format(container=self))

@@ -9,11 +9,12 @@ from fabric import api as fab
 import fabricio
 
 from fabricio import docker
+from fabricio.utils import OrderedDict
 from fabricio.docker.container import Option, Attribute
 from tests import SucceededResult, docker_run_args_parser, \
     docker_service_update_args_parser, \
     docker_entity_inspect_args_parser, docker_inspect_args_parser, \
-    docker_service_create_args_parser, args_parser
+    docker_service_create_args_parser, args_parser, Command
 
 
 class TestContainer(docker.Container):
@@ -117,7 +118,7 @@ class ContainerTestCase(unittest.TestCase):
             user = 'user'  # overridden property (simple)
 
             @property  # overridden property (dynamic)
-            def ports(self):
+            def publish(self):
                 return 'ports'
 
             baz = Option(default=42)  # new property
@@ -449,20 +450,20 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     options={
                         'custom-option': 'foo',
-                        'restart_policy': 'override',
+                        'restart': 'override',
                     },
                 ),
                 class_kwargs=dict(
                     image=docker.Image('image:tag'),
                     command='command',
                     user='user',
-                    ports=['80:80', '443:443'],
+                    publish=['80:80', '443:443'],
                     env=['FOO=foo', 'BAR=bar'],
-                    volumes=['/tmp:/tmp', '/root:/root:ro'],
-                    links=['db:db'],
-                    hosts=['host:192.168.0.1'],
+                    volume=['/tmp:/tmp', '/root:/root:ro'],
+                    link=['db:db'],
+                    add_host=['host:192.168.0.1'],
                     network='network',
-                    restart_policy='restart_policy',
+                    restart='restart_policy',
                     stop_signal='stop_signal',
                 ),
                 expected_args={
@@ -928,7 +929,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'image:tag',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(force=True),
                 excpected_result=True,
@@ -954,7 +962,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'image:tag',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -980,7 +995,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name image:foo ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'image:foo',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(tag='foo'),
                 excpected_result=True,
@@ -1006,12 +1028,19 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name registry/image:tag ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'registry/image:tag',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(registry='registry'),
                 excpected_result=True,
             ),
-            regular_complex=dict(
+            regular_complex=dict(  # TODO add more options
                 side_effect=(
                     SucceededResult('[{"Image": "image_id"}]'),  # current container info
                     SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
@@ -1032,7 +1061,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name registry/account/image:foo ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'registry/account/image:foo',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(tag='foo', registry='registry', account='account'),
                 excpected_result=True,
@@ -1052,7 +1088,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'image:tag',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -1068,7 +1111,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
-                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'image:tag',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(force=True),
                 excpected_result=True,
@@ -1084,7 +1134,14 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rename name name_backup'),
-                    mock.call('docker run --detach --name=name image:tag ', quiet=True),
+                    mock.call(Command(docker_run_args_parser, {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'detach': True,
+                        'name': 'name',
+                        'image': 'image:tag',
+                        'command': [],
+                    }), quiet=True),
                 ],
                 update_kwargs=dict(),
                 excpected_result=True,
@@ -1642,32 +1699,6 @@ class ImageTestCase(unittest.TestCase):
                     'command': [],
                 },
             ),
-            with_main_option_deprecated=dict(
-                kwargs=dict(user='user'),
-                expected_args={
-                    'executable': ['docker'],
-                    'run_or_create': ['run'],
-                    'rm': True,
-                    'tty': True,
-                    'interactive': True,
-                    'user': 'user',
-                    'image': 'image:latest',
-                    'command': [],
-                },
-            ),
-            with_additional_option_deprecated=dict(
-                kwargs={'custom-option': 'bar'},
-                expected_args={
-                    'executable': ['docker'],
-                    'run_or_create': ['run'],
-                    'rm': True,
-                    'tty': True,
-                    'interactive': True,
-                    'custom-option': 'bar',
-                    'image': 'image:latest',
-                    'command': [],
-                },
-            ),
             with_command=dict(
                 kwargs=dict(command='command'),
                 expected_args={
@@ -2056,7 +2087,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                             '_backup_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
                         ],
                     },
@@ -2100,7 +2131,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                             '_backup_options={"image": "digest", "args": ""}',
                         ],
                     },
@@ -2144,7 +2175,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                             '_backup_options={}',
                         ],
                     },
@@ -2191,7 +2222,7 @@ class ServiceTestCase(unittest.TestCase):
                         'label-add': [
                             'label1=label1',
                             'label2=label2',
-                            '_current_options=eyJsYWJlbC1hZGQiOiBbImxhYmVsMT1sYWJlbDEiLCAibGFiZWwyPWxhYmVsMiJdLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImFyZ3MiOiAiZm9vIGJhciJ9',
+                            '_current_options=eyJhcmdzIjogImZvbyBiYXIiLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImxhYmVsLWFkZCI6IFsibGFiZWwxPWxhYmVsMSIsICJsYWJlbDI9bGFiZWwyIl19',
                             '_backup_options={}',
                         ],
                         'args': 'foo bar',
@@ -2236,7 +2267,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                             '_backup_options={}',
                         ],
                     },
@@ -2280,7 +2311,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                         ],
                     },
                 ],
@@ -2323,7 +2354,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            '_current_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                         ],
                     },
                 ],
@@ -2678,16 +2709,16 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 service_info=dict(
                     Spec=dict(
-                        Labels=dict(
-                            label='value',
-                            label2='value2',
-                        ),
+                        Labels=OrderedDict([
+                            ('label', 'value'),
+                            ('label2', 'value2'),
+                        ]),
                         TaskTemplate=dict(
                             ContainerSpec=dict(
-                                Labels=dict(
-                                    label='value',
-                                    label2='value2',
-                                ),
+                                Labels=OrderedDict([
+                                    ('label', 'value'),
+                                    ('label2', 'value2'),
+                                ]),
                                 Env=[
                                     'FOO=bar',
                                     'FOO2=bar2',
@@ -2791,18 +2822,18 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 service_info=dict(
                     Spec=dict(
-                        Labels=dict(
-                            label='value',
-                            label2='value2',
-                            label3='value3',
-                        ),
+                        Labels=OrderedDict([
+                            ('label', 'value'),
+                            ('label2', 'value2'),
+                            ('label3', 'value3'),
+                        ]),
                         TaskTemplate=dict(
                             ContainerSpec=dict(
-                                Labels=dict(
-                                    label='value',
-                                    label2='value2',
-                                    label3='value3',
-                                ),
+                                Labels=OrderedDict([
+                                    ('label', 'value'),
+                                    ('label2', 'value2'),
+                                    ('label3', 'value3'),
+                                ]),
                                 Env=[
                                     'FOO=bar',
                                     'FOO2=bar2',
@@ -2978,7 +3009,7 @@ class ServiceTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 service = docker.Service(**data['service_init_kwargs'])
                 old_labels_id = id(service.label)
-                service._update_labels(**data['kwargs'])
+                service._update_labels(data['kwargs'])
                 for label in data['expected_service_labels']:
                     self.assertIn(label, service.label)
                 self.assertEqual(len(service.label), len(data['expected_service_labels']))
@@ -3151,11 +3182,11 @@ class ServiceTestCase(unittest.TestCase):
             remove_single_option_value=dict(
                 service_info=dict(
                     Spec=dict(
-                        Labels=dict(
-                            bar='BAR',
-                            _backup_options='{}',
-                            _current_options='{}',
-                        ),
+                        Labels=OrderedDict([
+                            ('bar', 'BAR'),
+                            ('_backup_options', '{}'),
+                            ('_current_options', '{}'),
+                        ]),
                         TaskTemplate=dict(
                             ContainerSpec=dict(
                                 Labels=dict(
@@ -3202,11 +3233,11 @@ class ServiceTestCase(unittest.TestCase):
             change_single_option_value=dict(
                 service_info=dict(
                     Spec=dict(
-                        Labels=dict(
-                            bar='BAR',
-                            _backup_options='{"custom-option": "another value", "constraint-add": ["foo"], "publish-add": ["8000:8000"], "image": "another value", "args": "another value", "user": "another value", "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "restart-condition": "another value", "env-add": ["FOO=baz"], "label-add": "bar=FOO", "stop-grace-period": "another value"}',
-                            _current_options='{}',
-                        ),
+                        Labels=OrderedDict([
+                            ('bar', 'BAR'),
+                            ('_backup_options', '{"custom-option": "another value", "constraint-add": ["foo"], "publish-add": ["8000:8000"], "image": "another value", "args": "another value", "user": "another value", "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "restart-condition": "another value", "env-add": ["FOO=baz"], "label-add": "bar=FOO", "stop-grace-period": "another value"}'),
+                            ('_current_options', '{}'),
+                        ]),
                         TaskTemplate=dict(
                             ContainerSpec=dict(
                                 Labels=dict(
@@ -3260,10 +3291,10 @@ class ServiceTestCase(unittest.TestCase):
             add_single_option_value=dict(
                 service_info=dict(
                     Spec=dict(
-                        Labels=dict(
-                            _backup_options='{"env-add": ["FOO=baz"], "constraint-add": ["foo"], "constraint-rm": ["bar"], "custom-option": "another value", "env-rm": ["BAR"], "publish-add": ["8000:8000"], "label-add": ["bar=FOO"], "image": "another value", "args": "another value", "label-rm": ["bar"], "mount-rm": ["/path"], "container-label-rm": ["bar"], "user": "another value", "publish-rm": ["8000"], "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "stop-grace-period": "another value", "restart-condition": "another value", "custom-rm": "rm", "custom-add": "add"}',
-                            _current_options='{}',
-                        ),
+                        Labels=OrderedDict([
+                            ('_backup_options', '{"env-add": ["FOO=baz"], "constraint-add": ["foo"], "constraint-rm": ["bar"], "custom-option": "another value", "env-rm": ["BAR"], "publish-add": ["8000:8000"], "label-add": ["bar=FOO"], "image": "another value", "args": "another value", "label-rm": ["bar"], "mount-rm": ["/path"], "container-label-rm": ["bar"], "user": "another value", "publish-rm": ["8000"], "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "stop-grace-period": "another value", "restart-condition": "another value", "custom-rm": "rm", "custom-add": "add"}'),
+                            ('_current_options', '{}'),
+                        ]),
                     ),
                 ),
                 expected_result={
@@ -3287,18 +3318,18 @@ class ServiceTestCase(unittest.TestCase):
             remove_single_option_value_from_two=dict(
                 service_info=dict(
                     Spec=dict(
-                        Labels=dict(
-                            FOO='foo',
-                            bar='BAR',
-                            _backup_options='{"env-add": ["FOO=foo"], "constraint-add": ["foo"], "publish-add": ["8080:8080"], "label-add": ["FOO=foo"], "mount-add": ["destination=/"], "container-label-add": ["FOO=foo"]}',
-                            _current_options='{}',
-                        ),
+                        Labels=OrderedDict([
+                            ('FOO', 'foo'),
+                            ('bar', 'BAR'),
+                            ('_backup_options', '{"env-add": ["FOO=foo"], "constraint-add": ["foo"], "publish-add": ["8080:8080"], "label-add": ["FOO=foo"], "mount-add": ["destination=/"], "container-label-add": ["FOO=foo"]}'),
+                            ('_current_options', '{}'),
+                        ]),
                         TaskTemplate=dict(
                             ContainerSpec=dict(
-                                Labels=dict(
-                                    FOO='foo',
-                                    bar='BAR',
-                                ),
+                                Labels=OrderedDict([
+                                    ('FOO', 'foo'),
+                                    ('bar', 'BAR'),
+                                ]),
                                 Env=[
                                     'FOO=foo',
                                     'BAR=bar',
