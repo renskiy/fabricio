@@ -525,7 +525,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker kill --signal HUP name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
@@ -554,7 +554,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker kill --signal HUP name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('rm -f /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
@@ -562,7 +562,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult(),
                     SucceededResult(),
-                    RuntimeError,
+                    docker.ContainerNotFoundError,
                     SucceededResult(),
                 ),
                 update_kwargs=dict(),
@@ -577,7 +577,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('rm -f /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                 ],
                 update_kwargs=dict(),
@@ -592,7 +592,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
@@ -621,7 +621,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('rm -f /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
@@ -629,7 +629,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult(),
                     SucceededResult(),
-                    RuntimeError,
+                    docker.ContainerNotFoundError,
                     SucceededResult(),
                 ),
                 update_kwargs=dict(),
@@ -644,7 +644,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('rm -f /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                 ],
                 update_kwargs=dict(),
@@ -659,8 +659,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker rm name_backup'),
@@ -688,8 +688,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                 ],
@@ -697,7 +697,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     SucceededResult(),
                     SucceededResult(),
                     SucceededResult(),
-                    RuntimeError,
+                    docker.ContainerNotFoundError,
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
@@ -711,8 +711,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                 ],
                 update_kwargs=dict(),
                 parent_update_returned=True,
@@ -726,8 +726,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     b'old_pg_hba.conf',
                 ],
                 expected_commands=[
-                    mock.call('mv /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf /data/postgresql.conf.backup', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf /data/pg_hba.conf.backup', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
                 ],
@@ -735,7 +735,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     SucceededResult(),
                     SucceededResult(),
                     SucceededResult(),
-                    RuntimeError,
+                    docker.ContainerNotFoundError,
                 ),
                 update_kwargs=dict(),
                 parent_update_returned=False,
@@ -747,8 +747,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 postgres.open.side_effect = (
-                    six.BytesIO(b'postgresql.conf'),
-                    six.BytesIO(b'pg_hba.conf'),
+                    six.StringIO('postgresql.conf'),
+                    six.StringIO('pg_hba.conf'),
                 )
                 container = TestContainer(
                     name='name',
@@ -784,10 +784,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
     def test_revert(self):
         cases = dict(
             pg_hba_reverted=dict(
-                parent_revert_returned=RuntimeError,
+                parent_revert_returned=docker.ContainerError,
                 expected_commands = [
-                    mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
                     mock.call('docker kill --signal HUP name'),
                 ],
                 side_effect=(
@@ -797,10 +797,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
             ),
             main_conf_reverted=dict(
-                parent_revert_returned=RuntimeError,
+                parent_revert_returned=docker.ContainerError,
                 expected_commands = [
-                    mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                 ],
                 side_effect=(
@@ -810,10 +810,10 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 ),
             ),
             configs_reverted=dict(
-                parent_revert_returned=RuntimeError,
+                parent_revert_returned=docker.ContainerError,
                 expected_commands = [
-                    mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
                     mock.call('docker restart --time 30 name'),
                 ],
                 side_effect=(
@@ -825,8 +825,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             pg_hba_reverted_container_reverted=dict(
                 parent_revert_returned=None,
                 expected_commands = [
-                    mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
                 ],
                 side_effect=(
                     FailedResult(),  # main config
@@ -836,8 +836,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             main_conf_reverted_container_reverted=dict(
                 parent_revert_returned=None,
                 expected_commands = [
-                    mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
                 ],
                 side_effect=(
                     SucceededResult(),  # main config
@@ -847,8 +847,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             configs_reverted_container_reverted=dict(
                 parent_revert_returned=None,
                 expected_commands = [
-                    mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-                    mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+                    mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
                 ],
                 side_effect=(
                     SucceededResult(),  # main config
@@ -881,8 +881,8 @@ class PostgresqlContainerTestCase(unittest.TestCase):
 
     def test_revert_nothing_changed(self):
         expected_commands = [
-            mock.call('mv /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
-            mock.call('mv /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
+            mock.call('mv -f /data/postgresql.conf.backup /data/postgresql.conf', ignore_errors=True, sudo=True),
+            mock.call('mv -f /data/pg_hba.conf.backup /data/pg_hba.conf', ignore_errors=True, sudo=True),
         ]
         side_effect=(
             FailedResult(),  # main config
@@ -948,7 +948,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='master',
                 expected_result=True,
                 set_master='master',
-                expected_recovery_conf=b"primary_conninfo = 'host=master port=5432 user=postgres'\n",
+                expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_commands=[],
             ),
             slave_with_existing_recovery_conf=dict(
@@ -959,14 +959,14 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_result=True,
                 set_master='master',
                 old_recovery_conf=(
-                    b"custom_setting = 'custom_setting'\n"
-                    b"primary_conninfo = 'host=old_master port=5432 user=postgres'\n"
-                    b"custom_setting2 = 'custom_setting2'\n"
+                    "custom_setting = 'custom_setting'\n"
+                    "primary_conninfo = 'host=old_master port=5432 user=postgres'\n"
+                    "custom_setting2 = 'custom_setting2'\n"
                 ),
                 expected_recovery_conf=(
-                    b"custom_setting = 'custom_setting'\n"
-                    b"custom_setting2 = 'custom_setting2'\n"
-                    b"primary_conninfo = 'host=master port=5432 user=postgres'\n"
+                    "custom_setting = 'custom_setting'\n"
+                    "custom_setting2 = 'custom_setting2'\n"
+                    "primary_conninfo = 'host=master port=5432 user=postgres'\n"
                 ),
                 expected_commands=[],
             ),
@@ -977,7 +977,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='master',
                 expected_result=True,
                 set_master='master',
-                expected_recovery_conf=b"primary_conninfo = 'host=master port=5432 user=postgres'\n",
+                expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_args={
                     'executable': ['docker'],
                     'run_or_create': ['run'],
@@ -1005,7 +1005,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='new_master',
                 expected_result=True,
                 expected_commands=[
-                    mock.call('mv /data/recovery.conf /data/recovery.conf.backup', ignore_errors=False, sudo=True),
+                    mock.call('mv -f /data/recovery.conf /data/recovery.conf.backup', ignore_errors=False, sudo=True),
                 ],
                 init_kwargs=dict(pg_recovery_master_promotion_enabled=True),
             ),
@@ -1019,7 +1019,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 run.reset_mock()
                 run.side_effect = data.get('expected_args') and test_command
                 postgres.open = mock.MagicMock(
-                    return_value=six.BytesIO(data.get('old_recovery_conf', b'')),
+                    return_value=six.StringIO(data.get('old_recovery_conf', '')),
                 )
                 db_exists.return_value = data['db_exists']
                 recovery_exists.return_value = data['recovery_exists']

@@ -11,7 +11,7 @@ from fabric.contrib import files
 import fabricio
 
 from fabricio import docker, utils
-from fabricio.docker.container import Attribute
+from fabricio.docker.base import Attribute
 from fabricio.utils import Options
 
 
@@ -136,6 +136,7 @@ class PostgresqlContainer(docker.Container):
 
     @staticmethod
     def update_config(content, path):
+        content = content.encode()
         old_file = six.BytesIO()
         if files.exists(path, use_sudo=True):
             fab.get(remote_path=path, local_path=old_file, use_sudo=True)
@@ -211,8 +212,8 @@ class PostgresqlContainer(docker.Container):
             try:
                 # remove container backup to prevent reverting to old version
                 self.get_backup_version().delete(delete_image=True)
-            except RuntimeError:
-                pass  # backup container not found
+            except docker.ContainerNotFoundError:
+                pass
         if not main_config_updated:
             # remove main config backup to prevent reverting to old version
             main_conf_backup = main_conf + '.backup'
@@ -242,7 +243,7 @@ class PostgresqlContainer(docker.Container):
         ).succeeded
         try:
             super(PostgresqlContainer, self).revert()
-        except RuntimeError:
+        except docker.ContainerError:
             if main_config_reverted:
                 self.reload()
             elif hba_config_reverted:
@@ -310,13 +311,13 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             host=self.multiprocessing_data.master,
             port=self.pg_recovery_port,
             user=self.pg_recovery_user,
-        ).encode()
+        )
         recovery_config_items = [
             row for row in recovery_config.splitlines()
-            if not row.startswith(b'primary_conninfo')
+            if not row.startswith('primary_conninfo')
         ]
         recovery_config_items.append(primary_conninfo)
-        return b'\n'.join(recovery_config_items) + b'\n'
+        return '\n'.join(recovery_config_items) + '\n'
 
     def set_master_info(self):
         if self.multiprocessing_data.exception is not None:

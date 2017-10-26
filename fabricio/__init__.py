@@ -110,11 +110,12 @@ def log(message, color=colors.yellow, output=sys.stdout):
         fab.puts(color(message))
 
 
-def move_file(path_from, path_to, sudo=False, ignore_errors=False):
+def move_file(path_from, path_to, sudo=False, force=True, ignore_errors=False):
     return run(
-        'mv {path_from} {path_to}'.format(
+        'mv {force}{path_from} {path_to}'.format(
             path_from=path_from,
             path_to=path_to,
+            force=force and '-f ' or '',
         ),
         sudo=sudo,
         ignore_errors=ignore_errors,
