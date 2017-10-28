@@ -27,8 +27,6 @@ Run `vagrant up` and wait until VM will be created.
 
     fab my_nginx
     
-At first, this will initiate creation of a new Virtual Machine (if not created yet) using `Vagrant` configuration. Then deploy itself will start.
-
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
@@ -41,9 +39,27 @@ See also "Hello, World" [Customization](../hello_world/#customization) section.
 
 ### Custom `Dockerfile`
 
-You can provide custom folder with `Dockerfile` by passing `build_path` parameter:
+You can provide custom folder with `Dockerfile` by passing `build_path` parameter to `ImageBuildDockerTasks`:
 
+```python
+my_nginx = tasks.ImageBuildDockerTasks(
+    # ...
     build_path='path_to_folder_with_dockerfile'
+)
+```
+    
+### Custom build params
+
+Any `docker build` option* can be passed directly to `my_nginx.prepare`:
+
+    fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes
+    
+After that you should manually call `push` and `upgrade` commands to finish deploy:
+
+    fab my_nginx.push:tag
+    fab my_nginx.upgrade:tag
+    
+\* Fabricio uses `--pull` and `--force-rm` options by default when building images.
 
 ## Issues
 

@@ -26,9 +26,7 @@ Before proceed you must initialize Docker swarm cluster first by running followi
 
     fab swarm-init
     
-At first, this command will start creation of three Virtual Machines (if not created yet) using `Vagrant` configuration. Then single Swarm manager and two Swarm workers will be set up.
- 
-After cluster has been successfully initialized Docker is ready to work with services:
+After cluster has been successfully initialized everything is ready to work with services:
 
     fab nginx
     

@@ -24,13 +24,17 @@ Run `vagrant up` and wait until VM will be created.
 
     fab nginx
     
-At first, this will initiate creation of a new Virtual Machine (if not created yet) using `Vagrant` configuration. Then deploy itself will start.
-
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
     fab --parallel nginx
+    
+## Idempotency
+
+Whenever you start deploy using serial or parallel mode Fabricio will always check if deploy is really necessary. Thus, deploy will be skipped if there is nothing to update. However, deploy may be forced using `force` parameter:
+
+    fab nginx:force=yes
 
 ## Customization
 

@@ -26,7 +26,7 @@ To deploy to a particular infrastructure you need to provide its name before any
 
     fab vagrant nginx
     
-This command will start deploy of `nginx` container to the `vagrant` infrastructure. Vagrant virtual machine creation will start automatically if needed.
+This command will start deploy of `nginx` container to the `vagrant` infrastructure.
 
 Also you can use `vagrant.confirm` command to skip confirmation dialog and start tasks execution immediately.
 

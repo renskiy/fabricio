@@ -25,12 +25,14 @@ Run `vagrant up` and wait until VMs will be created.
 
 ## Deploy
 
+`--parallel` option must be specified in all cases or deploy will not start. This mode is used to automatically determine current master location.
+
 ### From scratch
 
     fab --parallel db
     
-At first, this will initiate process of creation of three Virtual Machines (if not created yet) using `Vagrant` configuration: `docker1`, `docker2` and `docker3`. After that 'from scratch' case will automatically start.
-
+This case will be used at first time.
+    
 ### Master fail
 
 To initiate new master promotion you may destroy VM with current master and run deploy again:
