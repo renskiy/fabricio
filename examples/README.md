@@ -14,3 +14,4 @@
 ## Applications
 
 * [PostgreSQL Master-slave configuration](db/postgres/master_slave/)
+* [Django](apps/django/)

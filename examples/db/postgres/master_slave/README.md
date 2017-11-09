@@ -7,10 +7,6 @@ This configuration based on PostgreSQL [streaming replication](https://wiki.post
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 
-### Virtual Machines creation
-
-Run `vagrant up` and wait until VMs will be created.
-
 ## Files
 * __fabfile.py__, Fabricio configuration
 * __pg_hba.conf__, PostgreSQL client authentication config
@@ -18,6 +14,10 @@ Run `vagrant up` and wait until VMs will be created.
 * __README.md__, this file
 * __recovery.conf__, PostgreSQL recovery config
 * __Vagrantfile__, Vagrant config
+
+## Virtual Machines creation
+
+Run `vagrant up` and wait until VMs will be created.
 
 ## List of available commands
 

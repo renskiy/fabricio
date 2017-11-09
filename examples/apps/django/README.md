@@ -1,15 +1,18 @@
-# Fabricio: Building Docker images
+# Fabricio: Django
 
-This example shows how to deploy configuration consisting of a single container based on custom image which automatically built from provided [Dockerfile](Dockerfile).
+This example shows how to deploy [Django](https://www.djangoproject.com) configuration consisting of a single container based on custom image which automatically built from provided [Dockerfile](Dockerfile).
 
 ## Requirements
-* Fabricio 0.3.17 or greater
+
+* Fabricio 0.4.1 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 * [Docker](https://www.docker.com/products/overview) for Linux/Mac/Windows
 * Docker registry which runs locally on 5000 port, this can be reached out by executing following docker command: `docker run --name registry --publish 5000:5000 --detach registry:2`
 
 ## Files
+
+* __project/__, folder with Django application
 * __Dockerfile__, used for building image
 * __fabfile.py__, Fabricio configuration
 * __README.md__, this file
@@ -25,41 +28,21 @@ Run `vagrant up` and wait until VM will be created.
 
 ## Deploy
 
-    fab my_nginx
+    fab django
     
-## Parallel execution
+## Rollback
 
-Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
+Copy `0003_copy_this_to_parent_folder.py` migration file from `project/app/migrations/new/` directory to the parent one (`project/app/migrations/`) and then make deploy again:
 
-    fab --parallel my_nginx
+    fab django
+    
+This will apply new migration. After that run 'rollback' command which should remove newly applied migration:
 
+    fab django.rollback
+    
 ## Customization
 
 See also "Hello, World" [Customization](../hello_world/#customization) section.
-
-### Custom `Dockerfile`
-
-You can provide custom folder with `Dockerfile` by passing `build_path` parameter to `ImageBuildDockerTasks`:
-
-```python
-my_nginx = tasks.ImageBuildDockerTasks(
-    # ...
-    build_path='path_to_folder_with_dockerfile'
-)
-```
-    
-### Custom build params
-
-Any `docker build` option* can be passed directly to `my_nginx.prepare`:
-
-    fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes
-    
-After that you should manually call `push` and `upgrade` commands to finish deploy:
-
-    fab my_nginx.push:tag
-    fab my_nginx.upgrade:tag
-    
-\* Fabricio uses `--pull` and `--force-rm` options by default when building images.
 
 ## Issues
 

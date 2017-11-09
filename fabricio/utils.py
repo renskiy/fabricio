@@ -82,19 +82,6 @@ def strtobool(value):
     return distutils.strtobool(str(value))
 
 
-class Item(six.text_type):
-
-    def __hash__(self):
-        return hash(self.comparison_value)
-
-    def __eq__(self, other):
-        return self.comparison_value == other
-
-    @property
-    def comparison_value(self):
-        raise NotImplementedError
-
-
 def once_per_command(func):  # TODO default=None
     @functools.wraps(func)
     def _func(*args, **kwargs):

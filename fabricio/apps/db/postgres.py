@@ -176,10 +176,10 @@ class PostgresqlContainer(docker.Container):
         )
 
     def update(self, tag=None, registry=None, account=None, force=False):
-        if 'volume' not in self.options:
-            # TODO better check if volume properly defined
+        if not any(map(self.options.__contains__, ['volume', 'mount'])):
+            # TODO better check if volume or mount properly defined
             fab.abort(
-                'Make sure you provide volume for DB data, '
+                'Make sure you properly define volume or mount for DB data, '
                 'Fabricio cannot work properly without it'
             )
         if not self.db_exists():

@@ -1,5 +1,6 @@
-import collections
 import ctypes
+import functools
+import itertools
 import json
 import multiprocessing
 import re
@@ -8,6 +9,7 @@ import sys
 
 from base64 import b64encode, b64decode
 
+import contextlib2 as contextlib
 import dpath
 import six
 
@@ -15,7 +17,7 @@ from cached_property import cached_property
 from fabric import colors, api as fab
 from fabric.exceptions import CommandTimeout, NetworkError
 from frozendict import frozendict
-from six.moves import map
+from six.moves import map, shlex_quote
 
 import fabricio
 
@@ -25,6 +27,19 @@ from .base import BaseService, Option, Attribute
 from .container import Container, ContainerNotFoundError
 
 host_errors = (RuntimeError, NetworkError, CommandTimeout)
+
+
+def get_option_value(string, option):
+    """
+    get option value from string with nested options
+    such as "source=from,destination=to"
+    """
+    for part in re.split(r'(?<!\\),', string):
+        if not part.startswith(option + '='):
+            continue
+        value = shlex.split(part.split('=', 1)[-1])
+        # removing \x00 necessary for Python 2.6
+        return value and value[0].replace('\x00', '') or None
 
 
 class ServiceError(RuntimeError):
@@ -37,13 +52,41 @@ class ServiceNotFoundError(ServiceError):
 
 class RemovableOption(Option):
 
-    path = None
+    path = NotImplemented
 
-    value_type = six.text_type
+    force_add = False
 
-    def __init__(self, func=None, path=None, **kwargs):
+    force_rm = False
+
+    def cast_rm(self, value):
+        return value
+
+    def __init__(self, func=None, path=None, force_add=None, force_rm=None, **kwargs):  # noqa
         super(RemovableOption, self).__init__(func=func, **kwargs)
         self.path = path or self.path
+        self.force_add = force_add if force_add is not None else self.force_add
+        self.force_rm = force_rm if force_rm is not None else self.force_rm
+
+    def get_values_to_add(self, service, attr):
+        new_values = self.get_new_values(service, attr)
+        new_values = utils.OrderedSet(new_values)
+
+        if not self.force_add:
+            current_values = self.get_current_values(service.info)
+            new_values -= current_values
+
+        return list(new_values) or None
+
+    def get_values_to_remove(self, service, attr):
+        current_values = self.get_current_values(service.info)
+        current_values = utils.OrderedSet(current_values)
+
+        if not self.force_rm:
+            new_values = self.get_new_values(service, attr)
+            new_values = map(self.cast_rm, new_values)
+            current_values -= new_values
+
+        return list(current_values) or None
 
     def get_current_values(self, service_info):
         if '*' in self.path:
@@ -53,124 +96,154 @@ class RemovableOption(Option):
         except KeyError:
             return []
 
-    def get_values_to_remove(self, service_info, new_values):
-        current_values = self.get_current_values(service_info)
-        if not current_values:
-            return None
-        new_values = self.normalize_new_values(new_values)
-        return list(utils.OrderedSet(map(str, current_values)) - new_values)
-
-    def normalize_new_values(self, new_values):
-        if new_values is None:
+    @staticmethod
+    def get_new_values(service, attr):
+        values = getattr(service, attr)
+        if callable(values):
+            values = values(service)
+        if values is None:
             return []
-        if isinstance(new_values, six.string_types):
-            return [self.value_type(new_values)]
-        return map(self.value_type, new_values)
+        if isinstance(values, six.string_types):
+            return [values]
+        return values
 
 
 class LabelOption(RemovableOption):
 
-    class value_type(utils.Item):
-
-        @cached_property
-        def comparison_value(self):
-            # fetch label key
-            return self.split('=', 1)[0]
+    def cast_rm(self, value):
+        # 'ENV=value' => 'ENV'
+        return value.split('=', 1)[0]
 
 
 class EnvOption(LabelOption):
 
     path = '/Spec/TaskTemplate/ContainerSpec/Env/*'
 
-    def get_current_values(self, *args, **kwargs):
-        values = super(EnvOption, self).get_current_values(*args, **kwargs)
-        return map(
-            lambda value: value.comparison_value,
-            map(self.value_type, values),
-        )
+    def get_current_values(self, service_info):
+        values = super(EnvOption, self).get_current_values(service_info)
+        return map(lambda value: value.split('=', 1)[0], values)
 
 
-class PortOption(RemovableOption):
+class PublishOption(RemovableOption):
 
     path = '/Spec/EndpointSpec/Ports/*/TargetPort'
 
-    class value_type(utils.Item):
+    force_add = True
 
-        @cached_property
-        def comparison_value(self):
-            # fetch target port
-            return self.rsplit('/', 1)[0].rsplit(':', 1)[-1]
+    def get_current_values(self, service_info):
+        values = super(PublishOption, self).get_current_values(service_info)
+        return map(six.text_type, values)
+
+    def cast_rm(self, value, from_current=False):
+        # 'source:target/protocol' => 'target'
+        return six.text_type(value).rsplit('/', 1)[0].rsplit(':', 1)[-1]
 
 
 class MountOption(RemovableOption):
 
     path = '/Spec/TaskTemplate/ContainerSpec/Mounts/*/Target'
 
-    class value_type(utils.Item):
+    force_add = True
 
-        split_re = re.compile(r'(?<!\\),')
-
-        @cached_property
-        def comparison_value(self):
-            # fetch target path
-            value_parts = self.split_re.split(self)
-            for part in value_parts:
-                if not part.startswith('destination='):
-                    continue
-                destination = shlex.split(part.split('=', 1)[-1])
-                if len(destination) > 1:
-                    raise ValueError('wrong destination value: %s' % self)
-                # removing \x00 necessary for Python 2.6
-                return destination and destination[0].replace('\x00', '')
+    def cast_rm(self, value):
+        # 'type=volume,destination=/path' => '/path'
+        destination = get_option_value(value, 'destination')
+        destination = destination or get_option_value(value, 'target')
+        return destination or get_option_value(value, 'dst')
 
 
-class NetworkOption(RemovableOption):
+class HostOption(RemovableOption):
 
-    path = '/Spec/TaskTemplate/Networks/*/Target'
+    path = '/Spec/TaskTemplate/ContainerSpec/Hosts/*'
 
-    class value_type(utils.Item):
+    def get_current_values(self, *args, **kwargs):
+        values = super(HostOption, self).get_current_values(*args, **kwargs)
+        # 'ip host' => 'host:ip'
+        return map(lambda value: ':'.join(value.split(' ', 1)[::-1]), values)
 
-        @cached_property
-        def comparison_value(self):
-            command = "docker network inspect --format '{{.Id}}' " + self
-            return fabricio.run(command)
+
+class PlacementPrefOption(RemovableOption):
+
+    path = '/Spec/TaskTemplate/Placement/Preferences/*'
+
+    force_add = True
+
+    force_rm = True
+
+    def get_current_values(self, *args, **kwargs):
+        values = super(PlacementPrefOption, self).get_current_values(*args, **kwargs)  # noqa
+        for value in values:
+            yield ','.join(
+                u'{strategy}={descriptor}'.format(
+                    strategy=strategy.lower(),
+                    descriptor=shlex_quote(descriptor[strategy + 'Descriptor'])
+                )
+                for strategy, descriptor in value.items()
+            )
 
 
 class Service(BaseService):
 
     current_options_label_name = '_current_options'
-    backup_options_label_name = '_backup_options'
+
+    use_image_sentinels = Attribute(default=False)
 
     command = Attribute()
     args = Attribute()
     mode = Attribute()
-    native_rollback = Attribute(default=True)  # TODO prefer to use `docker service rollback`
 
-    label = LabelOption(path='/Spec/Labels', safe=True)
+    env = EnvOption(safe=True)
+    label = LabelOption(path='/Spec/Labels')
     container_label = LabelOption(
         name='container-label',
         path='/Spec/TaskTemplate/ContainerSpec/Labels',
+        safe_name='label',
     )
+    publish = PublishOption()
     constraint = RemovableOption(
         path='/Spec/TaskTemplate/Placement/Constraints/*',
     )
     replicas = Option()
     mount = MountOption(safe=True)
-    network = NetworkOption(safe=True)
+    network = RemovableOption(
+        path='/Spec/TaskTemplate/Networks/*/Target',
+        force_add=True,
+        force_rm=True,
+        safe=True,
+    )
     restart_condition = Option(name='restart-condition')
     stop_grace_period = Option(name='stop-grace-period')
-    env = EnvOption(safe=True)
-    publish = PortOption()
     user = Option(safe=True)
-
-    # config = RemovableOption()  # TODO
-    # dns = RemovableOption(safe=True)  # TODO
-    # dns_option = RemovableOption(name='dns-option', safe=True)  # TODO
-    # dns_search = RemovableOption(name='dns-search', safe=True)  # TODO
-    # placement_pref = RemovableOption(name='placement-pref')  # TODO
-    # group = RemovableOption(safe_name='group-add')  # TODO
-    # host = RemovableOption(safe_name=add-host)  # TODO
-    # secret = RemovableOption(safe_name='security-opt')  # TODO
+    host = HostOption(safe_name='add-host')
+    secret = RemovableOption(
+        path='/Spec/TaskTemplate/ContainerSpec/Secrets/*/SecretName',
+        force_add=True,
+        force_rm=True,
+    )
+    config = RemovableOption(
+        path='/Spec/TaskTemplate/ContainerSpec/Configs/*/ConfigName',
+        force_add=True,
+        force_rm=True,
+    )
+    group = RemovableOption(
+        path='/Spec/TaskTemplate/ContainerSpec/Groups/*',
+        safe_name='group-add',
+    )
+    placement_pref = PlacementPrefOption(name='placement-pref')
+    dns = RemovableOption(
+        path='/Spec/TaskTemplate/ContainerSpec/DNSConfig/Nameservers/*',
+        safe=True,
+    )
+    dns_option = RemovableOption(
+        path='/Spec/TaskTemplate/ContainerSpec/DNSConfig/Options/*',
+        name='dns-option',
+        safe=True,
+    )
+    dns_search = RemovableOption(
+        path='/Spec/TaskTemplate/ContainerSpec/DNSConfig/Search/*',
+        name='dns-search',
+        safe=True,
+    )
 
     def __init__(self, *args, **kwargs):
         super(Service, self).__init__(*args, **kwargs)
@@ -186,50 +259,53 @@ class Service(BaseService):
     def image_id(self):
         return self.info['Spec']['TaskTemplate']['ContainerSpec']['Image']
 
-    @property
-    def _backup_options(self):
-        try:
-            return self.info['Spec']['Labels'][self.backup_options_label_name]
-        except KeyError:
-            raise ServiceError('service backup info not found')
-
     def get_backup_version(self):
-        backup_options = self._decode_options(self._backup_options)
-        backup_service = self.fork(image=backup_options['image'])
-        backup_service.image_id = None
-        return backup_service
+        current_info = self.info
+        if 'PreviousSpec' not in current_info:
+            raise ServiceError('service backup not found')
+        previous_spec = current_info['PreviousSpec']
+        backup_version = self.fork()
+        backup_version.info = dict(self.info, Spec=previous_spec)
+        return backup_version
 
     @cached_property
     def _update_options(self):
         options = {}
-        for cls in type(self).__mro__[::-1]:
-            for attr, option in vars(cls).items():
-                if isinstance(option, Option):
-                    def add_values(service, attr=attr):
-                        return getattr(service, attr)
-                    name = option.name or attr
-                    if isinstance(option, RemovableOption):
-                        rm_values = self._RmValuesGetter
-                        options[name + '-rm'] = rm_values(option, attr)
-                        options[name + '-add'] = add_values
-                    else:
-                        options[name] = add_values
+        for attr, option in self._options.items():
+            name = option.name or attr
+            if isinstance(option, RemovableOption):
+                options[name + '-rm'] = functools.partial(
+                    option.get_values_to_remove,
+                    attr=attr,
+                )
+                options[name + '-add'] = functools.partial(
+                    option.get_values_to_add,
+                    attr=attr,
+                )
+            else:
+                options[name] = getattr(self, attr)
         return options
 
     @property
     def update_options(self):
-        evaluated_options = dict(
+        options = itertools.chain(
             (
-                (option, callback(self))
-                for option, callback in self._update_options.items()
+                (option, value)
+                for option, value in self._update_options.items()
             ),
-            args=self.cmd,
-            **self._other_options
+            self._other_options.items(),
+        )
+        evaluated_options = (
+            (option, value(self) if callable(value) else value)
+            for option, value in options
         )
         return frozendict(
-            (option, value)
-            for option, value in evaluated_options.items()
-            if value is not None
+            (
+                (option, value)
+                for option, value in evaluated_options
+                if value is not None
+            ),
+            args=self.cmd,
         )
 
     def _update_service(self, options):
@@ -248,31 +324,24 @@ class Service(BaseService):
 
     @utils.once_per_command
     def _update(self, image, force=False):
-        if image is None:
-            raise ServiceError('cannot create or update service')
+        image = image.digest
         try:
             service_info = self.info
         except ServiceNotFoundError:
             service_info = {}
 
         with utils.patch(self, 'info', service_info, force_delete=True):
+            new_options = dict(self.options, image=image, args=self.cmd)
+
             labels = service_info.get('Spec', {}).get('Labels', {})
             current_options = labels.pop(self.current_options_label_name, '')
-            labels.pop(self.backup_options_label_name, None)
 
-            update_options = dict(self.update_options, image=image)
-
-            if force or self._service_need_update(
-                options_old=self._decode_options(current_options),
-                options_new=update_options,
-            ):
-                new_labels = utils.OrderedDict({
+            if force or self._decode_options(current_options) != new_options:
+                label_with_new_options = {
                     self.current_options_label_name:
-                    self._encode_options(update_options),
-                })
-                if service_info:
-                    new_labels[self.backup_options_label_name] = current_options
-                self._update_labels(new_labels)
+                    self._encode_options(new_options),
+                }
+                self._update_labels(label_with_new_options)
 
                 if service_info:
                     options = utils.Options(self.update_options, image=image)
@@ -329,7 +398,13 @@ class Service(BaseService):
     def _revert_sentinels(self):
         current = Container(name=self.current_sentinel_name)
         try:
+            # raises RuntimeError if revert sentinel already exists
+            # preventing double revert
             current.rename(self.revert_sentinel_name)
+
+            # ignore RuntimeError if backup sentinel exists - usual case,
+            # preferring backup sentinels over revert,
+            # _update_sentinels() always tries to remove revert sentinel if any
             current.rename(self.backup_sentinel_name)
         except RuntimeError:
             pass
@@ -337,105 +412,32 @@ class Service(BaseService):
     def update(self, tag=None, registry=None, account=None, force=False):
         image = self.image[registry:tag:account]
         is_manager = self.is_manager()
-        image_info = None
-        try:
-            image_info = image.info
-            with utils.patch(image, 'info', image_info, force_delete=True):
-                self._update_sentinels(image)
-        except host_errors as error:
-            fabricio.log(
-                'WARNING: {error}'.format(error=error),
-                output=sys.stderr,
-                color=colors.red,
-            )
-        if not is_manager:
-            return False
-        with utils.patch(image, 'info', image_info, force_delete=True):
-            result = self._update(image_info and image.digest, force=force)
-            return result or result is None
-
-    def _service_need_update(self, options_old, options_new):
-        useless_options_new = 0
-        for option, new_value in options_new.items():
-            if not (
-                self._rm_values_getter(option) is None
-                and option in options_old
-            ):
-                if new_value:
-                    return True
-                else:
-                    useless_options_new += 1
-                    continue
-            old_value = options_old[option]
-            if isinstance(new_value, six.string_types):
-                new_value = [new_value]
-            if isinstance(old_value, six.string_types):
-                old_value = [old_value]
-            if (
-                isinstance(new_value, collections.Iterable)
-                or isinstance(old_value, collections.Iterable)
-            ):
+        with contextlib.ExitStack() as stack:
+            if self.use_image_sentinels:
                 try:
-                    if set(new_value) != set(old_value):
-                        return True
-                    else:
-                        continue
-                except TypeError:
-                    pass
-            if bool(new_value) != bool(old_value):
-                return True
-            if (new_value or old_value) and new_value != old_value:
-                return True
-        useless_options_old = sum(
-            self._rm_values_getter(option) is not None
-            for option, value in options_old.items()
-        )
-        len_options_old = len(options_old) - useless_options_old
-        len_options_new = len(options_new) - useless_options_new
-        return len_options_old != len_options_new
-
-    def _rm_values_getter(self, option):
-        option_getter = self._update_options.get(option)
-        if isinstance(option_getter, self._RmValuesGetter):
-            return option_getter
-
-    def _options_revert_patch(self, backup_options):
-        service = utils.AttrDict(backup_options, info=self.info)
-        result = utils.Options(
-            (option, value)
-            for option, value in backup_options.items()
-            if self._rm_values_getter(option) is None
-        )
-        for option in self._update_options:
-            if option.endswith('-add'):
-                rm_option = option[:-4] + '-rm'
-                rm_option_getter = self._rm_values_getter(rm_option)
-
-                if rm_option_getter is not None:
-                    service.setdefault(option)
-                    rm_option_value = rm_option_getter(service, attr=option)
-                    if rm_option_value:
-                        result[rm_option] = rm_option_value
-        return result
+                    context = utils.patch(image, 'info', image.info, force_delete=True)  # noqa
+                    stack.enter_context(context)
+                    self._update_sentinels(image)
+                except host_errors as error:
+                    fabricio.log(
+                        'WARNING: {error}'.format(error=error),
+                        output=sys.stderr,
+                        color=colors.red,
+                    )
+            if not is_manager:
+                return False
+            result = self._update(image, force=force)
+            return result or result is None
 
     @utils.once_per_command
     def _revert(self):
-        with utils.patch(self, 'info', self.info, force_delete=True):
-            decoded_backup_options = self._decode_options(self._backup_options)
-            label_add = decoded_backup_options.get('label-add') or []
-            if not isinstance(label_add, list):
-                label_add = [label_add]
-            label_add.append('{label}={value}'.format(
-                label=self.current_options_label_name,
-                value=self._backup_options,
-            ))
-            decoded_backup_options['label-add'] = label_add
-            update_options = self._options_revert_patch(decoded_backup_options)
-            self._update_service(utils.Options(update_options))
+        command = 'docker service rollback {service}'.format(service=self)
+        fabricio.run(command)
 
     def revert(self):
         is_manager = self.is_manager()
-        self._revert_sentinels()
+        if self.use_image_sentinels:
+            self._revert_sentinels()
         if is_manager:
             self._revert()
 
@@ -531,15 +533,3 @@ class Service(BaseService):
         for label, value in labels.items():
             service_labels.append("{0}={1}".format(label, value))
         self.label = service_labels
-
-    class _RmValuesGetter(object):
-
-        def __init__(self, option, attr):
-            self.option = option
-            self.attr = attr
-
-        def __call__(self, service, attr=None):
-            return self.option.get_values_to_remove(
-                service_info=service.info,
-                new_values=getattr(service, attr or self.attr),
-            ) or None

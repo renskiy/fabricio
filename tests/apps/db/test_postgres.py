@@ -752,7 +752,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 )
                 container = TestContainer(
                     name='name',
-                    options=dict(volumes='/data:/data'),
+                    options=dict(volume='/data:/data'),
                 )
                 with mock.patch.object(
                     fabricio,
@@ -871,7 +871,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     ):
                         container = TestContainer(
                             name='name',
-                            options=dict(volumes='/data:/data'),
+                            options=dict(volume='/data:/data'),
                         )
                         container.revert()
                         self.assertListEqual(
@@ -900,7 +900,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             ):
                 container = TestContainer(
                     name='name',
-                    options=dict(volumes='/data:/data'),
+                    options=dict(volume='/data:/data'),
                 )
                 with self.assertRaises(RuntimeError):
                     container.revert()
@@ -1082,7 +1082,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', pg_data='/data',
-            options=dict(volumes='/data:/data'),
+            options=dict(volume='/data:/data'),
         )
         with fab.settings(abort_exception=AbortException):
             with mock.patch.object(fab, 'abort', side_effect=AbortException):
@@ -1094,7 +1094,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name',
-            options=dict(volumes='/data:/data'),
+            options=dict(volume='/data:/data'),
         )
         fab.env.parallel = False
         with fab.settings(abort_exception=AbortException):
@@ -1107,7 +1107,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name',
-            options=dict(volumes='/data:/data'),
+            options=dict(volume='/data:/data'),
         )
         with fab.settings(abort_exception=AbortException):
             with mock.patch.object(fab, 'abort', side_effect=AbortException):
@@ -1118,7 +1118,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
     def test_revert_can_be_enabled(self, parent_revert):
         container = postgres.StreamingReplicatedPostgresqlContainer(
             name='name', pg_recovery_revert_enabled=True,
-            options=dict(volumes='/data:/data'),
+            options=dict(volume='/data:/data'),
         )
         container.revert()
         parent_revert.assert_called_once()
@@ -1166,7 +1166,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                         ):
                             container = postgres.StreamingReplicatedPostgresqlContainer(
                                 name='name', pg_recovery_revert_enabled=True,
-                                options=dict(volumes='/data:/data'),
+                                options=dict(volume='/data:/data'),
                             )
                             result = container.update()
                             if data['should_restart']:
@@ -1178,7 +1178,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
         class AbortException(Exception):
             pass
         container = postgres.StreamingReplicatedPostgresqlContainer(
-            name='name', options=dict(volumes='volume'),
+            name='name', options=dict(volume='volume'),
         )
         container.multiprocessing_data.exception = Exception('exception')
         with fab.settings(abort_exception=AbortException):
@@ -1204,7 +1204,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             ),
         )
         container = postgres.StreamingReplicatedPostgresqlContainer(
-            name='name', options=dict(volumes='volume'),
+            name='name', options=dict(volume='volume'),
         )
         with fab.settings(parallel=True):
             for case, data in cases.items():

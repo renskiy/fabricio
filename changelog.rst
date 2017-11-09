@@ -1,6 +1,21 @@
 Changelog
 =========
 
+Release 0.4.1
+-------------
+
+- Change: ``docker.Service``: do not create sentinel containers by default
+- Change: ``docker.Service``: use native ``docker service rollback`` for ``rollback`` command (`#132`_)
+- Enhancement: ``docker.Service``: additional updatable options (secret, host, group, placement-pref, dns, dns-option, dns-search) (`#133`_)
+- Enhancement: ``docker.BaseService``: any option can be a callable taking service instance as argument
+- Enhancement: ``docker.BaseService``: additional safe options can be passed to the service using special ``safe_options`` argument
+- Enhancement: added `Django example`_
+- Fix: fixed some ``Django`` migrations revert scenarios
+
+.. _Django example: examples/apps/django/
+.. _#132: https://github.com/renskiy/fabricio/issues/132
+.. _#133: https://github.com/renskiy/fabricio/issues/133
+
 Release 0.4
 -----------
 

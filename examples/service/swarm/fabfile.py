@@ -43,6 +43,7 @@ nginx = tasks.DockerTasks(
         options=dict(
             publish='80:80',
             replicas=2,
+            env='FOO=42',
         ),
     ),
     hosts=hosts,

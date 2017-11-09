@@ -7,14 +7,14 @@ This example shows how to deploy basic configuration consisting of a single cont
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 
-### Virtual Machine creation
-
-Run `vagrant up` and wait until VM will be created.
-
 ## Files
 * __fabfile.py__, Fabricio configuration
 * __README.md__, this file
 * __Vagrantfile__, Vagrant config
+
+## Virtual Machine creation
+
+Run `vagrant up` and wait until VM will be created.
 
 ## List of available commands
 
@@ -30,9 +30,9 @@ Any Fabricio command can be executed in parallel mode. This mode provides advant
 
     fab --parallel nginx
     
-## Idempotency
+## Deploy idempotency
 
-Whenever you start deploy using serial or parallel mode Fabricio will always check if deploy is really necessary. Thus, deploy will be skipped if there is nothing to update. However, deploy may be forced using `force` parameter:
+Whenever you start deploy using serial or parallel mode Fabricio will always check if deploy is really necessary (usually by comparing new image id and image id of current container). Thus, deploy will be skipped if there is nothing to update. However, deploy may be forced using `force` parameter:
 
     fab nginx:force=yes
 

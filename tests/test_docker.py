@@ -1,4 +1,5 @@
 # coding: utf-8
+import json
 import shlex
 
 import mock
@@ -30,80 +31,38 @@ class ContainerTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 kwargs=dict(),
-                expected={
-                    'net': None,
-                    'link': None,
-                    'stop-signal': None,
-                    'restart': None,
-                    'add-host': None,
-                    'user': None,
-                    'env': None,
-                    'volume': None,
-                    'publish': None,
-                    'label': None,
-                },
+                expected={},
             ),
             custom=dict(
                 kwargs=dict(options=dict(foo='bar')),
                 expected={
-                    'net': None,
-                    'link': None,
-                    'stop-signal': None,
-                    'restart': None,
-                    'add-host': None,
-                    'user': None,
-                    'env': None,
-                    'volume': None,
-                    'publish': None,
                     'foo': 'bar',
-                    'label': None,
                 },
             ),
             collision=dict(
                 kwargs=dict(options=dict(execute='execute')),
                 expected={
-                    'net': None,
-                    'link': None,
-                    'stop-signal': None,
-                    'restart': None,
-                    'add-host': None,
-                    'user': None,
-                    'env': None,
-                    'volume': None,
-                    'publish': None,
                     'execute': 'execute',
-                    'label': None,
                 },
             ),
             override=dict(
                 kwargs=dict(options=dict(env='custom_env')),
                 expected={
-                    'net': None,
-                    'link': None,
-                    'stop-signal': None,
-                    'restart': None,
-                    'add-host': None,
-                    'user': None,
                     'env': 'custom_env',
-                    'volume': None,
-                    'publish': None,
-                    'label': None,
                 },
             ),
             complex=dict(
-                kwargs=dict(options=dict(env='custom_env', foo='bar')),
+                kwargs=dict(options=dict(
+                    env='custom_env',
+                    user=lambda service: 'user',
+                    foo='foo',
+                    bar=lambda service: 'bar',
+                )),
                 expected={
-                    'net': None,
-                    'link': None,
-                    'stop-signal': None,
-                    'restart': None,
-                    'add-host': None,
-                    'user': None,
                     'env': 'custom_env',
-                    'volume': None,
-                    'publish': None,
-                    'foo': 'bar',
-                    'label': None,
+                    'user': 'user',
+                    'foo': 'foo',
+                    'bar': 'bar',
                 },
             ),
         )
@@ -111,6 +70,28 @@ class ContainerTestCase(unittest.TestCase):
             with self.subTest(case=case):
                 container = TestContainer(**data['kwargs'])
                 self.assertDictEqual(data['expected'], dict(container.options))
+
+    def test_safe_options(self):
+        class TestService(docker.BaseService):
+            option = docker.Option()
+            safe_option = docker.Option(safe=True, name='safe-option')
+            safe_overridden = docker.Option(safe=True)
+            another_safe_option = docker.Option(safe_name='another-safe-option')
+        service = TestService(
+            options=dict(option=42, safe_option=42, another_safe_option=42, safe_overridden=42),
+            safe_options=dict(foo='bar', option='hello', dyn=lambda s: 'dyn', safe_overridden='override'),
+        )
+        self.assertDictEqual(
+            {
+                'safe-option': 42,
+                'another-safe-option': 42,
+                'foo': 'bar',
+                'option': 'hello',
+                'dyn': 'dyn',
+                'safe_overridden': 'override',
+            },
+            dict(service.safe_options),
+        )
 
     def test_options_inheritance(self):
 
@@ -202,9 +183,9 @@ class ContainerTestCase(unittest.TestCase):
         container.overridden_alias2 = 'another_value'
         self.assertEqual(container.options['overridden-name'], 'another_value')
 
-        self.assertIn('null', container.options)
-        self.assertIsNone(container.options['null'])
+        self.assertNotIn('null', container.options)
         container.null = 'value'
+        self.assertIn('null', container.options)
         self.assertEqual(container.options['null'], 'value')
 
     def test_attributes_inheritance(self):
@@ -511,18 +492,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_properties=dict(
                     name='name',
                     command=None,
-                    options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
-                        'user': None,
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
-                        'label': None,
-                    },
+                    options={},
                 ),
             ),
             predefined_default=dict(
@@ -537,17 +507,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command='fab',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'fabricio',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'baz',
-                        'label': None,
                     },
                 ),
                 expected_image='image:tag',
@@ -558,18 +519,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_properties=dict(
                     name='another_name',
                     command=None,
-                    options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
-                        'user': None,
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
-                        'label': None,
-                    },
+                    options={},
                 ),
             ),
             override_command=dict(
@@ -578,18 +528,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_properties=dict(
                     name='name',
                     command='command',
-                    options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
-                        'user': None,
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
-                        'label': None,
-                    },
+                    options={},
                 ),
             ),
             override_image_str=dict(
@@ -598,18 +537,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_properties=dict(
                     name='name',
                     command=None,
-                    options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
-                        'user': None,
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
-                        'label': None,
-                    },
+                    options={},
                 ),
                 expected_image='image:latest',
             ),
@@ -619,18 +547,7 @@ class ContainerTestCase(unittest.TestCase):
                 expected_properties=dict(
                     name='name',
                     command=None,
-                    options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
-                        'user': None,
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
-                        'label': None,
-                    },
+                    options={},
                 ),
                 expected_image='image:latest',
             ),
@@ -641,16 +558,7 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command=None,
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'user',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
-                        'label': None,
                     },
                 ),
             ),
@@ -661,17 +569,7 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command=None,
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
-                        'user': None,
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'bar',
-                        'label': None,
                     },
                 ),
             ),
@@ -687,17 +585,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='another_name',
                     command='command',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'user',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'bar',
-                        'label': None,
                     },
                 ),
                 expected_image='image:latest',
@@ -714,17 +603,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command='command',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'fabricio',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'baz',
-                        'label': None,
                     },
                 ),
                 expected_image='image:tag',
@@ -741,17 +621,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command='fab',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'fabricio',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'baz',
-                        'label': None,
                     },
                 ),
                 expected_image='image:latest',
@@ -768,17 +639,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command='fab',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'fabricio',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'baz',
-                        'label': None,
                     },
                 ),
                 expected_image='image:latest',
@@ -795,17 +657,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command='fab',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'user',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'baz',
-                        'label': None,
                     },
                 ),
                 expected_image='image:tag',
@@ -822,17 +675,8 @@ class ContainerTestCase(unittest.TestCase):
                     name='name',
                     command='fab',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'fabricio',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'bar',
-                        'label': None,
                     },
                 ),
                 expected_image='image:tag',
@@ -854,18 +698,9 @@ class ContainerTestCase(unittest.TestCase):
                     name='another_name',
                     command='command',
                     options={
-                        'net': None,
-                        'link': None,
-                        'stop-signal': None,
-                        'restart': None,
-                        'add-host': None,
                         'user': 'user',
-                        'env': None,
-                        'volume': None,
-                        'publish': None,
                         'foo': 'bar',
                         'hello': 42,
-                        'label': None,
                     },
                 ),
                 expected_image='image:latest',
@@ -1990,12 +1825,32 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
+                    options=dict(
+                        secret='secret',
+                    ),
                 ),
                 update_kwargs=dict(),
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ=="}}}]'),  # service info
+                    SucceededResult(json.dumps([{"Spec": {
+                        "Labels": {
+                            "_current_options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
+                        },
+                        "TaskTemplate": {
+                            "ContainerSpec": {
+                                "Secrets": [
+                                    {
+                                        "File": {
+                                            "Name": "secret",
+                                        },
+                                        "SecretID": "secret",
+                                        "SecretName": "secret",
+                                    },
+                                ],
+                            },
+                        },
+                    }}])),  # service info
                 ),
                 args_parsers=[
                     args_parser,
@@ -2022,12 +1877,32 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
+                    options=dict(
+                        secret='secret',
+                    ),
                 ),
                 update_kwargs=dict(),
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"image\\": \\"digest\\", \\"args\\": \\"\\"}"}}}]'),  # service info
+                    SucceededResult(json.dumps([{"Spec": {
+                        "Labels": {
+                            "_current_options": '{"image": "digest", "args": "", "secret": "secret"}',
+                        },
+                        "TaskTemplate": {
+                            "ContainerSpec": {
+                                "Secrets": [
+                                    {
+                                        "File": {
+                                            "Name": "secret",
+                                        },
+                                        "SecretID": "secret",
+                                        "SecretName": "secret",
+                                    },
+                                ],
+                            },
+                        },
+                    }}])),  # service info
                 ),
                 args_parsers=[
                     args_parser,
@@ -2054,12 +1929,32 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
+                    options=dict(
+                        secret='secret',
+                    ),
                 ),
                 update_kwargs=dict(force=True),
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ=="}}}]'),  # service info
+                    SucceededResult(json.dumps([{"Spec": {
+                        "Labels": {
+                            "_current_options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
+                        },
+                        "TaskTemplate": {
+                            "ContainerSpec": {
+                                "Secrets": [
+                                    {
+                                        "File": {
+                                            "Name": "secret",
+                                        },
+                                        "SecretID": "secret",
+                                        "SecretName": "secret",
+                                    },
+                                ],
+                            },
+                        },
+                    }}])),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2087,9 +1982,10 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
-                            '_backup_options=eyJpbWFnZSI6ICJkaWdlc3QiLCAiYXJncyI6ICIifQ==',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
                         ],
+                        'secret-add': ['secret'],
+                        'secret-rm': ['secret'],
                     },
                 ],
                 expected_result=True,
@@ -2098,12 +1994,32 @@ class ServiceTestCase(unittest.TestCase):
                 init_kwargs=dict(
                     name='service',
                     image='image:tag',
+                    options=dict(
+                        secret='secret',
+                    ),
                 ),
                 update_kwargs=dict(force=True),
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{\\"image\\": \\"digest\\", \\"args\\": \\"\\"}"}}}]'),  # service info
+                    SucceededResult(json.dumps([{"Spec": {
+                        "Labels": {
+                            "_current_options": '{"image": "digest", "args": "", "secret-add": "secret"}',
+                        },
+                        "TaskTemplate": {
+                            "ContainerSpec": {
+                                "Secrets": [
+                                    {
+                                        "File": {
+                                            "Name": "secret",
+                                        },
+                                        "SecretID": "secret",
+                                        "SecretName": "secret",
+                                    },
+                                ],
+                            },
+                        },
+                    }}])),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2131,9 +2047,10 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
-                            '_backup_options={"image": "digest", "args": ""}',
+                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
                         ],
+                        'secret-add': ['secret'],
+                        'secret-rm': ['secret'],
                     },
                 ],
                 expected_result=True,
@@ -2147,7 +2064,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2176,7 +2093,6 @@ class ServiceTestCase(unittest.TestCase):
                         'args': '',
                         'label-add': [
                             '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
-                            '_backup_options={}',
                         ],
                     },
                 ],
@@ -2193,7 +2109,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2222,8 +2138,7 @@ class ServiceTestCase(unittest.TestCase):
                         'label-add': [
                             'label1=label1',
                             'label2=label2',
-                            '_current_options=eyJhcmdzIjogImZvbyBiYXIiLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImxhYmVsLWFkZCI6IFsibGFiZWwxPWxhYmVsMSIsICJsYWJlbDI9bGFiZWwyIl19',
-                            '_backup_options={}',
+                            '_current_options=eyJhcmdzIjogImZvbyBiYXIiLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImxhYmVsIjogWyJsYWJlbDE9bGFiZWwxIiwgImxhYmVsMj1sYWJlbDIiXX0=',
                         ],
                         'args': 'foo bar',
                     },
@@ -2239,7 +2154,7 @@ class ServiceTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult('[{"Spec": {"Labels":{"_backup_options":"{}","_current_options":"{}"}}}]'),  # service info
+                    SucceededResult('[{"Spec": {}}]'),  # service info
                     SucceededResult(),  # service update
                 ),
                 args_parsers=[
@@ -2268,7 +2183,6 @@ class ServiceTestCase(unittest.TestCase):
                         'args': '',
                         'label-add': [
                             '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
-                            '_backup_options={}',
                         ],
                     },
                 ],
@@ -2384,7 +2298,10 @@ class ServiceTestCase(unittest.TestCase):
                             if data.get('update_sentinels_fails', False):
                                 update_sentinels.side_effect = RuntimeError()
                             run.__name__ = 'mocked_run'
-                            service = docker.Service(**data['init_kwargs'])
+                            service = docker.Service(
+                                use_image_sentinels=True,
+                                **data['init_kwargs']
+                            )
                             expected_result = data['expected_result']
                             try:
                                 result = service.update(**data['update_kwargs'])
@@ -2392,7 +2309,11 @@ class ServiceTestCase(unittest.TestCase):
                             except AssertionError:
                                 raise
                             except Exception as exception:
-                                if not issubclass(expected_result, Exception):
+                                try:
+                                    is_exception_expected = issubclass(expected_result, Exception)
+                                except TypeError:
+                                    is_exception_expected = False
+                                if not is_exception_expected:
                                     raise
                                 self.assertIsInstance(exception, expected_result)
                             self.assertEqual(run.call_count, len(data['expected_args']))
@@ -2439,7 +2360,7 @@ class ServiceTestCase(unittest.TestCase):
                         service.pull_errors.get(fab.env.host),
                     )
 
-    def test_update_options(self, *args):
+    def test_update_options(self):
         cases = dict(
             default=dict(
                 init_kwargs=dict(name='name'),
@@ -2486,34 +2407,53 @@ class ServiceTestCase(unittest.TestCase):
                         custom_option='custom_value',
                         replicas=3,
                         user='user',
+                        host='foo:127.0.0.2',
+                        secret='source=secret,target=/secret2',
+                        config='config',
+                        group='42',
+                        placement_pref='spread=node.role',
+                        dns='8.8.8.8',
+                        dns_option='option',
+                        dns_search='domain',
                     ),
                     mode='mode',
                 ),
                 service_info=dict(),
                 expected={
-                    'env-add': 'FOO=bar',
-                    'constraint-add': 'node.role == manager',
-                    'publish-add': 'source:target',
-                    'label-add': 'label=value',
+                    'env-add': ['FOO=bar'],
+                    'constraint-add': ['node.role == manager'],
+                    'publish-add': ['source:target'],
+                    'label-add': ['label=value'],
                     'args': 'arg1 "arg2" \'arg3\'',
                     'user': 'user',
                     'replicas': 3,
-                    'mount-add': 'type=volume,destination=/path',
-                    'network-add': 'network',
+                    'mount-add': ['type=volume,destination=/path'],
+                    'network-add': ['network'],
                     'stop-grace-period': 20,
                     'restart-condition': 'on-failure',
                     'custom_option': 'custom_value',
-                    'container-label-add': 'label=value',
+                    'container-label-add': ['label=value'],
+                    'host-add': ['foo:127.0.0.2'],
+                    'secret-add': ['source=secret,target=/secret2'],
+                    'config-add': ['config'],
+                    'group-add': ['42'],
+                    'placement-pref-add': ['spread=node.role'],
+                    'dns-add': ['8.8.8.8'],
+                    'dns-option-add': ['option'],
+                    'dns-search-add': ['domain'],
                 },
-                networks_ids=['network_id'],
             ),
             changed_option_value=dict(
                 init_kwargs=dict(
                     name='service',
                     args='arg1 "arg2" \'arg3\'',
                     options=dict(
-                        publish='8000:80',
-                        mount='type=new_type,destination=/path',
+                        publish=['8000:80', 81, '82'],
+                        mount=[
+                            'type=new_type,destination=/path',
+                            'type=new_type,dst=/path2',
+                            'type=new_type,target=/path3',
+                        ],
                         label='label=new_value',
                         env='FOO=baz',
                         constraint='node.role == worker',
@@ -2524,6 +2464,14 @@ class ServiceTestCase(unittest.TestCase):
                         custom_option='new_custom_value',
                         replicas=2,
                         user='new_user',
+                        host='foo:127.0.0.2',
+                        secret='source=secret,target=/secret2',
+                        config='source=config,target=/config2',
+                        group='new',
+                        placement_pref='spread=new',
+                        dns='new',
+                        dns_option='new',
+                        dns_search='new',
                     ),
                     mode='mode',
                 ),
@@ -2546,11 +2494,63 @@ class ServiceTestCase(unittest.TestCase):
                                         Source='/source',
                                         Target='/path',
                                     ),
-                                ]
+                                    dict(
+                                        Type='bind',
+                                        Source='/source2',
+                                        Target='/path2',
+                                    ),
+                                    dict(
+                                        Type='volume',
+                                        Source='/source3',
+                                        Target='/path3',
+                                    ),
+                                ],
+                                Hosts=[
+                                    "127.0.0.1 foo",
+                                ],
+                                Secrets=[
+                                    dict(
+                                        File=dict(
+                                            Name='/secret1',
+                                        ),
+                                        SecretID='secret',
+                                        SecretName='secret',
+                                    ),
+                                ],
+                                Configs=[
+                                    dict(
+                                        File=dict(
+                                            Name='/config1',
+                                        ),
+                                        ConfigID='config',
+                                        ConfigName='config',
+                                    ),
+                                ],
+                                Groups=[
+                                    'old',
+                                ],
+                                DNSConfig=dict(
+                                    Nameservers=[
+                                        'old',
+                                    ],
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
                             ),
                             Placement=dict(
                                 Constraints=[
                                     'node.role == manager',
+                                ],
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
                                 ],
                             ),
                             Networks=[
@@ -2566,28 +2566,327 @@ class ServiceTestCase(unittest.TestCase):
                                     Protocol='tcp',
                                     PublishedPort=8080,
                                 ),
+                                dict(
+                                    TargetPort=81,
+                                    Protocol='tcp',
+                                    PublishedPort=8081,
+                                ),
+                                dict(
+                                    TargetPort=82,
+                                    Protocol='udp',
+                                    PublishedPort=8082,
+                                ),
                             ],
                         ),
                     ),
                 ),
                 expected={
-                    'env-add': 'FOO=baz',
-                    'constraint-add': 'node.role == worker',
-                    'publish-add': '8000:80',
-                    'label-add': 'label=new_value',
+                    'env-add': ['FOO=baz'],
+                    'constraint-add': ['node.role == worker'],
+                    'label-add': ['label=new_value'],
                     'args': 'arg1 "arg2" \'arg3\'',
                     'user': 'new_user',
                     'replicas': 2,
-                    'mount-add': 'type=new_type,destination=/path',
-                    'network-add': 'new_network',
+                    'mount-add': [
+                        'type=new_type,destination=/path',
+                        'type=new_type,dst=/path2',
+                        'type=new_type,target=/path3',
+                    ],
+                    'network-add': ['new_network'],
                     'network-rm': ['old_network_id'],
+                    'publish-add': ['8000:80', 81, '82'],
                     'constraint-rm': ['node.role == manager'],
                     'stop-grace-period': 20,
                     'restart-condition': 'any',
                     'custom_option': 'new_custom_value',
-                    'container-label-add': 'label=container_new_value',
+                    'container-label-add': ['label=container_new_value'],
+                    'host-add': ['foo:127.0.0.2'],
+                    'host-rm': ['foo:127.0.0.1'],
+                    'secret-add': ['source=secret,target=/secret2'],
+                    'secret-rm': ['secret'],
+                    'config-add': ['source=config,target=/config2'],
+                    'config-rm': ['config'],
+                    'group-add': ['new'],
+                    'group-rm': ['old'],
+                    'dns-add': ['new'],
+                    'dns-rm': ['old'],
+                    'dns-option-add': ['new'],
+                    'dns-option-rm': ['old'],
+                    'dns-search-add': ['new'],
+                    'dns-search-rm': ['old'],
+                    'placement-pref-add': ['spread=new'],
+                    'placement-pref-rm': ['spread=old'],
                 },
-                networks_ids=['new_network_id'],
+            ),
+            no_changes=dict(
+                init_kwargs=dict(
+                    name='service',
+                    args='arg1 "arg2" \'arg3\'',
+                    options=dict(
+                        publish='8080:80',
+                        mount='type=type,destination=/path',
+                        label='label=value',
+                        env='FOO=bar',
+                        constraint='node.role == manager',
+                        container_label='label=value',
+                        network='network',
+                        restart_condition='any',
+                        stop_grace_period=20,
+                        custom_option='new_custom_value',
+                        replicas=2,
+                        user='user',
+                        host='foo:127.0.0.1',
+                        secret='source=secret,target=/secret',
+                        config='config',
+                        group='old',
+                        placement_pref='spread=old',
+                        dns='old',
+                        dns_option='old',
+                        dns_search='old',
+                    ),
+                    mode='mode',
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        Labels=dict(
+                            label='value',
+                        ),
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=dict(
+                                    label='value',
+                                ),
+                                Env=[
+                                    'FOO=bar',
+                                ],
+                                Mounts=[
+                                    dict(
+                                        Type='volume',
+                                        Source='/source',
+                                        Target='/path',
+                                    ),
+                                ],
+                                Hosts=[
+                                    "127.0.0.1 foo",
+                                ],
+                                Secrets=[
+                                    dict(
+                                        File=dict(
+                                            Name='/secret',
+                                        ),
+                                        SecretID='secret',
+                                        SecretName='secret',
+                                    ),
+                                ],
+                                Configs=[
+                                    dict(
+                                        File=dict(
+                                            Name='/config',
+                                        ),
+                                        ConfigID='config',
+                                        ConfigName='config',
+                                    ),
+                                ],
+                                Groups=[
+                                    'old',
+                                ],
+                                DNSConfig=dict(
+                                    Nameservers=[
+                                        'old',
+                                    ],
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Constraints=[
+                                    'node.role == manager',
+                                ],
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                            Networks=[
+                                {
+                                    'Target': 'network_id',
+                                },
+                            ],
+                        ),
+                        EndpointSpec=dict(
+                            Ports=[
+                                dict(
+                                    TargetPort=80,
+                                    Protocol='tcp',
+                                    PublishedPort=8080,
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+                expected={
+                    'container-label-add': ['label=value'],
+                    'env-add': ['FOO=bar'],
+                    'label-add': ['label=value'],
+                    'publish-add': ['8080:80'],
+                    'args': 'arg1 "arg2" \'arg3\'',
+                    'user': 'user',
+                    'replicas': 2,
+                    'mount-add': ['type=type,destination=/path'],
+                    'network-add': ['network'],
+                    'network-rm': ['network_id'],
+                    'stop-grace-period': 20,
+                    'restart-condition': 'any',
+                    'custom_option': 'new_custom_value',
+                    'secret-add': ['source=secret,target=/secret'],
+                    'secret-rm': ['secret'],
+                    'config-add': ['config'],
+                    'config-rm': ['config'],
+                    'placement-pref-add': ['spread=old'],
+                    'placement-pref-rm': ['spread=old'],
+                },
+            ),
+            no_changes_callable=dict(
+                init_kwargs=dict(
+                    name='service',
+                    args='arg1 "arg2" \'arg3\'',
+                    options=dict(
+                        publish=lambda service: '8080:80',
+                        mount=lambda service: 'type=type,destination=/path',
+                        label=lambda service: 'label=value',
+                        env=lambda service: 'FOO=bar',
+                        constraint=lambda service: 'node.role == manager',
+                        container_label=lambda service: 'label=value',
+                        network=lambda service: 'network',
+                        restart_condition=lambda service: 'any',
+                        stop_grace_period=lambda service: 20,
+                        custom_option=lambda service: 'new_custom_value',
+                        replicas=lambda service: 2,
+                        user=lambda service: 'user',
+                        host=lambda service: 'foo:127.0.0.1',
+                        secret=lambda service: 'source=secret,target=/secret',
+                        config=lambda service: 'config',
+                        group=lambda service: 'old',
+                        placement_pref=lambda service: 'spread=old',
+                        dns=lambda service: 'old',
+                        dns_option=lambda service: 'old',
+                        dns_search=lambda service: 'old',
+                    ),
+                    mode='mode',
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        Labels=dict(
+                            label='value',
+                        ),
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=dict(
+                                    label='value',
+                                ),
+                                Env=[
+                                    'FOO=bar',
+                                ],
+                                Mounts=[
+                                    dict(
+                                        Type='volume',
+                                        Source='/source',
+                                        Target='/path',
+                                    ),
+                                ],
+                                Hosts=[
+                                    "127.0.0.1 foo",
+                                ],
+                                Secrets=[
+                                    dict(
+                                        File=dict(
+                                            Name='/secret',
+                                        ),
+                                        SecretID='secret',
+                                        SecretName='secret',
+                                    ),
+                                ],
+                                Configs=[
+                                    dict(
+                                        File=dict(
+                                            Name='/config',
+                                        ),
+                                        ConfigID='config',
+                                        ConfigName='config',
+                                    ),
+                                ],
+                                Groups=[
+                                    'old',
+                                ],
+                                DNSConfig=dict(
+                                    Nameservers=[
+                                        'old',
+                                    ],
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Constraints=[
+                                    'node.role == manager',
+                                ],
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                            Networks=[
+                                {
+                                    'Target': 'network_id',
+                                },
+                            ],
+                        ),
+                        EndpointSpec=dict(
+                            Ports=[
+                                dict(
+                                    TargetPort=80,
+                                    Protocol='tcp',
+                                    PublishedPort=8080,
+                                ),
+                            ],
+                        ),
+                    ),
+                ),
+                expected={
+                    'container-label-add': ['label=value'],
+                    'env-add': ['FOO=bar'],
+                    'label-add': ['label=value'],
+                    'publish-add': ['8080:80'],
+                    'args': 'arg1 "arg2" \'arg3\'',
+                    'user': 'user',
+                    'replicas': 2,
+                    'mount-add': ['type=type,destination=/path'],
+                    'network-add': ['network'],
+                    'network-rm': ['network_id'],
+                    'stop-grace-period': 20,
+                    'restart-condition': 'any',
+                    'custom_option': 'new_custom_value',
+                    'secret-add': ['source=secret,target=/secret'],
+                    'secret-rm': ['secret'],
+                    'config-add': ['config'],
+                    'config-rm': ['config'],
+                    'placement-pref-add': ['spread=old'],
+                    'placement-pref-rm': ['spread=old'],
+                },
             ),
             new_options_values=dict(
                 init_kwargs=dict(
@@ -2621,6 +2920,23 @@ class ServiceTestCase(unittest.TestCase):
                             'network1',
                             'network2',
                         ],
+                        host=[
+                            'foo:127.0.0.2',
+                            'bar:127.0.0.3',
+                        ],
+                        secret=[
+                            'secret',
+                            'source=secret,target=/secret2',
+                        ],
+                        config=[
+                            'config',
+                            'source=config,target=/config2',
+                        ],
+                        group=['group1', 'group2'],
+                        placement_pref=['spread=spread1', 'spread=spread2,foo=bar'],
+                        dns=['dns1', 'dns2'],
+                        dns_option=['option1', 'option2'],
+                        dns_search=['domain1', 'domain2'],
                     ),
                 ),
                 service_info=dict(),
@@ -2633,8 +2949,15 @@ class ServiceTestCase(unittest.TestCase):
                     'container-label-add': ['label=value', 'label2=value2'],
                     'network-add': ['network1', 'network2'],
                     'args': '',
+                    'host-add': ['foo:127.0.0.2', 'bar:127.0.0.3'],
+                    'secret-add': ['secret', 'source=secret,target=/secret2'],
+                    'config-add': ['config', 'source=config,target=/config2'],
+                    'group-add': ['group1', 'group2'],
+                    'dns-add': ['dns1', 'dns2'],
+                    'dns-option-add': ['option1', 'option2'],
+                    'dns-search-add': ['domain1', 'domain2'],
+                    'placement-pref-add': ['spread=spread1', 'spread=spread2,foo=bar'],
                 },
-                networks_ids=['network1_id', 'network2_id'],
             ),
             remove_option_value=dict(
                 init_kwargs=dict(
@@ -2659,11 +2982,53 @@ class ServiceTestCase(unittest.TestCase):
                                         Source='/source',
                                         Target='/path',
                                     ),
-                                ]
+                                ],
+                                Hosts=[
+                                    "127.0.0.1 foo",
+                                ],
+                                Secrets=[
+                                    dict(
+                                        File=dict(
+                                            Name='/secret1',
+                                        ),
+                                        SecretID='secret1',
+                                        SecretName='secret1',
+                                    ),
+                                ],
+                                Configs=[
+                                    dict(
+                                        File=dict(
+                                            Name='/config',
+                                        ),
+                                        ConfigID='config',
+                                        ConfigName='config',
+                                    ),
+                                ],
+                                Groups=[
+                                    'old',
+                                ],
+                                DNSConfig=dict(
+                                    Nameservers=[
+                                        'old',
+                                    ],
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
                             ),
                             Placement=dict(
                                 Constraints=[
                                     'node.role == manager',
+                                ],
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
                                 ],
                             ),
                             Networks=[
@@ -2692,6 +3057,14 @@ class ServiceTestCase(unittest.TestCase):
                     'publish-rm': ['target'],
                     'network-rm': ['old_network_id'],
                     'constraint-rm': ['node.role == manager'],
+                    'host-rm': ['foo:127.0.0.1'],
+                    'secret-rm': ['secret1'],
+                    'config-rm': ['config'],
+                    'group-rm': ['old'],
+                    'dns-rm': ['old'],
+                    'dns-option-rm': ['old'],
+                    'dns-search-rm': ['old'],
+                    'placement-pref-rm': ['spread=old'],
                 },
             ),
             remove_single_option_value_from_two=dict(
@@ -2705,6 +3078,14 @@ class ServiceTestCase(unittest.TestCase):
                         constraint='node.role == manager',
                         container_label='label=value',
                         network='network2',
+                        host='foo:127.0.0.1',
+                        secret='source=secret1,target=/secret1',
+                        config='config',
+                        group='new',
+                        placement_pref='spread=new',
+                        dns='new',
+                        dns_option='new',
+                        dns_search='new',
                     ),
                 ),
                 service_info=dict(
@@ -2734,12 +3115,81 @@ class ServiceTestCase(unittest.TestCase):
                                         Source='/source2',
                                         Target='/path2',
                                     ),
-                                ]
+                                ],
+                                Hosts=[
+                                    "127.0.0.1 foo",
+                                    "127.0.0.1 bar",
+                                ],
+                                Secrets=[
+                                    dict(
+                                        File=dict(
+                                            Name='/secret1',
+                                        ),
+                                        SecretID='secret1',
+                                        SecretName='secret1',
+                                    ),
+                                    dict(
+                                        File=dict(
+                                            Name='/secret2',
+                                        ),
+                                        SecretID='secret2',
+                                        SecretName='secret2',
+                                    ),
+                                ],
+                                Configs=[
+                                    dict(
+                                        File=dict(
+                                            Name='/config',
+                                        ),
+                                        ConfigID='config',
+                                        ConfigName='config',
+                                    ),
+                                    dict(
+                                        File=dict(
+                                            Name='/config2',
+                                        ),
+                                        ConfigID='config2',
+                                        ConfigName='config2',
+                                    ),
+                                ],
+                                Groups=[
+                                    'new',
+                                    'old',
+                                ],
+                                DNSConfig=dict(
+                                    Nameservers=[
+                                        'new',
+                                        'old',
+                                    ],
+                                    Options=[
+                                        'new',
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'new',
+                                        'old',
+                                    ],
+                                ),
                             ),
                             Placement=dict(
                                 Constraints=[
                                     'node.role == manager',
                                     'node.role == worker',
+                                ],
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='new',
+                                        ),
+                                    ),
+                                    OrderedDict((
+                                        ('Spread', dict(
+                                            SpreadDescriptor='old',
+                                        )),
+                                        ('Foo', dict(
+                                            FooDescriptor='old',
+                                        )),
+                                    )),
                                 ],
                             ),
                             Networks=[
@@ -2768,23 +3218,32 @@ class ServiceTestCase(unittest.TestCase):
                     ),
                 ),
                 expected={
-                    'args': '',
-                    'env-add': 'FOO=bar',
-                    'constraint-add': 'node.role == manager',
-                    'label-rm': ['label2'],
-                    'env-rm': ['FOO2'],
-                    'publish-add': 'source2:target2',
-                    'label-add': 'label=value',
-                    'mount-rm': ['/path2'],
+                    'container-label-add': ['label=value'],
                     'container-label-rm': ['label2'],
+                    'env-add': ['FOO=bar'],
+                    'env-rm': ['FOO2'],
+                    'label-add': ['label=value'],
+                    'label-rm': ['label2'],
+                    'args': '',
+                    'publish-add': ['source2:target2'],
+                    'mount-rm': ['/path2'],
                     'publish-rm': ['target'],
-                    'network-add': 'network2',
-                    'network-rm': ['network1_id'],
-                    'mount-add': 'type=volume,destination=/path',
+                    'network-add': ['network2'],
+                    'network-rm': ['network1_id', 'network2_id'],
+                    'mount-add': ['type=volume,destination=/path'],
                     'constraint-rm': ['node.role == worker'],
-                    'container-label-add': 'label=value',
+                    'host-rm': ['bar:127.0.0.1'],
+                    'secret-add': ['source=secret1,target=/secret1'],
+                    'secret-rm': ['secret1', 'secret2'],
+                    'config-add': ['config'],
+                    'config-rm': ['config', 'config2'],
+                    'group-rm': ['old'],
+                    'dns-rm': ['old'],
+                    'dns-option-rm': ['old'],
+                    'dns-search-rm': ['old'],
+                    'placement-pref-add': ['spread=new'],
+                    'placement-pref-rm': ['spread=new', 'spread=old,foo=old'],
                 },
-                networks_ids=['network2_id'],
             ),
             remove_single_option_value_from_three=dict(
                 init_kwargs=dict(
@@ -2795,8 +3254,8 @@ class ServiceTestCase(unittest.TestCase):
                             'source3:target3',
                         ],
                         mount=[
-                            'type=volume,destination=/path',
-                            'type=volume,destination="/path2"',
+                            'type=volume,target=/path',
+                            'type=volume,dst="/path2"',
                         ],
                         label=[
                             'label=value',
@@ -2818,6 +3277,23 @@ class ServiceTestCase(unittest.TestCase):
                             'network1',
                             'network2',
                         ],
+                        host=[
+                            'foo:127.0.0.1',
+                            'bar:127.0.0.1',
+                        ],
+                        secret=[
+                            'secret',
+                            'source=secret,target=/secret2',
+                        ],
+                        config=[
+                            'config1',
+                            'config2',
+                        ],
+                        group=['group1', 'group2'],
+                        placement_pref=['spread=pref1', 'spread=pref2'],
+                        dns=['dns1', 'dns2'],
+                        dns_option=['option1', 'option2'],
+                        dns_search=['domain1', 'domain2'],
                     ),
                 ),
                 service_info=dict(
@@ -2856,12 +3332,102 @@ class ServiceTestCase(unittest.TestCase):
                                         Target='/path3',
                                     ),
                                 ],
+                                Hosts=[
+                                    "127.0.0.1 foo",
+                                    "127.0.0.1 bar",
+                                    "127.0.0.1 baz",
+                                ],
+                                Secrets=[
+                                    dict(
+                                        File=dict(
+                                            Name='secret',
+                                        ),
+                                        SecretID='secret',
+                                        SecretName='secret',
+                                    ),
+                                    dict(
+                                        File=dict(
+                                            Name='/secret2',
+                                        ),
+                                        SecretID='secret',
+                                        SecretName='secret',
+                                    ),
+                                    dict(
+                                        File=dict(
+                                            Name='/secret3',
+                                        ),
+                                        SecretID='secret3',
+                                        SecretName='secret3',
+                                    ),
+                                ],
+                                Configs=[
+                                    dict(
+                                        File=dict(
+                                            Name='/config1',
+                                        ),
+                                        ConfigID='config1',
+                                        ConfigName='config1',
+                                    ),
+                                    dict(
+                                        File=dict(
+                                            Name='/config2',
+                                        ),
+                                        ConfigID='config2',
+                                        ConfigName='config2',
+                                    ),
+                                    dict(
+                                        File=dict(
+                                            Name='/config3',
+                                        ),
+                                        ConfigID='config3',
+                                        ConfigName='config3',
+                                    ),
+                                ],
+                                Groups=[
+                                    'group1',
+                                    'group2',
+                                    'group3',
+                                ],
+                                DNSConfig=dict(
+                                    Nameservers=[
+                                        'dns1',
+                                        'dns2',
+                                        'dns3',
+                                    ],
+                                    Options=[
+                                        'option1',
+                                        'option2',
+                                        'option3',
+                                    ],
+                                    Search=[
+                                        'domain1',
+                                        'domain2',
+                                        'domain3',
+                                    ],
+                                ),
                             ),
                             Placement=dict(
                                 Constraints=[
                                     'node.role == manager',
                                     'node.role == worker',
                                     'constraint',
+                                ],
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='pref1',
+                                        ),
+                                    ),
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='pref2',
+                                        ),
+                                    ),
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='pref3',
+                                        ),
+                                    ),
                                 ],
                             ),
                             Networks=[
@@ -2898,23 +3464,32 @@ class ServiceTestCase(unittest.TestCase):
                     ),
                 ),
                 expected={
-                    'args': '',
-                    'env-add': ['FOO=bar', 'FOO2=bar2'],
-                    'constraint-add': ['node.role == manager', 'node.role == worker'],
-                    'label-rm': ['label3'],
-                    'env-rm': ['FOO3'],
-                    'publish-add': ['source2:target2', 'source3:target3'],
-                    'label-add': ['label=value', 'label2=value2'],
-                    'mount-rm': ['/path3'],
-                    'container-label-rm': ['label3'],
-                    'publish-rm': ['target'],
-                    'mount-add': ['type=volume,destination=/path', 'type=volume,destination="/path2"'],
-                    'constraint-rm': ['constraint'],
                     'container-label-add': ['label=value', 'label2=value2'],
+                    'container-label-rm': ['label3'],
+                    'env-add': ['FOO=bar', 'FOO2=bar2'],
+                    'env-rm': ['FOO3'],
+                    'label-add': ['label=value', 'label2=value2'],
+                    'label-rm': ['label3'],
+                    'args': '',
+                    'publish-add': ['source2:target2', 'source3:target3'],
+                    'mount-rm': ['/path3'],
+                    'publish-rm': ['target'],
+                    'mount-add': ['type=volume,target=/path', 'type=volume,dst="/path2"'],
+                    'constraint-rm': ['constraint'],
                     'network-add': ['network1', 'network2'],
-                    'network-rm': ['network3_id'],
+                    'network-rm': ['network1_id', 'network2_id', 'network3_id'],
+                    'host-rm': ['baz:127.0.0.1'],
+                    'secret-add': ['secret', 'source=secret,target=/secret2'],
+                    'secret-rm': ['secret', 'secret3'],
+                    'config-add': ['config1', 'config2'],
+                    'config-rm': ['config1', 'config2', 'config3'],
+                    'group-rm': ['group3'],
+                    'dns-rm': ['dns3'],
+                    'dns-option-rm': ['option3'],
+                    'dns-search-rm': ['domain3'],
+                    'placement-pref-add': ['spread=pref1', 'spread=pref2'],
+                    'placement-pref-rm': ['spread=pref1', 'spread=pref2', 'spread=pref3'],
                 },
-                networks_ids=['network1_id', 'network2_id'],
             ),
         )
         for case, data in cases.items():
@@ -2927,15 +3502,10 @@ class ServiceTestCase(unittest.TestCase):
                     __delete__=lambda *_: None,
                 ):
                     service = docker.Service(**data['init_kwargs'])
-                    with mock.patch.object(
-                        fabricio,
-                        'run',
-                        side_effect=data.get('networks_ids', []),
-                    ):
-                        self.assertDictEqual(
-                            dict(service.update_options),
-                            data['expected'],
-                        )
+                    self.assertDictEqual(
+                        dict(service.update_options),
+                        data['expected'],
+                    )
 
     def test__update_labels(self):
         cases = dict(
@@ -3016,421 +3586,6 @@ class ServiceTestCase(unittest.TestCase):
                 # make sure original container's labels not changed
                 self.assertNotEqual(id(service.label), old_labels_id)
 
-    def test__service_need_update(self):
-        cases = dict(
-            empty_options=dict(
-                options_old={},
-                options_new={},
-                are_different=False,
-            ),
-            empty_values_to_remove=dict(
-                options_old={},
-                options_new={
-                    'env-rm': None,
-                    'custom': set(),
-                    'custom-rm': [],
-                },
-                are_different=False,
-            ),
-            simply_equal=dict(
-                options_old={
-                    'env-add': ['FOO=foo', 'BAR=bar'],
-                    'custom': 'custom',
-                    'custom2': None,
-                    'custom3': [],
-                    'custom4': None,
-                    'custom-rm': 'custom',
-                    'env-rm': ['BAZ'],
-                    'iterable1': ['foo'],
-                    'iterable2': 'foo',
-                },
-                options_new={
-                    'env-add': set(['BAR=bar', 'FOO=foo']),
-                    'custom': 'custom',
-                    'custom2': False,
-                    'custom3': None,
-                    'custom4': [],
-                    'custom-rm': 'custom',
-                    'iterable1': 'foo',
-                    'iterable2': ['foo'],
-                },
-                are_different=False,
-            ),
-            int_option_changed=dict(
-                options_old={
-                    'replicas': 1,
-                },
-                options_new={
-                    'replicas': 2,
-                },
-                are_different=True,
-            ),
-            str_option_changed=dict(
-                options_old={
-                    'str': 'foo',
-                },
-                options_new={
-                    'str': 'bar',
-                },
-                are_different=True,
-            ),
-            key_changed=dict(
-                options_old={
-                    'key1': 'foo',
-                },
-                options_new={
-                    'key2': 'foo',
-                },
-                are_different=True,
-            ),
-            bool_option_changed=dict(
-                options_old={
-                    'bool': True,
-                },
-                options_new={
-                    'bool': False,
-                },
-                are_different=True,
-            ),
-            list_option_changed=dict(
-                options_old={
-                    'list': ['foo', 'bar'],
-                },
-                options_new={
-                    'list': ['foo'],
-                },
-                are_different=True,
-            ),
-            option_type_changed_1=dict(
-                options_old={
-                    'list': None,
-                },
-                options_new={
-                    'list': ['foo'],
-                },
-                are_different=True,
-            ),
-            option_type_changed_2=dict(
-                options_old={
-                    'list': ['foo'],
-                },
-                options_new={
-                    'list': None,
-                },
-                are_different=True,
-            ),
-            default_not_changed=dict(
-                options_old={
-                    "env-add": None,
-                    "constraint-add": None,
-                    "label-rm": None,
-                    "network": None,
-                    "env-rm": None,
-                    "publish-add": None,
-                    "label-add": None,
-                    "image": "digest",
-                    "args": None,
-                    "mount-rm": None,
-                    "container-label-rm": None,
-                    "user": None,
-                    "replicas": 1,
-                    "publish-rm": None,
-                    "mount-add": None,
-                    "constraint-rm": None,
-                    "stop-grace-period": 10,
-                    "restart-condition": None,
-                    "container-label-add": None,
-                },
-                options_new={
-                    "env-add": None,
-                    "constraint-add": None,
-                    "args": None,
-                    "label-rm": None,
-                    "network": None,
-                    "env-rm": None,
-                    "publish-add": None,
-                    "label-add": None,
-                    "replicas": 1,
-                    "mount-rm": None,
-                    "container-label-rm": None,
-                    "user": None,
-                    "publish-rm": None,
-                    "mount-add": None,
-                    "constraint-rm": None,
-                    "stop-grace-period": 10,
-                    "restart-condition": None,
-                    "container-label-add": None,
-                    "image": "digest",
-                },
-                are_different=False,
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                service = docker.Service(name='name')
-                result = service._service_need_update(
-                    data['options_old'],
-                    data['options_new'],
-                )
-                self.assertEqual(result, data['are_different'])
-
-    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
-    @mock.patch.object(docker.Service, '_revert_sentinels')
-    @mock.patch.object(docker.Service, '_update_service')
-    def test_revert(self, _update_service, *args):
-        cases = dict(
-            remove_single_option_value=dict(
-                service_info=dict(
-                    Spec=dict(
-                        Labels=OrderedDict([
-                            ('bar', 'BAR'),
-                            ('_backup_options', '{}'),
-                            ('_current_options', '{}'),
-                        ]),
-                        TaskTemplate=dict(
-                            ContainerSpec=dict(
-                                Labels=dict(
-                                    bar='BAR',
-                                ),
-                                Env=[
-                                    'FOO=bar',
-                                ],
-                                Mounts=[
-                                    dict(
-                                        Type='volume',
-                                        Source='/source',
-                                        Target='/path',
-                                    ),
-                                ]
-                            ),
-                            Placement=dict(
-                                Constraints=[
-                                    'bar',
-                                ],
-                            ),
-                        ),
-                        EndpointSpec=dict(
-                            Ports=[
-                                dict(
-                                    TargetPort='8000',
-                                    Protocol='tcp',
-                                    PublishedPort='80',
-                                ),
-                            ],
-                        ),
-                    ),
-                ),
-                expected_result={
-                    'env-rm': ['FOO'],
-                    'constraint-rm': ['bar'],
-                    'label-add': ['_current_options={}'],
-                    'label-rm': ['bar', '_backup_options'],
-                    'container-label-rm': ['bar'],
-                    'publish-rm': ['8000'],
-                    'mount-rm': ['/path'],
-                },
-            ),
-            change_single_option_value=dict(
-                service_info=dict(
-                    Spec=dict(
-                        Labels=OrderedDict([
-                            ('bar', 'BAR'),
-                            ('_backup_options', '{"custom-option": "another value", "constraint-add": ["foo"], "publish-add": ["8000:8000"], "image": "another value", "args": "another value", "user": "another value", "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "restart-condition": "another value", "env-add": ["FOO=baz"], "label-add": "bar=FOO", "stop-grace-period": "another value"}'),
-                            ('_current_options', '{}'),
-                        ]),
-                        TaskTemplate=dict(
-                            ContainerSpec=dict(
-                                Labels=dict(
-                                    bar='BAR',
-                                ),
-                                Env=[
-                                    'FOO=bar',
-                                ],
-                                Mounts=[
-                                    dict(
-                                        Type='volume',
-                                        Source='/source',
-                                        Target='/path',
-                                    ),
-                                ]
-                            ),
-                            Placement=dict(
-                                Constraints=[
-                                    'bar',
-                                ],
-                            ),
-                        ),
-                        EndpointSpec=dict(
-                            Ports=[
-                                dict(
-                                    TargetPort='8000',
-                                    Protocol='tcp',
-                                    PublishedPort='80',
-                                ),
-                            ],
-                        ),
-                    ),
-                ),
-                expected_result={
-                    'env-add': ['FOO=baz'],
-                    'constraint-add': ['foo'],
-                    'constraint-rm': ['bar'],
-                    'label-add': ['bar=FOO', '_current_options={"custom-option": "another value", "constraint-add": ["foo"], "publish-add": ["8000:8000"], "image": "another value", "args": "another value", "user": "another value", "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "restart-condition": "another value", "env-add": ["FOO=baz"], "label-add": "bar=FOO", "stop-grace-period": "another value"}'],
-                    'label-rm': ['_backup_options'],
-                    'container-label-add': ['bar=FOO'],
-                    'publish-add': ['8000:8000'],
-                    'mount-add': ['type=volume,destination=/path'],
-                    'custom-option': 'another value',
-                    'restart-condition': 'another value',
-                    'stop-grace-period': 'another value',
-                    'user': 'another value',
-                    'args': 'another value',
-                    'image': 'another value',
-                },
-            ),
-            add_single_option_value=dict(
-                service_info=dict(
-                    Spec=dict(
-                        Labels=OrderedDict([
-                            ('_backup_options', '{"env-add": ["FOO=baz"], "constraint-add": ["foo"], "constraint-rm": ["bar"], "custom-option": "another value", "env-rm": ["BAR"], "publish-add": ["8000:8000"], "label-add": ["bar=FOO"], "image": "another value", "args": "another value", "label-rm": ["bar"], "mount-rm": ["/path"], "container-label-rm": ["bar"], "user": "another value", "publish-rm": ["8000"], "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "stop-grace-period": "another value", "restart-condition": "another value", "custom-rm": "rm", "custom-add": "add"}'),
-                            ('_current_options', '{}'),
-                        ]),
-                    ),
-                ),
-                expected_result={
-                    'env-add': ['FOO=baz'],
-                    'constraint-add': ['foo'],
-                    'label-add': ['bar=FOO', '_current_options={"env-add": ["FOO=baz"], "constraint-add": ["foo"], "constraint-rm": ["bar"], "custom-option": "another value", "env-rm": ["BAR"], "publish-add": ["8000:8000"], "label-add": ["bar=FOO"], "image": "another value", "args": "another value", "label-rm": ["bar"], "mount-rm": ["/path"], "container-label-rm": ["bar"], "user": "another value", "publish-rm": ["8000"], "mount-add": ["type=volume,destination=/path"], "container-label-add": ["bar=FOO"], "stop-grace-period": "another value", "restart-condition": "another value", "custom-rm": "rm", "custom-add": "add"}'],
-                    'label-rm': ['_backup_options'],
-                    'container-label-add': ['bar=FOO'],
-                    'custom-option': 'another value',
-                    'restart-condition': 'another value',
-                    'stop-grace-period': 'another value',
-                    'user': 'another value',
-                    'args': 'another value',
-                    'image': 'another value',
-                    'publish-add': ['8000:8000'],
-                    'mount-add': ['type=volume,destination=/path'],
-                    'custom-rm': 'rm',
-                    'custom-add': 'add',
-                },
-            ),
-            remove_single_option_value_from_two=dict(
-                service_info=dict(
-                    Spec=dict(
-                        Labels=OrderedDict([
-                            ('FOO', 'foo'),
-                            ('bar', 'BAR'),
-                            ('_backup_options', '{"env-add": ["FOO=foo"], "constraint-add": ["foo"], "publish-add": ["8080:8080"], "label-add": ["FOO=foo"], "mount-add": ["destination=/"], "container-label-add": ["FOO=foo"]}'),
-                            ('_current_options', '{}'),
-                        ]),
-                        TaskTemplate=dict(
-                            ContainerSpec=dict(
-                                Labels=OrderedDict([
-                                    ('FOO', 'foo'),
-                                    ('bar', 'BAR'),
-                                ]),
-                                Env=[
-                                    'FOO=foo',
-                                    'BAR=bar',
-                                ],
-                                Mounts=[
-                                    dict(
-                                        Type='volume',
-                                        Source='/source',
-                                        Target='/path',
-                                    ),
-                                    dict(
-                                        Type='volume',
-                                        Source='/source',
-                                        Target='/',
-                                    ),
-                                ]
-                            ),
-                            Placement=dict(
-                                Constraints=[
-                                    'foo',
-                                    'bar',
-                                ],
-                            ),
-                        ),
-                        EndpointSpec=dict(
-                            Ports=[
-                                dict(
-                                    TargetPort='8000',
-                                    Protocol='tcp',
-                                    PublishedPort='80',
-                                ),
-                                dict(
-                                    TargetPort='8080',
-                                    Protocol='tcp',
-                                    PublishedPort='8080',
-                                ),
-                            ],
-                        ),
-                    ),
-                ),
-                expected_result={
-                    'env-add': ['FOO=foo'],
-                    'constraint-add': ['foo'],
-                    'label-add': ['FOO=foo', '_current_options={"env-add": ["FOO=foo"], "constraint-add": ["foo"], "publish-add": ["8080:8080"], "label-add": ["FOO=foo"], "mount-add": ["destination=/"], "container-label-add": ["FOO=foo"]}'],
-                    'container-label-add': ['FOO=foo'],
-                    'publish-add': ['8080:8080'],
-                    'mount-add': ['destination=/'],
-                    'constraint-rm': ['bar'],
-                    'container-label-rm': ['bar'],
-                    'label-rm': ['bar', '_backup_options'],
-                    'publish-rm': ['8000'],
-                    'env-rm': ['BAR'],
-                    'mount-rm': ['/path'],
-                },
-            ),
-        )
-        for case, data in cases.items():
-            fab.env.command = '{0}__{1}'.format(self, case)
-            _update_service.reset_mock()
-            with self.subTest(case=case):
-                with mock.patch.object(
-                    docker.Service,
-                    'info',
-                    new_callable=mock.PropertyMock,
-                    return_value=data['service_info'],
-                    __delete__=lambda *_: None,
-                ):
-                    service = docker.Service(name='service')
-                    service.revert()
-                    _update_service.assert_called_once_with(data['expected_result'])
-
-    @mock.patch.object(docker.Service, 'is_manager', return_value=True)
-    @mock.patch.object(docker.Service, '_update_service')
-    @mock.patch.object(docker.Service, '_revert_sentinels')
-    def test_revert_errors(self, *args):
-        cases = dict(
-            _backup_options_not_found=dict(
-                service_info=dict(
-                    Spec=dict(
-                        Labels={},
-                    ),
-                ),
-            ),
-            labels_not_found=dict(
-                service_info={},
-            ),
-        )
-        for case, data in cases.items():
-            fab.env.command = '{0}__{1}'.format(self, case)
-            with self.subTest(case=case):
-                with mock.patch.object(
-                    docker.Service,
-                    'info',
-                    new_callable=mock.PropertyMock,
-                    return_value=data['service_info'],
-                    __delete__=lambda *_: None,
-                ):
-                    service = docker.Service()
-                    with self.assertRaises(docker.ServiceError):
-                        service.revert()
-
     def test__create_service(self):
         cases = dict(
             default=dict(
@@ -3499,6 +3654,14 @@ class ServiceTestCase(unittest.TestCase):
                         restart_condition='restart_condition',
                         user='user',
                         stop_grace_period=20,
+                        host=['foo:127.0.0.1', 'bar:127.0.0.1'],
+                        secret=['secret1', 'secret2'],
+                        config=['config1', 'config2'],
+                        group=['group1', 'group2'],
+                        placement_pref=['pref1', 'pref2'],
+                        dns=['dns1', 'dns2'],
+                        dns_option=['dns-option1', 'dns-option2'],
+                        dns_search=['domain1', 'domain2'],
                     ),
                     mode='mode',
                 ),
@@ -3515,6 +3678,14 @@ class ServiceTestCase(unittest.TestCase):
                     'container-label': ['c_label1', 'c_label2'],
                     'user': 'user',
                     'env': ['en1', 'env2'],
+                    'host': ['foo:127.0.0.1', 'bar:127.0.0.1'],
+                    'secret': ['secret1', 'secret2'],
+                    'config': ['config1', 'config2'],
+                    'group': ['group1', 'group2'],
+                    'placement-pref': ['pref1', 'pref2'],
+                    'dns': ['dns1', 'dns2'],
+                    'dns-option': ['dns-option1', 'dns-option2'],
+                    'dns-search': ['domain1', 'domain2'],
                     'stop-grace-period': '20',
                     'restart-condition': 'restart_condition',
                     'image': ['image:tag'],

@@ -1,7 +1,8 @@
-import six
+import itertools
 
 from cached_property import cached_property
 from frozendict import frozendict
+from six.moves import filter
 
 from fabricio import utils
 
@@ -21,6 +22,7 @@ class Option(utils.default_property):
         super(Option, self).__init__(func=func, default=default)
         self.name = name
         self.safe = safe
+        self.safe_name = safe_name
 
 
 class Attribute(utils.default_property):
@@ -41,7 +43,8 @@ class BaseService(object):
         is_option = self._options.__contains__
         is_attribute = self._attributes.__contains__
         self._other_options = other_options = options or {}
-        for option in list(six.moves.filter(is_option, other_options)):
+        self._other_safe_options = safe_options or {}
+        for option in list(filter(is_option, other_options)):
             setattr(self, option, other_options.pop(option))
         for attr, value in attrs.items():
             if not is_attribute(attr):
@@ -71,11 +74,11 @@ class BaseService(object):
     @classmethod
     def _get_available_options(cls, safe=False):
         return dict(
-            (attr, option.name or attr)
+            (attr, option)
             for mro in cls.__mro__[::-1]
             for attr, option in vars(mro).items()
             if isinstance(option, Option)
-            and (safe and option.safe or not safe)
+            and (safe and option.safe or option.safe_name or not safe)
         )
 
     @cached_property
@@ -87,13 +90,25 @@ class BaseService(object):
         return self._get_available_options(safe=True)
 
     def _get_options(self, safe=False):
-        options = self._safe_options if safe else self._options
-        return frozendict(
+        options = itertools.chain(
             (
-                (option, getattr(self, attr))
-                for attr, option in options.items()
+                (
+                    safe and option.safe_name or option.name or attr,
+                    getattr(self, attr),
+                )
+                for attr, option in
+                (self._safe_options if safe else self._options).items()
             ),
-            **(not safe and self._other_options or {})
+            (self._other_safe_options if safe else self._other_options).items(),
+        )
+        evaluated_options = (
+            (option, value(self) if callable(value) else value)
+            for option, value in options
+        )
+        return frozendict(
+            (option, value)
+            for option, value in evaluated_options
+            if value is not None
         )
 
     @property
