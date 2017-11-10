@@ -42,7 +42,7 @@ This will apply new migration. After that run 'rollback' command which should re
     
 ## Customization
 
-See also "Hello, World" [Customization](../hello_world/#customization) section.
+See also "Hello, World" [Customization](../../hello_world/#customization) section.
 
 ## Issues
 
