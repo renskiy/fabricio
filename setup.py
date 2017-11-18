@@ -13,7 +13,7 @@ install_requires = [
     'frozendict>=1.2,<2.0',
     'cached-property>=1.3',
     'docker-py>=1.8.1,<2.0',
-    'six>=1.4.0',
+    'six>=1.10.0',
     'dpath>=1.4.0',
     'contextlib2>=0.5.5',
 ]
