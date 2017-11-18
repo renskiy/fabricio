@@ -19,9 +19,10 @@ install_requires = [
 ]
 
 if sys.version_info < (2,7):
-    install_requires.append(
+    install_requires.extend([
         'ordereddict>=1.1',
-    )
+        'paramiko<2.4',
+    ])
 
 setup(
     name='fabricio',
