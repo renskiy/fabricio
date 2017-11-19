@@ -6,12 +6,12 @@ django = tasks.ImageBuildDockerTasks(
     service=DjangoContainer(
         name='django',
         image='django',
-        options=dict(
-            publish='8000:8000',
-            stop_signal='INT',
-            volume='/data/django:/data',
-            env='DJANGO_SETTINGS_MODULE=settings',
-        ),
+        options={
+            'publish': '8000:8000',
+            'stop-signal': 'INT',
+            'volume': '/data/django:/data',
+            'env': 'DJANGO_SETTINGS_MODULE=settings',
+        },
     ),
     hosts=AvailableVagrantHosts(),
     registry='localhost:5000',

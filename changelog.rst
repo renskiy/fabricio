@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.4.2
+-------------
+
+- Enhancement: ``docker.Service``: ``publish`` option can be used to set range of ports
+- Enhancement: ``docker.Service``: predefined options can be passed also by option name
+
 Release 0.4.1
 -------------
 

@@ -2,7 +2,6 @@ import itertools
 
 from cached_property import cached_property
 from frozendict import frozendict
-from six.moves import filter
 
 from fabricio import utils
 
@@ -40,12 +39,13 @@ class BaseService(object):
             self.image = image
         self.overridden_options = set()
         self.overridden_attributes = set()
-        is_option = self._options.__contains__
         is_attribute = self._attributes.__contains__
         self._other_options = other_options = options or {}
         self._other_safe_options = safe_options or {}
-        for option in list(filter(is_option, other_options)):
-            setattr(self, option, other_options.pop(option))
+        for option in list(other_options):
+            attr = self._get_option_attribute(option)
+            if attr:
+                setattr(self, attr, other_options.pop(option))
         for attr, value in attrs.items():
             if not is_attribute(attr):
                 raise TypeError('Unknown attribute: {attr}'.format(attr=attr))
@@ -57,6 +57,21 @@ class BaseService(object):
         elif attr in self._attributes:
             self.overridden_attributes.add(attr)
         super(BaseService, self).__setattr__(attr, value)
+
+    def _get_option_attribute(self, option_name):
+        if option_name in self._options:
+            return option_name
+        if option_name in self._options_custom_names:
+            return self._options_custom_names[option_name]
+        return None
+
+    @cached_property
+    def _options_custom_names(self):
+        return dict(
+            (option.name, attr)
+            for attr, option in self._options.items()
+            if option.name
+        )
 
     @property
     def image_id(self):

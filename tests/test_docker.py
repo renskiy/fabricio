@@ -2395,7 +2395,7 @@ class ServiceTestCase(unittest.TestCase):
                     name='service',
                     args='arg1 "arg2" \'arg3\'',
                     options=dict(
-                        publish='source:target',
+                        publish='80:80',
                         mount='type=volume,destination=/path',
                         label='label=value',
                         env='FOO=bar',
@@ -2422,7 +2422,7 @@ class ServiceTestCase(unittest.TestCase):
                 expected={
                     'env-add': ['FOO=bar'],
                     'constraint-add': ['node.role == manager'],
-                    'publish-add': ['source:target'],
+                    'publish-add': ['80:80'],
                     'label-add': ['label=value'],
                     'args': 'arg1 "arg2" \'arg3\'',
                     'user': 'user',
@@ -2439,6 +2439,31 @@ class ServiceTestCase(unittest.TestCase):
                     'group-add': ['42'],
                     'placement-pref-add': ['spread=node.role'],
                     'dns-add': ['8.8.8.8'],
+                    'dns-option-add': ['option'],
+                    'dns-search-add': ['domain'],
+                },
+            ),
+            new_option_value_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    args='arg1 "arg2" \'arg3\'',
+                    options={
+                        'container-label': 'label=value',
+                        'restart-condition': 'on-failure',
+                        'stop-grace-period': 20,
+                        'placement-pref': 'spread=node.role',
+                        'dns-option': 'option',
+                        'dns-search': 'domain',
+                    },
+                    mode='mode',
+                ),
+                service_info=dict(),
+                expected={
+                    'args': 'arg1 "arg2" \'arg3\'',
+                    'stop-grace-period': 20,
+                    'restart-condition': 'on-failure',
+                    'container-label-add': ['label=value'],
+                    'placement-pref-add': ['spread=node.role'],
                     'dns-option-add': ['option'],
                     'dns-search-add': ['domain'],
                 },
@@ -2618,6 +2643,61 @@ class ServiceTestCase(unittest.TestCase):
                     'placement-pref-rm': ['spread=old'],
                 },
             ),
+            changed_option_value_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    args='arg1 "arg2" \'arg3\'',
+                    options={
+                        'container-label': 'label=container_new_value',
+                        'restart-condition': 'any',
+                        'stop-grace-period': 20,
+                        'placement-pref': 'spread=new',
+                        'dns-option': 'new',
+                        'dns-search': 'new',
+                    },
+                    mode='mode',
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=dict(
+                                    label='value',
+                                ),
+                                DNSConfig=dict(
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                expected={
+                    'args': 'arg1 "arg2" \'arg3\'',
+                    'stop-grace-period': 20,
+                    'restart-condition': 'any',
+                    'container-label-add': ['label=container_new_value'],
+                    'dns-option-add': ['new'],
+                    'dns-option-rm': ['old'],
+                    'dns-search-add': ['new'],
+                    'dns-search-rm': ['old'],
+                    'placement-pref-add': ['spread=new'],
+                    'placement-pref-rm': ['spread=old'],
+                },
+            ),
             no_changes=dict(
                 init_kwargs=dict(
                     name='service',
@@ -2749,6 +2829,57 @@ class ServiceTestCase(unittest.TestCase):
                     'secret-rm': ['secret'],
                     'config-add': ['config'],
                     'config-rm': ['config'],
+                    'placement-pref-add': ['spread=old'],
+                    'placement-pref-rm': ['spread=old'],
+                },
+            ),
+            no_changes_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    args='arg1 "arg2" \'arg3\'',
+                    options={
+                        'container-label': 'label=value',
+                        'restart-condition': 'any',
+                        'stop-grace-period': 20,
+                        'placement-pref': 'spread=old',
+                        'dns-option': 'old',
+                        'dns-search': 'old',
+                    },
+                    mode='mode',
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=dict(
+                                    label='value',
+                                ),
+                                DNSConfig=dict(
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                expected={
+                    'container-label-add': ['label=value'],
+                    'args': 'arg1 "arg2" \'arg3\'',
+                    'stop-grace-period': 20,
+                    'restart-condition': 'any',
                     'placement-pref-add': ['spread=old'],
                     'placement-pref-rm': ['spread=old'],
                 },
@@ -2888,13 +3019,64 @@ class ServiceTestCase(unittest.TestCase):
                     'placement-pref-rm': ['spread=old'],
                 },
             ),
+            no_changes_callable_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    args='arg1 "arg2" \'arg3\'',
+                    options={
+                        'container-label': lambda service: 'label=value',
+                        'restart-condition': lambda service: 'any',
+                        'stop-grace-period': lambda service: 20,
+                        'placement-pref': lambda service: 'spread=old',
+                        'dns-option': lambda service: 'old',
+                        'dns-search': lambda service: 'old',
+                    },
+                    mode='mode',
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=dict(
+                                    label='value',
+                                ),
+                                DNSConfig=dict(
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                expected={
+                    'container-label-add': ['label=value'],
+                    'args': 'arg1 "arg2" \'arg3\'',
+                    'stop-grace-period': 20,
+                    'restart-condition': 'any',
+                    'placement-pref-add': ['spread=old'],
+                    'placement-pref-rm': ['spread=old'],
+                },
+            ),
             new_options_values=dict(
                 init_kwargs=dict(
                     name='service',
                     options=dict(
                         publish=[
-                            'source:target',
-                            'source2:target2',
+                            '80:80',
+                            '81:81',
                         ],
                         mount=[
                             'type=volume,destination=/path',
@@ -2943,7 +3125,7 @@ class ServiceTestCase(unittest.TestCase):
                 expected={
                     'env-add': ['FOO=bar', 'FOO2=bar2'],
                     'constraint-add': ['node.role == manager', 'node.role == worker'],
-                    'publish-add': ['source:target', 'source2:target2'],
+                    'publish-add': ['80:80', '81:81'],
                     'label-add': ['label=value', 'label2=value2'],
                     'mount-add': ['type=volume,destination=/path', 'type=volume,destination="/path2"'],
                     'container-label-add': ['label=value', 'label2=value2'],
@@ -2954,6 +3136,28 @@ class ServiceTestCase(unittest.TestCase):
                     'config-add': ['config', 'source=config,target=/config2'],
                     'group-add': ['group1', 'group2'],
                     'dns-add': ['dns1', 'dns2'],
+                    'dns-option-add': ['option1', 'option2'],
+                    'dns-search-add': ['domain1', 'domain2'],
+                    'placement-pref-add': ['spread=spread1', 'spread=spread2,foo=bar'],
+                },
+            ),
+            new_options_values_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    options={
+                        'container-label': [
+                            'label=value',
+                            'label2=value2',
+                        ],
+                        'placement-pref': ['spread=spread1', 'spread=spread2,foo=bar'],
+                        'dns-option': ['option1', 'option2'],
+                        'dns-search': ['domain1', 'domain2'],
+                    },
+                ),
+                service_info=dict(),
+                expected={
+                    'container-label-add': ['label=value', 'label2=value2'],
+                    'args': '',
                     'dns-option-add': ['option1', 'option2'],
                     'dns-search-add': ['domain1', 'domain2'],
                     'placement-pref-add': ['spread=spread1', 'spread=spread2,foo=bar'],
@@ -3040,9 +3244,9 @@ class ServiceTestCase(unittest.TestCase):
                         EndpointSpec=dict(
                             Ports=[
                                 dict(
-                                    TargetPort='target',
+                                    TargetPort=80,
                                     Protocol='tcp',
-                                    PublishedPort='source',
+                                    PublishedPort=80,
                                 ),
                             ],
                         ),
@@ -3054,7 +3258,7 @@ class ServiceTestCase(unittest.TestCase):
                     'env-rm': ['FOO'],
                     'mount-rm': ['/path'],
                     'container-label-rm': ['label'],
-                    'publish-rm': ['target'],
+                    'publish-rm': [80],
                     'network-rm': ['old_network_id'],
                     'constraint-rm': ['node.role == manager'],
                     'host-rm': ['foo:127.0.0.1'],
@@ -3067,11 +3271,51 @@ class ServiceTestCase(unittest.TestCase):
                     'placement-pref-rm': ['spread=old'],
                 },
             ),
+            remove_option_value_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=dict(
+                                    label='value',
+                                ),
+                                DNSConfig=dict(
+                                    Options=[
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='old',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                expected={
+                    'args': '',
+                    'container-label-rm': ['label'],
+                    'dns-option-rm': ['old'],
+                    'dns-search-rm': ['old'],
+                    'placement-pref-rm': ['spread=old'],
+                },
+            ),
             remove_single_option_value_from_two=dict(
                 init_kwargs=dict(
                     name='service',
                     options=dict(
-                        publish='source2:target2',
+                        publish='80:80',
                         mount='type=volume,destination=/path',
                         label='label=value',
                         env='FOO=bar',
@@ -3204,14 +3448,14 @@ class ServiceTestCase(unittest.TestCase):
                         EndpointSpec=dict(
                             Ports=[
                                 dict(
-                                    TargetPort='target',
+                                    TargetPort=80,
                                     Protocol='tcp',
-                                    PublishedPort='source',
+                                    PublishedPort=80,
                                 ),
                                 dict(
-                                    TargetPort='target2',
+                                    TargetPort=81,
                                     Protocol='tcp',
-                                    PublishedPort='source2',
+                                    PublishedPort=81,
                                 ),
                             ],
                         ),
@@ -3225,9 +3469,9 @@ class ServiceTestCase(unittest.TestCase):
                     'label-add': ['label=value'],
                     'label-rm': ['label2'],
                     'args': '',
-                    'publish-add': ['source2:target2'],
+                    'publish-add': ['80:80'],
+                    'publish-rm': [81],
                     'mount-rm': ['/path2'],
-                    'publish-rm': ['target'],
                     'network-add': ['network2'],
                     'network-rm': ['network1_id', 'network2_id'],
                     'mount-add': ['type=volume,destination=/path'],
@@ -3245,14 +3489,70 @@ class ServiceTestCase(unittest.TestCase):
                     'placement-pref-rm': ['spread=new', 'spread=old,foo=old'],
                 },
             ),
+            remove_single_option_value_from_two_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    options={
+                        'container-label': 'label=value',
+                        'placement-pref': 'spread=new',
+                        'dns-option': 'new',
+                        'dns-search': 'new',
+                    },
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=OrderedDict([
+                                    ('label', 'value'),
+                                    ('label2', 'value2'),
+                                ]),
+                                DNSConfig=dict(
+                                    Options=[
+                                        'new',
+                                        'old',
+                                    ],
+                                    Search=[
+                                        'new',
+                                        'old',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='new',
+                                        ),
+                                    ),
+                                    OrderedDict((
+                                        ('Spread', dict(
+                                            SpreadDescriptor='old',
+                                        )),
+                                        ('Foo', dict(
+                                            FooDescriptor='old',
+                                        )),
+                                    )),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                expected={
+                    'container-label-add': ['label=value'],
+                    'container-label-rm': ['label2'],
+                    'args': '',
+                    'dns-option-rm': ['old'],
+                    'dns-search-rm': ['old'],
+                    'placement-pref-add': ['spread=new'],
+                    'placement-pref-rm': ['spread=new', 'spread=old,foo=old'],
+                },
+            ),
             remove_single_option_value_from_three=dict(
                 init_kwargs=dict(
                     name='service',
                     options=dict(
-                        publish=[
-                            'source2:target2',
-                            'source3:target3',
-                        ],
+                        publish='80-81:80-81/tcp',
                         mount=[
                             'type=volume,target=/path',
                             'type=volume,dst="/path2"',
@@ -3445,19 +3745,19 @@ class ServiceTestCase(unittest.TestCase):
                         EndpointSpec=dict(
                             Ports=[
                                 dict(
-                                    TargetPort='target',
+                                    TargetPort=80,
                                     Protocol='tcp',
-                                    PublishedPort='source',
+                                    PublishedPort=80,
                                 ),
                                 dict(
-                                    TargetPort='target2',
+                                    TargetPort=81,
                                     Protocol='tcp',
-                                    PublishedPort='source2',
+                                    PublishedPort=81,
                                 ),
                                 dict(
-                                    TargetPort='target3',
+                                    TargetPort=82,
                                     Protocol='tcp',
-                                    PublishedPort='source3',
+                                    PublishedPort=82,
                                 ),
                             ],
                         ),
@@ -3471,9 +3771,9 @@ class ServiceTestCase(unittest.TestCase):
                     'label-add': ['label=value', 'label2=value2'],
                     'label-rm': ['label3'],
                     'args': '',
-                    'publish-add': ['source2:target2', 'source3:target3'],
+                    'publish-add': ['80-81:80-81/tcp'],
+                    'publish-rm': [82],
                     'mount-rm': ['/path3'],
-                    'publish-rm': ['target'],
                     'mount-add': ['type=volume,target=/path', 'type=volume,dst="/path2"'],
                     'constraint-rm': ['constraint'],
                     'network-add': ['network1', 'network2'],
@@ -3485,6 +3785,70 @@ class ServiceTestCase(unittest.TestCase):
                     'config-rm': ['config1', 'config2', 'config3'],
                     'group-rm': ['group3'],
                     'dns-rm': ['dns3'],
+                    'dns-option-rm': ['option3'],
+                    'dns-search-rm': ['domain3'],
+                    'placement-pref-add': ['spread=pref1', 'spread=pref2'],
+                    'placement-pref-rm': ['spread=pref1', 'spread=pref2', 'spread=pref3'],
+                },
+            ),
+            remove_single_option_value_from_three_with_custom_name=dict(
+                init_kwargs=dict(
+                    name='service',
+                    options={
+                        'container_label': ['label=value', 'label2=value2'],
+                        'placement_pref': ['spread=pref1', 'spread=pref2'],
+                        'dns_option': ['option1', 'option2'],
+                        'dns_search': ['domain1', 'domain2'],
+                    },
+                ),
+                service_info=dict(
+                    Spec=dict(
+                        TaskTemplate=dict(
+                            ContainerSpec=dict(
+                                Labels=OrderedDict([
+                                    ('label', 'value'),
+                                    ('label2', 'value2'),
+                                    ('label3', 'value3'),
+                                ]),
+                                DNSConfig=dict(
+                                    Options=[
+                                        'option1',
+                                        'option2',
+                                        'option3',
+                                    ],
+                                    Search=[
+                                        'domain1',
+                                        'domain2',
+                                        'domain3',
+                                    ],
+                                ),
+                            ),
+                            Placement=dict(
+                                Preferences=[
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='pref1',
+                                        ),
+                                    ),
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='pref2',
+                                        ),
+                                    ),
+                                    dict(
+                                        Spread=dict(
+                                            SpreadDescriptor='pref3',
+                                        ),
+                                    ),
+                                ],
+                            ),
+                        ),
+                    ),
+                ),
+                expected={
+                    'container-label-add': ['label=value', 'label2=value2'],
+                    'container-label-rm': ['label3'],
+                    'args': '',
                     'dns-option-rm': ['option3'],
                     'dns-search-rm': ['domain3'],
                     'placement-pref-add': ['spread=pref1', 'spread=pref2'],

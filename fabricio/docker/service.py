@@ -17,7 +17,7 @@ from cached_property import cached_property
 from fabric import colors, api as fab
 from fabric.exceptions import CommandTimeout, NetworkError
 from frozendict import frozendict
-from six.moves import map, shlex_quote
+from six.moves import map, shlex_quote, range
 
 import fabricio
 
@@ -84,6 +84,13 @@ class RemovableOption(Option):
         if not self.force_rm:
             new_values = self.get_new_values(service, attr)
             new_values = map(self.cast_rm, new_values)
+            new_values = (
+                value
+                for values in new_values
+                for value in (
+                    values if isinstance(values, (list, tuple)) else [values]
+                )
+            )
             current_values -= new_values
 
         return list(current_values) or None
@@ -130,13 +137,13 @@ class PublishOption(RemovableOption):
 
     force_add = True
 
-    def get_current_values(self, service_info):
-        values = super(PublishOption, self).get_current_values(service_info)
-        return map(six.text_type, values)
-
     def cast_rm(self, value, from_current=False):
-        # 'source:target/protocol' => 'target'
-        return six.text_type(value).rsplit('/', 1)[0].rsplit(':', 1)[-1]
+        # 'source:target/protocol' => int('target')
+        target_port = six.text_type(value).rsplit('/', 1)[0].rsplit(':', 1)[-1]
+        if '-' not in target_port:
+            return int(target_port)
+        port_start, port_end = map(int, target_port.split('-', 1))
+        return list(range(port_start, port_end + 1))
 
 
 class MountOption(RemovableOption):
