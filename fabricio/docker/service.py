@@ -1,5 +1,6 @@
 import ctypes
 import functools
+import hashlib
 import itertools
 import json
 import multiprocessing
@@ -395,15 +396,17 @@ class Service(_Base):
             service_info = {}
 
         with utils.patch(self, 'info', service_info, force_delete=True):
-            new_options = dict(self.options, image=image, args=self.cmd)
-
             labels = service_info.get('Spec', {}).get('Labels', {})
-            current_options = labels.pop(self.options_label_name, '')
+            current_options = labels.pop(self.options_label_name, None)
+            new_options = self._encode_options(dict(
+                self.options,
+                image=image,
+                args=self.cmd,
+            ))
 
-            if force or self._decode_options(current_options) != new_options:
+            if force or current_options != new_options:
                 label_with_new_options = {
-                    self.options_label_name:
-                    self._encode_options(new_options),
+                    self.options_label_name: new_options,
                 }
                 self._update_labels(label_with_new_options)
 
@@ -442,17 +445,8 @@ class Service(_Base):
 
     @staticmethod
     def _encode_options(options):
-        options = utils.OrderedDict(sorted(options.items()))
-        options_string = json.dumps(options, default=six.text_type).encode()
-        return b64encode(options_string).decode()
-
-    @staticmethod
-    def _decode_options(encoded_options):
-        try:
-            return json.loads(encoded_options or '{}')
-        except ValueError:
-            pass
-        return json.loads(b64decode(encoded_options).decode() or '{}')
+        bucket = json.dumps(options, sort_keys=True, default=six.text_type)
+        return hashlib.md5(bucket.encode()).hexdigest()
 
     def _update_labels(self, labels):
         service_labels = self.label

@@ -1793,59 +1793,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult(json.dumps([{"Spec": {
                         "Labels": {
-                            "fabricio.service.options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
-                        },
-                        "TaskTemplate": {
-                            "ContainerSpec": {
-                                "Secrets": [
-                                    {
-                                        "File": {
-                                            "Name": "secret",
-                                        },
-                                        "SecretID": "secret",
-                                        "SecretName": "secret",
-                                    },
-                                ],
-                            },
-                        },
-                    }}])),  # service info
-                ),
-                args_parsers=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    docker_entity_inspect_args_parser,
-                ],
-                expected_args=[
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
-                    },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'image:tag',
-                    },
-                    {
-                        'executable': ['docker', 'service', 'inspect'],
-                        'service': 'service',
-                    },
-                ],
-                expected_result=False,
-            ),
-            no_changes_json=dict(
-                init_kwargs=dict(
-                    name='service',
-                    image='image:tag',
-                    options=dict(
-                        secret='secret',
-                    ),
-                ),
-                update_kwargs=dict(),
-                side_effect=(
-                    SucceededResult('  Is Manager: true'),  # manager status
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult(json.dumps([{"Spec": {
-                        "Labels": {
-                            "fabricio.service.options": '{"image": "digest", "args": "", "secret": "secret"}',
+                            "fabricio.service.options": "b1a9a7833e4ca8b5122b9db71844ed33",
                         },
                         "TaskTemplate": {
                             "ContainerSpec": {
@@ -1897,7 +1845,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult(json.dumps([{"Spec": {
                         "Labels": {
-                            "fabricio.service.options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
+                            "fabricio.service.options": "b1a9a7833e4ca8b5122b9db71844ed33",
                         },
                         "TaskTemplate": {
                             "ContainerSpec": {
@@ -1940,72 +1888,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
-                        ],
-                        'secret-add': ['secret'],
-                        'secret-rm': ['secret'],
-                    },
-                ],
-                expected_result=True,
-            ),
-            forced_json=dict(
-                init_kwargs=dict(
-                    name='service',
-                    image='image:tag',
-                    options=dict(
-                        secret='secret',
-                    ),
-                ),
-                update_kwargs=dict(force=True),
-                side_effect=(
-                    SucceededResult('  Is Manager: true'),  # manager status
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                    SucceededResult(json.dumps([{"Spec": {
-                        "Labels": {
-                            "fabricio.service.options": '{"image": "digest", "args": "", "secret-add": "secret"}',
-                        },
-                        "TaskTemplate": {
-                            "ContainerSpec": {
-                                "Secrets": [
-                                    {
-                                        "File": {
-                                            "Name": "secret",
-                                        },
-                                        "SecretID": "secret",
-                                        "SecretName": "secret",
-                                    },
-                                ],
-                            },
-                        },
-                    }}])),  # service info
-                    SucceededResult(),  # service update
-                ),
-                args_parsers=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    docker_entity_inspect_args_parser,
-                    docker_service_update_args_parser,
-                ],
-                expected_args=[
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
-                    },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'image:tag',
-                    },
-                    {
-                        'executable': ['docker', 'service', 'inspect'],
-                        'service': 'service',
-                    },
-                    {
-                        'executable': ['docker', 'service', 'update'],
-                        'image': 'digest',
-                        'service': 'service',
-                        'args': '',
-                        'label-add': [
-                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
+                            'fabricio.service.options=b1a9a7833e4ca8b5122b9db71844ed33',
                         ],
                         'secret-add': ['secret'],
                         'secret-rm': ['secret'],
@@ -2050,7 +1933,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=5ed89ef87bc69f63506f92169933231d',
                         ],
                     },
                 ],
@@ -2096,7 +1979,7 @@ class ServiceTestCase(unittest.TestCase):
                         'label-add': [
                             'label1=label1',
                             'label2=label2',
-                            'fabricio.service.options=eyJhcmdzIjogImZvbyBiYXIiLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImxhYmVsIjogWyJsYWJlbDE9bGFiZWwxIiwgImxhYmVsMj1sYWJlbDIiXX0=',
+                            'fabricio.service.options=0a4991404e926ea32115d3ad6debf1c7',
                         ],
                         'args': 'foo bar',
                     },
@@ -2140,7 +2023,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=5ed89ef87bc69f63506f92169933231d',
                         ],
                     },
                 ],
@@ -2183,7 +2066,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=5ed89ef87bc69f63506f92169933231d',
                         ],
                     },
                 ],
@@ -2226,7 +2109,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=5ed89ef87bc69f63506f92169933231d',
                         ],
                     },
                 ],
