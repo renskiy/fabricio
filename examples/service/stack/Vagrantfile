@@ -1,0 +1,23 @@
+Vagrant.configure('2') do |config|
+
+  config.vm.box = 'ubuntu/trusty64'
+
+  config.vm.network 'private_network', type: 'dhcp'
+
+  %w(
+    docker-1
+    docker-2
+    docker-3
+  ).each do |host_name|
+    config.vm.define host_name do |host|
+
+      host.vm.hostname = host_name
+
+      # install Docker
+      host.vm.provision 'docker'
+
+    end
+
+  end
+  
+end

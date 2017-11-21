@@ -24,7 +24,7 @@ import fabricio
 from fabricio import utils
 
 from .base import BaseService, Option, Attribute
-from .container import Container, ContainerNotFoundError
+from .image import Image, ImageNotFoundError
 
 host_errors = (RuntimeError, NetworkError, CommandTimeout)
 
@@ -189,11 +189,74 @@ class PlacementPrefOption(RemovableOption):
             )
 
 
-class Service(BaseService):
+class _Base(BaseService):
 
-    current_options_label_name = '_current_options'
+    def __init__(self, *args, **kwargs):
+        super(_Base, self).__init__(*args, **kwargs)
+        self.manager_found = multiprocessing.Event()
+        self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
+        self.pull_errors = multiprocessing.Manager().dict()
 
-    use_image_sentinels = Attribute(default=False)
+    def is_manager(self):
+        try:
+            if self.pull_errors.get(fab.env.host, False):
+                return False
+            is_manager = fabricio.run(
+                "docker info 2>&1 | grep 'Is Manager:'",
+                use_cache=True,
+            ).endswith('true')
+            if is_manager:
+                self.manager_found.set()
+            return is_manager
+        except host_errors as error:
+            fabricio.log(
+                'WARNING: {error}'.format(error=error),
+                output=sys.stderr,
+                color=colors.red,
+            )
+            return False
+        finally:
+            with self.is_manager_call_count.get_lock():
+                self.is_manager_call_count.value += 1
+                if self.is_manager_call_count.value >= len(fab.env.all_hosts):
+                    if not self.manager_found.is_set():
+                        msg = 'Service manager with pulled image was not found'
+                        raise ServiceError(msg)
+                    self.manager_found.clear()
+                    self.is_manager_call_count.value = 0
+
+    def pull_image(self, *args, **kwargs):
+        try:
+            if self.image:
+                return super(_Base, self).pull_image(*args, **kwargs)
+        except host_errors as error:
+            self.pull_errors[fab.env.host] = True
+            fabricio.log(
+                'WARNING: {error}'.format(error=error),
+                output=sys.stderr,
+                color=colors.red,
+            )
+
+    def migrate(self, *args, **kwargs):
+        if self.is_manager():
+            super(_Base, self).migrate(*args, **kwargs)
+
+    def migrate_back(self):
+        if self.is_manager():
+            super(_Base, self).migrate_back()
+
+    def backup(self):
+        if self.is_manager():
+            super(_Base, self).backup()
+
+    def restore(self, backup_name=None):
+        if self.is_manager():
+            super(_Base, self).restore(backup_name=backup_name)
+
+
+class Service(_Base):
+
+    options_label_name = 'fabricio.service.options'
 
     command = Attribute()
     args = Attribute()
@@ -251,12 +314,6 @@ class Service(BaseService):
         name='dns-search',
         safe=True,
     )
-
-    def __init__(self, *args, **kwargs):
-        super(Service, self).__init__(*args, **kwargs)
-        self.manager_found = multiprocessing.Event()
-        self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
-        self.pull_errors = multiprocessing.Manager().dict()
 
     @property
     def cmd(self):
@@ -341,11 +398,11 @@ class Service(BaseService):
             new_options = dict(self.options, image=image, args=self.cmd)
 
             labels = service_info.get('Spec', {}).get('Labels', {})
-            current_options = labels.pop(self.current_options_label_name, '')
+            current_options = labels.pop(self.options_label_name, '')
 
             if force or self._decode_options(current_options) != new_options:
                 label_with_new_options = {
-                    self.current_options_label_name:
+                    self.options_label_name:
                     self._encode_options(new_options),
                 }
                 self._update_labels(label_with_new_options)
@@ -359,82 +416,11 @@ class Service(BaseService):
                 return True
         return False
 
-    @staticmethod
-    def _delete_obsolete_images(repository):
-        images = 'docker images --no-trunc --quiet {0}'.format(repository)
-        fabricio.run(
-            'docker rmi $({images})'.format(images=images),
-            ignore_errors=True,
-        )
-
-    @property
-    def current_sentinel_name(self):
-        return '{service}_current'.format(service=self)
-
-    @property
-    def backup_sentinel_name(self):
-        return '{service}_backup'.format(service=self)
-
-    @property
-    def revert_sentinel_name(self):
-        return '{service}_revert'.format(service=self)
-
-    def _update_sentinels(self, image):
-        current = Container(name=self.current_sentinel_name)
-        backup = Container(name=self.backup_sentinel_name)
-        revert = Container(name=self.revert_sentinel_name)
-        try:
-            if current.image_id == image.info['Id']:
-                return
-            try:
-                backup.delete()
-            except RuntimeError:
-                pass
-            current.rename(self.backup_sentinel_name)
-        except ContainerNotFoundError:
-            pass
-        try:
-            revert.delete(delete_dangling_volumes=False)
-        except RuntimeError:
-            pass
-        image.create(name=self.current_sentinel_name)
-
-        image.tag = None
-        self._delete_obsolete_images(repository=image)
-
-    def _revert_sentinels(self):
-        current = Container(name=self.current_sentinel_name)
-        try:
-            # raises RuntimeError if revert sentinel already exists
-            # preventing double revert
-            current.rename(self.revert_sentinel_name)
-
-            # ignore RuntimeError if backup sentinel exists - usual case,
-            # preferring backup sentinels over revert,
-            # _update_sentinels() always tries to remove revert sentinel if any
-            current.rename(self.backup_sentinel_name)
-        except RuntimeError:
-            pass
-
     def update(self, tag=None, registry=None, account=None, force=False):
-        image = self.image[registry:tag:account]
-        is_manager = self.is_manager()
-        with contextlib.ExitStack() as stack:
-            if self.use_image_sentinels:
-                try:
-                    context = utils.patch(image, 'info', image.info, force_delete=True)  # noqa
-                    stack.enter_context(context)
-                    self._update_sentinels(image)
-                except host_errors as error:
-                    fabricio.log(
-                        'WARNING: {error}'.format(error=error),
-                        output=sys.stderr,
-                        color=colors.red,
-                    )
-            if not is_manager:
-                return False
-            result = self._update(image, force=force)
-            return result or result is None
+        if not self.is_manager():
+            return False
+        result = self._update(self.image[registry:tag:account], force=force)
+        return result is None or result
 
     @utils.once_per_command
     def _revert(self):
@@ -442,38 +428,8 @@ class Service(BaseService):
         fabricio.run(command)
 
     def revert(self):
-        is_manager = self.is_manager()
-        if self.use_image_sentinels:
-            self._revert_sentinels()
-        if is_manager:
+        if self.is_manager():
             self._revert()
-
-    def pull_image(self, *args, **kwargs):
-        try:
-            return super(Service, self).pull_image(*args, **kwargs)
-        except host_errors as error:
-            self.pull_errors[fab.env.host] = True
-            fabricio.log(
-                'WARNING: {error}'.format(error=error),
-                output=sys.stderr,
-                color=colors.red,
-            )
-
-    def migrate(self, *args, **kwargs):
-        if self.is_manager():
-            super(Service, self).migrate(*args, **kwargs)
-
-    def migrate_back(self):
-        if self.is_manager():
-            super(Service, self).migrate_back()
-
-    def backup(self):
-        if self.is_manager():
-            super(Service, self).backup()
-
-    def restore(self, backup_name=None):
-        if self.is_manager():
-            super(Service, self).restore(backup_name=backup_name)
 
     @utils.default_property
     def info(self):
@@ -483,34 +439,6 @@ class Service(BaseService):
             abort_exception=ServiceNotFoundError,
         )
         return json.loads(info)[0]
-
-    def is_manager(self):
-        try:
-            if self.pull_errors.get(fab.env.host, False):
-                return False
-            is_manager = fabricio.run(
-                "docker info 2>&1 | grep 'Is Manager:'",
-                use_cache=True,
-            ).endswith('true')
-            if is_manager:
-                self.manager_found.set()
-            return is_manager
-        except host_errors as error:
-            fabricio.log(
-                'WARNING: {error}'.format(error=error),
-                output=sys.stderr,
-                color=colors.red,
-            )
-            return False
-        finally:
-            with self.is_manager_call_count.get_lock():
-                self.is_manager_call_count.value += 1
-                if self.is_manager_call_count.value >= len(fab.env.all_hosts):
-                    if not self.manager_found.is_set():
-                        msg = 'Swarm manager with pulled image was not found'
-                        raise ServiceError(msg)
-                    self.manager_found.clear()
-                    self.is_manager_call_count.value = 0
 
     @staticmethod
     def _encode_options(options):
@@ -540,3 +468,134 @@ class Service(BaseService):
         for label, value in labels.items():
             service_labels.append("{0}={1}".format(label, value))
         self.label = service_labels
+
+
+class Stack(_Base):
+
+    temp_dir = Attribute(default='/tmp')
+
+    compose_file = Option(name='compose-file', default='docker-compose.yml')
+
+    image_id = None
+
+    info = None
+
+    def __init__(self, *args, **kwargs):
+        super(Stack, self).__init__(*args, **kwargs)
+        self.stack_updated = multiprocessing.Event()
+
+    @property
+    def settings_label(self):
+        return 'fabricio.stack.compose.{0}'.format(self.name)
+
+    @property
+    def current_settings_tag(self):
+        return 'fabricio-current-stack:{0}'.format(self.name)
+
+    @property
+    def backup_settings_tag(self):
+        return 'fabricio-backup-stack:{0}'.format(self.name)
+
+    @property
+    def actual_compose_file(self):
+        return self.options.get('compose-file')
+
+    def update(self, tag=None, registry=None, account=None, force=False):
+        if not self.is_manager():
+            return False
+        self.reset_stack_updated_status()
+        compose_file = open(self.actual_compose_file, 'rb').read()
+        new_settings = b64encode(compose_file).decode()
+        result = self._update(compose_file, new_settings, force=force)
+        if self.stack_updated.is_set():
+            self.save_new_settings(new_settings)
+        return result is None or result
+
+    @utils.once_per_command(block=True)
+    def _update(self, compose_file, new_settings, force=False):
+        if not force and self.current_settings == new_settings:
+            return False
+        with fab.cd(self.temp_dir):
+            fab.put(six.BytesIO(compose_file), self.actual_compose_file)
+            fabricio.run('docker stack deploy {options} {name}'.format(
+                options=utils.Options(self.options),
+                name=self.name,
+            ))
+        self.stack_updated.set()
+        return True
+
+    def revert(self):
+        if not self.is_manager():
+            return False
+        self.reset_stack_updated_status()
+        self._revert()
+        if self.stack_updated.is_set():
+            self.rotate_sentinel_images(rollback=True)
+
+    @utils.once_per_command(block=True)
+    def _revert(self):
+        new_settings = self.backup_settings
+        if not new_settings:
+            raise ServiceError('stack backup settings not found')
+        compose_file = b64decode(new_settings)
+        self._update(compose_file, new_settings, force=True)
+
+    @utils.once_per_command(block=True)
+    def reset_stack_updated_status(self):
+        self.stack_updated.clear()
+
+    @property
+    def current_settings(self):
+        return self._get_settings(Image(self.current_settings_tag))
+
+    @property
+    def backup_settings(self):
+        return self._get_settings(Image(self.backup_settings_tag))
+
+    def _get_settings(self, image):
+        label = self.settings_label
+        with contextlib.suppress(ImageNotFoundError):
+            return image.info.get('Config', {}).get('Labels', {}).get(label)
+
+    def rotate_sentinel_images(self, rollback=False):
+        backup_tag = self.backup_settings_tag
+        current_tag = self.current_settings_tag
+        if rollback:
+            backup_tag, current_tag = current_tag, backup_tag
+        with contextlib.suppress(host_errors):
+            fabricio.run(
+                (
+                    'docker rmi {backup_tag}'
+                    '; docker tag {current_tag} {backup_tag}'
+                    '; docker rmi {current_tag}'
+                ).format(
+                    backup_tag=backup_tag,
+                    current_tag=current_tag,
+                ),
+            )
+
+    def save_new_settings(self, settings):
+        self.rotate_sentinel_images()
+        dockerfile = (
+            'FROM {image}\n'
+            'LABEL {label}={settings}\n'
+        ).format(
+            image=self.image or 'scratch',
+            label=self.settings_label,
+            settings=settings,
+        )
+        command = 'echo {dockerfile} | docker build --tag {tag} -'.format(
+            dockerfile=shlex_quote(dockerfile),
+            tag=self.current_settings_tag,
+        )
+        try:
+            fabricio.run(command)
+        except host_errors as error:
+            fabricio.log(
+                'WARNING: {error}'.format(error=error),
+                output=sys.stderr,
+                color=colors.red,
+            )
+
+    def get_backup_version(self):
+        return self.fork(image=self.backup_settings_tag)

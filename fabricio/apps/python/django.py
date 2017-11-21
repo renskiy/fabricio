@@ -118,3 +118,7 @@ class DjangoContainer(docker.Container, DjangoMixin):
 
 class DjangoService(docker.Service, DjangoMixin):
     pass
+
+
+class DjangoStack(docker.Stack, DjangoMixin):
+    pass

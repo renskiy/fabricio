@@ -44,6 +44,89 @@ This will apply new migration. After that run 'rollback' command which should re
 
 See also "Hello, World" [Customization](../../hello_world/#customization) section.
 
+### DJANGO_SETTINGS_MODULE customization
+
+You can provide custom settings to each infrastructure you have by providing callable DJANGO_SETTINGS_MODULE `env` option:
+
+```python
+from fabric import api as fab
+from fabricio import tasks
+from fabricio.apps.python.django import DjangoContainer
+
+def django_settings(**additional_variables):
+    def _settings(
+        container,  # type DjangoContainer
+    ):
+        # select settings module depending on infrastructure name
+        # (see 'Infrastructures and roles' example)
+        settings = ('settings', fab.env.infrastructure)
+        env = ['DJANGO_SETTINGS_MODULE=%s' % '.'.join(settings)]
+        env.extend(map('='.join, additional_variables.items()))
+        return env
+    return _settings
+
+django = tasks.ImageBuildDockerTasks(
+    service=DjangoContainer(
+        name='django',
+        image='django',
+        options={
+            'publish': '8000:8000',
+            'stop-signal': 'INT',
+            'volume': '/data/django:/data',
+            'env': django_settings(
+                FOO='foo',
+            ),
+        },
+    ),
+    # ...
+)
+```
+
+### DjangoService
+
+To use Django as Docker service (such as described in 'Docker services' example) one can use `DjangoService` instance:
+
+```python
+from fabricio import tasks
+from fabricio.apps.python.django import DjangoService
+
+django = tasks.ImageBuildDockerTasks(
+    service=DjangoService(
+        name='django',
+        image='django',
+        options={
+            'publish': '8000:8000',
+            'stop-signal': 'INT',
+            'env': 'DJANGO_SETTINGS_MODULE=settings',
+        },
+    ),
+    # ...
+)
+```
+
+### DjangoStack
+
+Also, Django can be a part of Docker stack (see 'Docker stacks' example):
+
+```python
+from fabricio import tasks
+from fabricio.apps.python.django import DjangoStack
+
+django = tasks.ImageBuildDockerTasks(
+    service=DjangoStack(
+        name='django',
+        image='django',
+        safe_options={
+            # safe options are options passing to container
+            # which does 'migrate' (or 'migrate-back') operation
+            'stop-signal': 'INT',
+            'env': 'DJANGO_SETTINGS_MODULE=settings',
+        },
+    ),
+    # ...
+)
+```
+
 ## Issues
 
 * If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`

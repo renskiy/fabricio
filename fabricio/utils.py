@@ -82,11 +82,14 @@ def strtobool(value):
     return distutils.strtobool(str(value))
 
 
-def once_per_command(func):  # TODO default=None
+def once_per_command(func=None, block=False, default=None):
+    if func is None:
+        return functools.partial(once_per_command, block=block, default=default)
+
     @functools.wraps(func)
     def _func(*args, **kwargs):
         lock = last_hash.get_lock()
-        if lock.acquire(False):
+        if lock.acquire(block):
             try:
                 command = fab.env.command or ''
                 infrastructure = fab.env.infrastructure or ''
@@ -99,8 +102,10 @@ def once_per_command(func):  # TODO default=None
                 if current_hash != last_hash.raw:
                     last_hash.raw = current_hash
                     return func(*args, **kwargs)
+                return default
             finally:
                 lock.release()
+
     last_hash = multiprocessing.Array(ctypes.c_char, hashlib.md5().digest_size)
     return _func
 

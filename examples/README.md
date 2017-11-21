@@ -3,13 +3,14 @@
 ## Basics
 
 * [Hello, World](hello_world/)
-* [Build Docker image](build_image/)
+* [Building Docker images](build_image/)
 * [Infrastructures and roles](roles/)
 * [Deploy to localhost](roles/#deploy-to-localhost)
 
 ## Services
 
-* [Docker swarm mode](service/swarm/)
+* [Docker services (swarm mode)](service/swarm/)
+* [Docker stacks (Docker Compose 3.0+)](service/stack/)
 
 ## Applications
 

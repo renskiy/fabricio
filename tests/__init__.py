@@ -1,6 +1,32 @@
 import argparse
 import shlex
 
+import unittest2 as unittest
+
+
+class FabricioTestCase(unittest.TestCase):
+
+    def command_checker(self, args_parsers=(), expected_args_set=(), side_effects=()):
+        def check_command_args(command, **kwargs):
+            try:
+                command_parser = next(args_parsers)
+                expected_command_args = next(expected_args_set)
+                side_effect = next(side_effects)
+            except StopIteration:
+                self.fail('unexpected command: {0}'.format(command))
+            args = shlex.split(command)
+            self.assertDictEqual(
+                expected_command_args,
+                vars(command_parser.parse_args(args)),
+            )
+            if isinstance(side_effect, Exception):
+                raise side_effect
+            return side_effect
+        args_parsers = iter(args_parsers)
+        expected_args_set = iter(expected_args_set)
+        side_effects = iter(side_effects)
+        return check_command_args
+
 
 class SucceededResult(str):
 

@@ -1709,20 +1709,13 @@ class ServiceTestCase(unittest.TestCase):
                 update_kwargs=dict(),
                 side_effect=(
                     SucceededResult('  Is Manager: false'),  # manager status
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                 ),
                 args_parsers=[
                     args_parser,
-                    docker_inspect_args_parser,
                 ],
                 expected_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
-                    },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'image:tag',
                     },
                 ],
                 expected_result=False,
@@ -1774,51 +1767,16 @@ class ServiceTestCase(unittest.TestCase):
                 update_kwargs=dict(),
                 side_effect=(
                     RuntimeError(),  # manager status
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                 ),
                 args_parsers=[
                     args_parser,
-                    docker_inspect_args_parser,
                 ],
                 expected_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'image:tag',
-                    },
                 ],
                 expected_result=False,
-                all_hosts=['host1', 'host2'],
-            ),
-            worker_failed_sentinels_update=dict(
-                init_kwargs=dict(
-                    name='service',
-                    image='image:tag',
-                ),
-                update_kwargs=dict(),
-                side_effect=(
-                    SucceededResult('  Is Manager: false'),  # manager status
-                    SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
-                ),
-                args_parsers=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                ],
-                expected_args=[
-                    {
-                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
-                    },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'image:tag',
-                    },
-                ],
-                expected_result=False,
-                update_sentinels_fails=True,
                 all_hosts=['host1', 'host2'],
             ),
             no_changes=dict(
@@ -1835,7 +1793,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult(json.dumps([{"Spec": {
                         "Labels": {
-                            "_current_options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
+                            "fabricio.service.options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
                         },
                         "TaskTemplate": {
                             "ContainerSpec": {
@@ -1887,7 +1845,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult(json.dumps([{"Spec": {
                         "Labels": {
-                            "_current_options": '{"image": "digest", "args": "", "secret": "secret"}',
+                            "fabricio.service.options": '{"image": "digest", "args": "", "secret": "secret"}',
                         },
                         "TaskTemplate": {
                             "ContainerSpec": {
@@ -1939,7 +1897,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult(json.dumps([{"Spec": {
                         "Labels": {
-                            "_current_options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
+                            "fabricio.service.options": "eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9",
                         },
                         "TaskTemplate": {
                             "ContainerSpec": {
@@ -1982,7 +1940,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
+                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
                         ],
                         'secret-add': ['secret'],
                         'secret-rm': ['secret'],
@@ -2004,7 +1962,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult('[{"RepoDigests": ["digest"]}]'),  # image info
                     SucceededResult(json.dumps([{"Spec": {
                         "Labels": {
-                            "_current_options": '{"image": "digest", "args": "", "secret-add": "secret"}',
+                            "fabricio.service.options": '{"image": "digest", "args": "", "secret-add": "secret"}',
                         },
                         "TaskTemplate": {
                             "ContainerSpec": {
@@ -2047,7 +2005,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
+                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QiLCAic2VjcmV0IjogInNlY3JldCJ9',
                         ],
                         'secret-add': ['secret'],
                         'secret-rm': ['secret'],
@@ -2092,7 +2050,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                         ],
                     },
                 ],
@@ -2138,7 +2096,7 @@ class ServiceTestCase(unittest.TestCase):
                         'label-add': [
                             'label1=label1',
                             'label2=label2',
-                            '_current_options=eyJhcmdzIjogImZvbyBiYXIiLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImxhYmVsIjogWyJsYWJlbDE9bGFiZWwxIiwgImxhYmVsMj1sYWJlbDIiXX0=',
+                            'fabricio.service.options=eyJhcmdzIjogImZvbyBiYXIiLCAiaW1hZ2UiOiAiZGlnZXN0IiwgImxhYmVsIjogWyJsYWJlbDE9bGFiZWwxIiwgImxhYmVsMj1sYWJlbDIiXX0=',
                         ],
                         'args': 'foo bar',
                     },
@@ -2182,7 +2140,7 @@ class ServiceTestCase(unittest.TestCase):
                         'service': 'service',
                         'args': '',
                         'label-add': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                         ],
                     },
                 ],
@@ -2225,7 +2183,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                         ],
                     },
                 ],
@@ -2268,7 +2226,7 @@ class ServiceTestCase(unittest.TestCase):
                         'name': 'service',
                         'args': [],
                         'label': [
-                            '_current_options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
+                            'fabricio.service.options=eyJhcmdzIjogIiIsICJpbWFnZSI6ICJkaWdlc3QifQ==',
                         ],
                     },
                 ],
@@ -2294,29 +2252,23 @@ class ServiceTestCase(unittest.TestCase):
                 fabricio.run.cache.clear()  # reset Service.is_manager()
                 with mock.patch.dict(fab.env, dict(all_hosts=data.get('all_hosts', ['host']))):
                     with mock.patch.object(fab, 'run', side_effect=test_command) as run:
-                        with mock.patch.object(docker.Service, '_update_sentinels') as update_sentinels:
-                            if data.get('update_sentinels_fails', False):
-                                update_sentinels.side_effect = RuntimeError()
-                            run.__name__ = 'mocked_run'
-                            service = docker.Service(
-                                use_image_sentinels=True,
-                                **data['init_kwargs']
-                            )
-                            expected_result = data['expected_result']
+                        run.__name__ = 'mocked_run'
+                        service = docker.Service(**data['init_kwargs'])
+                        expected_result = data['expected_result']
+                        try:
+                            result = service.update(**data['update_kwargs'])
+                            self.assertEqual(result, expected_result)
+                        except AssertionError:
+                            raise
+                        except Exception as exception:
                             try:
-                                result = service.update(**data['update_kwargs'])
-                                self.assertEqual(result, expected_result)
-                            except AssertionError:
+                                is_exception_expected = issubclass(expected_result, Exception)
+                            except TypeError:
+                                is_exception_expected = False
+                            if not is_exception_expected:
                                 raise
-                            except Exception as exception:
-                                try:
-                                    is_exception_expected = issubclass(expected_result, Exception)
-                                except TypeError:
-                                    is_exception_expected = False
-                                if not is_exception_expected:
-                                    raise
-                                self.assertIsInstance(exception, expected_result)
-                            self.assertEqual(run.call_count, len(data['expected_args']))
+                            self.assertIsInstance(exception, expected_result)
+                        self.assertEqual(run.call_count, len(data['expected_args']))
 
     @mock.patch.dict(fab.env, dict(all_hosts=['host1', 'host2']))
     def test_is_manager_returns_false_if_pull_error(self, *args):
@@ -4073,174 +4025,3 @@ class ServiceTestCase(unittest.TestCase):
                 ) as run:
                     service._create_service(image)
                     run.assert_called_once()
-
-    def test__update_sentinels(self):
-        cases = dict(
-            regular=dict(
-                kwargs={},
-                expected_calls=[
-                    mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
-                    mock.call('docker inspect --type image image:tag', abort_exception=mock.ANY),
-                    mock.call('docker rm service_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
-                    mock.call('docker rename service_current service_backup'),
-                    mock.call('docker rm service_revert'),
-                    mock.call('docker create --name=service_current image:tag'),
-                    mock.call(
-                        'docker rmi $(docker images --no-trunc --quiet image)',
-                        ignore_errors=True),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "current_image_id"}]'),
-                    SucceededResult('[{"Id": "new_image_id"}]'),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                ),
-            ),
-            revert_not_dound=dict(
-                kwargs={},
-                expected_calls=[
-                    mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
-                    mock.call('docker inspect --type image image:tag', abort_exception=mock.ANY),
-                    mock.call('docker rm service_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
-                    mock.call('docker rename service_current service_backup'),
-                    mock.call('docker rm service_revert'),
-                    mock.call('docker create --name=service_current image:tag'),
-                    mock.call(
-                        'docker rmi $(docker images --no-trunc --quiet image)',
-                        ignore_errors=True),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "current_image_id"}]'),
-                    SucceededResult('[{"Id": "new_image_id"}]'),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    RuntimeError(),
-                    SucceededResult(),
-                    SucceededResult(),
-                ),
-            ),
-            image_not_changed=dict(
-                kwargs={},
-                expected_calls=[
-                    mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
-                    mock.call('docker inspect --type image image:tag', abort_exception=mock.ANY),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "current_image_id"}]'),
-                    SucceededResult('[{"Id": "current_image_id"}]'),
-                ),
-            ),
-            backup_not_found=dict(
-                kwargs={},
-                expected_calls=[
-                    mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
-                    mock.call('docker inspect --type image image:tag', abort_exception=mock.ANY),
-                    mock.call('docker rm service_backup'),
-                    mock.call('docker rename service_current service_backup'),
-                    mock.call('docker rm service_revert'),
-                    mock.call('docker create --name=service_current image:tag'),
-                    mock.call(
-                        'docker rmi $(docker images --no-trunc --quiet image)',
-                        ignore_errors=True),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "current_image_id"}]'),
-                    SucceededResult('[{"Id": "new_image_id"}]'),
-                    RuntimeError(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                ),
-            ),
-            from_scratch=dict(
-                kwargs={},
-                expected_calls=[
-                    mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
-                    mock.call('docker rm service_revert'),
-                    mock.call('docker create --name=service_current image:tag'),
-                    mock.call('docker rmi $(docker images --no-trunc --quiet image)', ignore_errors=True),
-                ],
-                side_effect=(
-                    docker.ContainerNotFoundError(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                ),
-            ),
-            regular_with_tag_and_registry=dict(
-                kwargs=dict(tag='foo', registry='registry'),
-                expected_calls=[
-                    mock.call('docker inspect --type container service_current', abort_exception=mock.ANY),
-                    mock.call('docker inspect --type image registry/image:foo', abort_exception=mock.ANY),
-                    mock.call('docker rm service_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
-                    mock.call('docker rename service_current service_backup'),
-                    mock.call('docker rm service_revert'),
-                    mock.call('docker create --name=service_current registry/image:foo'),
-                    mock.call('docker rmi $(docker images --no-trunc --quiet registry/image)', ignore_errors=True),
-                ],
-                side_effect=(
-                    SucceededResult('[{"Image": "current_image_id"}]'),
-                    SucceededResult('[{"Id": "new_image_id"}]'),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                    SucceededResult(),
-                ),
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                with mock.patch.object(fabricio, 'run', side_effect=data['side_effect']) as run:
-                    service = docker.Service(name='service')
-                    service._update_sentinels(docker.Image(name='image:tag', **data['kwargs']))
-                    self.assertListEqual(run.mock_calls, data['expected_calls'])
-
-    def test__revert_sentinels(self):
-        cases = dict(
-            regular=dict(
-                expected_calls=[
-                    mock.call('docker rename service_current service_revert'),
-                    mock.call('docker rename service_revert service_backup'),
-                ],
-                side_effect=(
-                    SucceededResult(),
-                    RuntimeError(),
-                ),
-            ),
-            revert_without_backup=dict(
-                expected_calls=[
-                    mock.call('docker rename service_current service_revert'),
-                    mock.call('docker rename service_revert service_backup'),
-                ],
-                side_effect=(
-                    SucceededResult(),
-                    SucceededResult(),
-                ),
-            ),
-            double_revert=dict(
-                expected_calls=[
-                    mock.call('docker rename service_current service_revert'),
-                ],
-                side_effect=(
-                    RuntimeError(),
-                ),
-            ),
-        )
-        for case, data in cases.items():
-            with self.subTest(case=case):
-                with mock.patch.object(fabricio, 'run', side_effect=data['side_effect']) as run:
-                    service = docker.Service(name='service')
-                    service._revert_sentinels()
-                    self.assertListEqual(run.mock_calls, data['expected_calls'])

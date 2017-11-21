@@ -4,8 +4,13 @@ Changelog
 Release 0.4.2
 -------------
 
+- Change: removed sentinel containers logic for services
 - Enhancement: ``docker.Service``: ``publish`` option can be used to set range of ports
 - Enhancement: ``docker.Service``: predefined options can be passed also by option name
+- Enhancement: added new service type - ``docker.Stack`` which takes Docker Compose configuration file as parameter, see `Docker stacks`_ example (`#127`_)
+
+.. _Docker stacks: examples/service/stack/
+.. _#127: https://github.com/renskiy/fabricio/issues/127
 
 Release 0.4.1
 -------------

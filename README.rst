@@ -6,7 +6,6 @@ Fabricio is a `Docker`_ deploy automation tool used along with the `Fabric`_.
 
 .. _Fabric: http://www.fabfile.org
 .. _Docker: https://www.docker.com
-.. _swarm mode: https://docs.docker.com/engine/swarm/
 
 .. image:: https://travis-ci.org/renskiy/fabricio.svg?branch=master
     :target: https://travis-ci.org/renskiy/fabricio
@@ -26,7 +25,8 @@ Features
 - migrations apply and rollback
 - data backup and restore
 - DB master-slave configurations support
-- (**NEW**) Docker Swarm mode (Docker 1.12+)
+- Docker services (Swarm mode)
+- Docker stacks (Docker Compose 3.0+)
 
 See changelog_ for detailed info.
 
@@ -94,7 +94,7 @@ Remote
 
 - sshd
 - Docker 1.9+
-- (optional) Docker 1.12+ for using Docker in Swarm mode
+- Docker 1.12+ for using Docker services
 
 Install
 =======
@@ -299,10 +299,10 @@ And of course, you can use your own private Docker registry:
         build_path='src',
     )
 
-Docker services (swarm mode)
-============================
+Docker services
+===============
 
-Fabricio also can work with Docker services AKA (Also Known As) `swarm mode`_ (Docker 1.12+):
+Fabricio can work with Docker services:
 
 .. code:: python
 
@@ -315,6 +315,25 @@ Fabricio also can work with Docker services AKA (Also Known As) `swarm mode`_ (D
             options={
                 'publish': '8080:80',
                 'replicas': 3,
+            },
+        ),
+        hosts=['user@manager'],
+    )
+
+Docker stacks
+=============
+
+Docker stacks are also supported (available since Docker 1.13):
+
+.. code:: python
+
+    from fabricio import docker, tasks
+
+    nginx = tasks.DockerTasks(
+        service=docker.Stack(
+            name='my-web-app',
+            options={
+                'compose-file': 'my-docker-compose.yml',
             },
         ),
         hosts=['user@manager'],

@@ -12,7 +12,11 @@ from fabricio import utils
 from .registry import Registry
 
 
-class ImageNotFoundError(RuntimeError):
+class ImageError(RuntimeError):
+    pass
+
+
+class ImageNotFoundError(ImageError):
     pass
 
 
@@ -46,11 +50,11 @@ class Image(object):
             image_id = getattr(self.service, 'image_id', None)
             if image_id:
                 return image_id
-        return self.__repr__()
+        return super(Image, self).__str__()
 
     def __repr__(self):
         if not self.name:
-            raise ValueError('image name is not set or empty')
+            raise ImageError('image name is not set or empty')
         tag_separator = '@' if self.use_digest else ':'
         registry = self.registry and '{0}/'.format(self.registry) or ''
         tag = self.tag and '{0}{1}'.format(tag_separator, self.tag) or ''
@@ -60,23 +64,29 @@ class Image(object):
             tag=tag,
         )
 
+    def __bool__(self):
+        try:
+            return bool(repr(self))
+        except ImageError:
+            return False
+
+    def __nonzero__(self):
+        return self.__bool__()
+
     def __get__(self, service, owner_cls):
         if service is None:
             return self
         field_name = self.get_field_name(owner_cls)
-        image = service.__dict__.get(field_name)
-        if image is None:
+        if field_name not in service.__dict__:
             image = service.__dict__[field_name] = self[:]
-
-        # this causes circular reference between container and image, but it
-        # isn't an issue due to a temporary nature of Fabric runtime
-        image.service = service
-
-        return image
+            image.service = service
+        return service.__dict__[field_name]
 
     def __set__(self, service, image):
         field_name = self.get_field_name(type(service))
-        service.__dict__[field_name] = self.__class__(image)
+        image = self.__class__(image)
+        image.service = service
+        service.__dict__[field_name] = image
 
     def __getitem__(self, item):
         if isinstance(item, slice):
