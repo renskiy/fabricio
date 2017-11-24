@@ -15,6 +15,8 @@ class FabricioTestCase(unittest.TestCase):
             except StopIteration:
                 self.fail('unexpected command: {0}'.format(command))
             args = shlex.split(command)
+            # removing \x00 necessary for Python 2.6
+            args = map(lambda arg: arg.replace('\x00', ''), args)
             self.assertDictEqual(
                 expected_command_args,
                 vars(command_parser.parse_args(args)),

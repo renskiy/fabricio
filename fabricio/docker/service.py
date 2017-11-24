@@ -18,7 +18,7 @@ from cached_property import cached_property
 from fabric import colors, api as fab
 from fabric.exceptions import CommandTimeout, NetworkError
 from frozendict import frozendict
-from six.moves import map, shlex_quote, range
+from six.moves import map, shlex_quote, range, filter, zip_longest
 
 import fabricio
 
@@ -479,8 +479,12 @@ class Stack(_Base):
         self.stack_updated = multiprocessing.Event()
 
     @property
-    def settings_label(self):
+    def compose_label(self):
         return 'fabricio.stack.compose.{0}'.format(self.name)
+
+    @property
+    def images_info_label(self):
+        return 'fabricio.stack.images.{0}'.format(self.name)
 
     @property
     def current_settings_tag(self):
@@ -502,13 +506,19 @@ class Stack(_Base):
         new_settings = b64encode(compose_file).decode()
         result = self._update(compose_file, new_settings, force=force)
         if self.stack_updated.is_set():
-            self.save_new_settings(new_settings)
+            image = self.image[registry:tag:account]
+            self.save_new_settings(new_settings, image)
         return result is None or result
 
     @utils.once_per_command(block=True)
     def _update(self, compose_file, new_settings, force=False):
-        if not force and self.current_settings == new_settings:
-            return False
+        if not force:
+            settings, digests = self.current_settings
+            digests = digests and json.loads(b64decode(digests).decode())
+            if settings == new_settings and digests is not None:
+                new_digests = self._get_digests(digests, pull=True)
+                if digests == new_digests:
+                    return False
         with fab.cd(self.temp_dir):
             fab.put(six.BytesIO(compose_file), self.actual_compose_file)
             fabricio.run('docker stack deploy {options} {name}'.format(
@@ -528,7 +538,7 @@ class Stack(_Base):
 
     @utils.once_per_command(block=True)
     def _revert(self):
-        new_settings = self.backup_settings
+        new_settings, _ = self.backup_settings
         if not new_settings:
             raise ServiceError('stack backup settings not found')
         compose_file = b64decode(new_settings)
@@ -547,9 +557,13 @@ class Stack(_Base):
         return self._get_settings(Image(self.backup_settings_tag))
 
     def _get_settings(self, image):
-        label = self.settings_label
         with contextlib.suppress(ImageNotFoundError):
-            return image.info.get('Config', {}).get('Labels', {}).get(label)
+            image_labels = image.info.get('Config', {}).get('Labels', {})
+            return (
+                image_labels.get(self.compose_label),
+                image_labels.get(self.images_info_label),
+            )
+        return None, None
 
     def rotate_sentinel_images(self, rollback=False):
         backup_tag = self.backup_settings_tag
@@ -568,28 +582,54 @@ class Stack(_Base):
                 ),
             )
 
-    def save_new_settings(self, settings):
+    def save_new_settings(self, settings, image):
         self.rotate_sentinel_images()
+
+        labels = [(self.compose_label, settings)]
+        with contextlib.suppress(host_errors):
+            images_info = self.get_images_info()
+            if images_info:
+                labels.append((self.images_info_label, images_info))
+
         dockerfile = (
             'FROM {image}\n'
-            'LABEL {label}={settings}\n'
+            'LABEL {labels}\n'
         ).format(
-            image=self.image or 'scratch',
-            label=self.settings_label,
-            settings=settings,
+            image=image or 'scratch',
+            labels=' '.join(itertools.starmap('{0}={1}'.format, labels)),
         )
-        command = 'echo {dockerfile} | docker build --tag {tag} -'.format(
+        build_command = 'echo {dockerfile} | docker build --tag {tag} -'.format(
             dockerfile=shlex_quote(dockerfile),
             tag=self.current_settings_tag,
         )
         try:
-            fabricio.run(command)
+            fabricio.run(build_command)
         except host_errors as error:
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
                 output=sys.stderr,
                 color=colors.red,
             )
+
+    def get_images_info(self):
+        command = 'docker stack services --format {{.Image}} %s' % self.name
+        images = filter(None, fabricio.run(command).splitlines())
+        bucket = json.dumps(self._get_digests(images), sort_keys=True)
+        return b64encode(bucket.encode()).decode()
+
+    @staticmethod
+    def _get_digests(images, pull=False):
+        images = list(images)
+        if not images:
+            return {}
+        if pull:
+            for image in images:
+                command = 'docker pull %s' % image
+                fabricio.run(command, ignore_errors=True, quiet=False)
+        command = 'docker inspect --type image --format {{.RepoDigests}} %s'
+        command %= ' '.join(images)
+        digests = fabricio.run(command, ignore_errors=True, use_cache=True)
+        return dict(zip_longest(images, filter(None, digests.splitlines())))
 
     def get_backup_version(self):
         return self.fork(image=self.backup_settings_tag)
