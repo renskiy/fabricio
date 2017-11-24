@@ -84,7 +84,7 @@ django = tasks.ImageBuildDockerTasks(
 
 ### DjangoService
 
-To use Django as Docker service (such as described in [Docker services](../../service/service/) example) one can use `DjangoService` instance:
+To use Django as Docker service (such as described in [Docker services](../../service/swarm/) example) one can use `DjangoService` instance:
 
 ```python
 from fabricio import tasks
