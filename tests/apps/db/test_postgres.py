@@ -747,12 +747,13 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 postgres.open.side_effect = (
-                    six.StringIO('postgresql.conf'),
-                    six.StringIO('pg_hba.conf'),
+                    six.BytesIO(b'postgresql.conf'),
+                    six.BytesIO(b'pg_hba.conf'),
                 )
                 container = TestContainer(
                     name='name',
                     options=dict(volume='/data:/data'),
+                    sudo=True,
                 )
                 with mock.patch.object(
                     fabricio,
@@ -872,6 +873,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                         container = TestContainer(
                             name='name',
                             options=dict(volume='/data:/data'),
+                            sudo=True,
                         )
                         container.revert()
                         self.assertListEqual(
@@ -901,6 +903,7 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 container = TestContainer(
                     name='name',
                     options=dict(volume='/data:/data'),
+                    sudo=True,
                 )
                 with self.assertRaises(RuntimeError):
                     container.revert()
@@ -948,7 +951,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='master',
                 expected_result=True,
                 set_master='master',
-                expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
+                expected_recovery_conf=b"primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_commands=[],
             ),
             slave_with_existing_recovery_conf=dict(
@@ -964,9 +967,9 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                     "custom_setting2 = 'custom_setting2'\n"
                 ),
                 expected_recovery_conf=(
-                    "custom_setting = 'custom_setting'\n"
-                    "custom_setting2 = 'custom_setting2'\n"
-                    "primary_conninfo = 'host=master port=5432 user=postgres'\n"
+                    b"custom_setting = 'custom_setting'\n"
+                    b"custom_setting2 = 'custom_setting2'\n"
+                    b"primary_conninfo = 'host=master port=5432 user=postgres'\n"
                 ),
                 expected_commands=[],
             ),
@@ -977,7 +980,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 expected_master_host='master',
                 expected_result=True,
                 set_master='master',
-                expected_recovery_conf="primary_conninfo = 'host=master port=5432 user=postgres'\n",
+                expected_recovery_conf=b"primary_conninfo = 'host=master port=5432 user=postgres'\n",
                 expected_args={
                     'executable': ['docker'],
                     'run_or_create': ['run'],
@@ -1027,6 +1030,7 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
                 container = postgres.StreamingReplicatedPostgresqlContainer(
                     name='name', image='image', pg_data='/data',
                     options=dict(volume='/data:/data'),
+                    sudo=True,
                     **data.get('init_kwargs', {})
                 )
                 if 'set_master' in data:

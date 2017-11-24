@@ -8,6 +8,7 @@ db = tasks.DockerTasks(
         image='postgres:10-alpine',
         pg_data='/data',
         pg_recovery_master_promotion_enabled=True,
+        sudo=True,
         options=dict(
             volume='/data:/data',
             env='PGDATA=/data',

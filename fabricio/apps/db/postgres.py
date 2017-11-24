@@ -130,26 +130,26 @@ class PostgresqlContainer(docker.Container):
 
     pg_data = Attribute(default=NotImplemented)
 
+    sudo = Attribute(default=False)
+
     stop_signal = 'INT'
 
     stop_timeout = 30
 
-    @staticmethod
-    def update_config(content, path):
-        content = content.encode()
+    def update_config(self, content, path):
         old_file = six.BytesIO()
-        if files.exists(path, use_sudo=True):
-            fab.get(remote_path=path, local_path=old_file, use_sudo=True)
+        if files.exists(path, use_sudo=self.sudo):
+            fab.get(remote_path=path, local_path=old_file, use_sudo=self.sudo)
         old_content = old_file.getvalue()
         need_update = content != old_content
         if need_update:
             fabricio.move_file(
                 path_from=path,
                 path_to=path + '.backup',
-                sudo=True,
+                sudo=self.sudo,
                 ignore_errors=True,
             )
-            fab.put(six.BytesIO(content), path, use_sudo=True, mode='0644')
+            fab.put(six.BytesIO(content), path, use_sudo=self.sudo, mode='0644')
             fabricio.log('{path} updated'.format(path=path))
         else:
             fabricio.log('{path} not changed'.format(path=path))
@@ -158,7 +158,7 @@ class PostgresqlContainer(docker.Container):
     def db_exists(self):
         return files.exists(
             os.path.join(self.pg_data, 'PG_VERSION'),
-            use_sudo=True,
+            use_sudo=self.sudo,
         )
 
     def create_db(self, tag=None, registry=None, account=None):
@@ -189,11 +189,11 @@ class PostgresqlContainer(docker.Container):
         hba_conf = os.path.join(self.pg_data, 'pg_hba.conf')
 
         main_config_updated = self.update_config(
-            content=open(self.pg_conf).read(),
+            content=open(self.pg_conf, 'rb').read(),
             path=main_conf,
         )
         hba_config_updated = self.update_config(
-            content=open(self.pg_hba).read(),
+            content=open(self.pg_hba, 'rb').read(),
             path=hba_conf,
         )
         container_updated = super(PostgresqlContainer, self).update(
@@ -217,11 +217,19 @@ class PostgresqlContainer(docker.Container):
         if not main_config_updated:
             # remove main config backup to prevent reverting to old version
             main_conf_backup = main_conf + '.backup'
-            fabricio.remove_file(main_conf_backup, ignore_errors=True, sudo=True)
+            fabricio.remove_file(
+                main_conf_backup,
+                ignore_errors=True,
+                sudo=self.sudo,
+            )
         if not hba_config_updated:
             # remove pg_hba config backup to prevent reverting to old version
             hba_conf_backup = hba_conf + '.backup'
-            fabricio.remove_file(hba_conf_backup, ignore_errors=True, sudo=True)
+            fabricio.remove_file(
+                hba_conf_backup,
+                ignore_errors=True,
+                sudo=self.sudo,
+            )
         return True
 
     def revert(self):
@@ -233,13 +241,13 @@ class PostgresqlContainer(docker.Container):
             path_from=main_conf_backup,
             path_to=main_conf,
             ignore_errors=True,
-            sudo=True,
+            sudo=self.sudo,
         ).succeeded
         hba_config_reverted = fabricio.move_file(
             path_from=hba_conf_backup,
             path_to=hba_conf,
             ignore_errors=True,
-            sudo=True,
+            sudo=self.sudo,
         ).succeeded
         try:
             super(PostgresqlContainer, self).revert()
@@ -306,7 +314,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         )
 
     def get_recovery_config(self):
-        recovery_config = open(self.pg_recovery, 'r').read()
+        recovery_config = open(self.pg_recovery).read()
         primary_conninfo = self.pg_recovery_primary_conninfo.format(
             host=self.multiprocessing_data.master,
             port=self.pg_recovery_port,
@@ -317,7 +325,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
             if not row.startswith('primary_conninfo')
         ]
         recovery_config_items.append(primary_conninfo)
-        return '\n'.join(recovery_config_items) + '\n'
+        return ('\n'.join(recovery_config_items) + '\n').encode()
 
     def set_master_info(self):
         if self.multiprocessing_data.exception is not None:
@@ -332,7 +340,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
         recovery_conf_file = os.path.join(self.pg_data, 'recovery.conf')
         if db_exists:
             self.multiprocessing_data.db_exists = True
-            if not files.exists(recovery_conf_file, use_sudo=True):
+            if not files.exists(recovery_conf_file, use_sudo=self.sudo):
                 # master founded
                 self.set_master_info()
                 return False
@@ -354,7 +362,7 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
                     fabricio.move_file(
                         path_from=recovery_conf_file,
                         path_to=recovery_conf_file + '.backup',
-                        sudo=True,
+                        sudo=self.sudo,
                     )
                     self.set_master_info()
                     return True
@@ -369,9 +377,8 @@ class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):
                 registry=registry,
                 account=account,
             )
-        recovery_config = self.get_recovery_config()
         return self.update_config(
-            content=recovery_config,
+            content=self.get_recovery_config(),
             path=os.path.join(self.pg_data, 'recovery.conf'),
         )
 

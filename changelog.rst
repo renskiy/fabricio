@@ -4,6 +4,7 @@ Changelog
 Release 0.4.2
 -------------
 
+- Change: ``PostgresqlContainer`` does not use ``sudo`` by default (can be enabled again by ``sudo=True`` attribute)
 - Change: removed sentinel containers logic for services
 - Enhancement: ``docker.Service``: ``publish`` option can be used to set range of ports
 - Enhancement: ``docker.Service``: predefined options can be passed also by option name
