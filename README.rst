@@ -211,15 +211,15 @@ Rollback
 
 To return container or service to a previous version execute command :code:`fab app.rollback`.
 
-Forced update
-=============
+Idempotency
+===========
+
+Fabricio always tries to skip unnecessary container/service update. However, update can be forced by adding ``force=yes`` parameter:
 
 .. code:: bash
 
-    fab app.update:force=yes
+    fab app.deploy:force=yes
     
-``force=yes`` is used to force container or service update.
-
 Private Docker registry
 =======================
 
