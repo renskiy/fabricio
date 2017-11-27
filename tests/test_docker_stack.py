@@ -448,12 +448,14 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                     SucceededResult('image:tag'),  # stack images
+                    SucceededResult(),  # image pull
                     SucceededResult('digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
                 ],
                 args_parser=[
                     args_parser,
                     docker_inspect_args_parser,
+                    args_parser,
                     args_parser,
                     args_parser,
                     args_parser,
@@ -477,6 +479,9 @@ class ContainerTestCase(FabricioTestCase):
                     },
                     {
                         'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'pull', 'image:tag'],
                     },
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image:tag'],
@@ -505,12 +510,14 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                     SucceededResult('image:tag'),  # stack images
+                    SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
                 ],
                 args_parser=[
                     args_parser,
                     docker_inspect_args_parser,
+                    args_parser,
                     args_parser,
                     args_parser,
                     args_parser,
@@ -544,6 +551,9 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
                     },
                     {
+                        'args': ['docker', 'pull', 'image:tag'],
+                    },
+                    {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image:tag'],
                     },
                     {
@@ -571,12 +581,16 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                     SucceededResult('image1:tag\nimage2:tag\n'),  # stack images
+                    SucceededResult(),  # image1 pull
+                    SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # build new sentinel image
                 ],
                 args_parser=[
                     args_parser,
                     docker_inspect_args_parser,
+                    args_parser,
+                    args_parser,
                     args_parser,
                     args_parser,
                     args_parser,
@@ -612,6 +626,12 @@ class ContainerTestCase(FabricioTestCase):
                     },
                     {
                         'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'pull', 'image1:tag'],
+                    },
+                    {
+                        'args': ['docker', 'pull', 'image2:tag'],
                     },
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image1:tag', 'image2:tag'],

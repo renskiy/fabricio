@@ -33,7 +33,7 @@ After cluster has been successfully initialized everything is ready to work with
     
 ## Deploy idempotency
 
-Fabricio will not try to deploy stack if provided docker-compose.yml was not changed after the last successful deploy attempt. However stack deploy can be forced by using `force` flag:
+Fabricio will try to deploy stack either if content of provided Docker Compose configuration file was changed or any image of stack services has newer version since last successful deploy attempt. However stack deploy can be forced by using `force` flag:
 
     fab stack:force=yes
     
@@ -41,7 +41,7 @@ Fabricio will not try to deploy stack if provided docker-compose.yml was not cha
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel nginx
+    fab --parallel stack
     
 ## Rollback
 
@@ -92,7 +92,3 @@ docker.Stack(
     },
 )
 ```
-
-## Issues
-
-* If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`

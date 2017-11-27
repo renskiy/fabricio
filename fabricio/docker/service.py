@@ -516,7 +516,7 @@ class Stack(_Base):
             settings, digests = self.current_settings
             digests = digests and json.loads(b64decode(digests).decode())
             if settings == new_settings and digests is not None:
-                new_digests = self._get_digests(digests, pull=True)
+                new_digests = self._get_digests(digests)
                 if digests == new_digests:
                     return False
         with fab.cd(self.temp_dir):
@@ -618,14 +618,13 @@ class Stack(_Base):
         return b64encode(bucket.encode()).decode()
 
     @staticmethod
-    def _get_digests(images, pull=False):
+    def _get_digests(images):
         images = list(images)
         if not images:
             return {}
-        if pull:
-            for image in images:
-                command = 'docker pull %s' % image
-                fabricio.run(command, ignore_errors=True, quiet=False)
+        for image in images:
+            command = 'docker pull %s' % image
+            fabricio.run(command, ignore_errors=True, quiet=False, use_cache=True)
         command = 'docker inspect --type image --format {{.RepoDigests}} %s'
         command %= ' '.join(images)
         digests = fabricio.run(command, ignore_errors=True, use_cache=True)

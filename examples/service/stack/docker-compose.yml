@@ -5,3 +5,5 @@ services:
     image: nginx:stable-alpine
     ports:
       - "80"
+    deploy:
+      replicas: 3
