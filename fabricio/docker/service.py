@@ -51,6 +51,10 @@ class ServiceNotFoundError(ServiceError):
     pass
 
 
+class StackError(ServiceError):
+    pass
+
+
 class RemovableOption(Option):
 
     path = NotImplemented
@@ -538,11 +542,22 @@ class Stack(_Base):
 
     @utils.once_per_command(block=True)
     def _revert(self):
-        new_settings, _ = self.backup_settings
-        if not new_settings:
-            raise ServiceError('stack backup settings not found')
-        compose_file = b64decode(new_settings)
-        self._update(compose_file, new_settings, force=True)
+        backup_settings, backup_digests = self.backup_settings
+        if not backup_settings:
+            raise StackError('stack backup settings not found')
+        compose_file = b64decode(backup_settings)
+        self._update(compose_file, backup_settings, force=True)
+
+        # update stack services with image digests from backup
+        backup_digests = backup_digests and b64decode(backup_digests).decode()
+        backup_digests = backup_digests and json.loads(backup_digests)
+        if backup_digests:
+            images = self._get_services_images()
+            for service, image in images.items():
+                digest = backup_digests[image]
+                command = 'docker service update --image {digest} {service}'
+                command = command.format(digest=digest, service=service)
+                fabricio.run(command)
 
     @utils.once_per_command(block=True)
     def reset_stack_updated_status(self):
@@ -587,9 +602,8 @@ class Stack(_Base):
 
         labels = [(self.compose_label, settings)]
         with contextlib.suppress(host_errors):
-            images_info = self.get_images_info()
-            if images_info:
-                labels.append((self.images_info_label, images_info))
+            images = self.get_images()
+            images and labels.append((self.images_info_label, images))
 
         dockerfile = (
             'FROM {image}\n'
@@ -611,11 +625,17 @@ class Stack(_Base):
                 color=colors.red,
             )
 
-    def get_images_info(self):
-        command = 'docker stack services --format {{.Image}} %s' % self.name
-        images = filter(None, fabricio.run(command).splitlines())
-        bucket = json.dumps(self._get_digests(images), sort_keys=True)
+    def get_images(self):
+        images = self._get_services_images()
+        digests = self._get_digests(set(images.values()))
+        bucket = json.dumps(digests, sort_keys=True)
         return b64encode(bucket.encode()).decode()
+
+    def _get_services_images(self):
+        command = "docker stack services --format '{{.Name}} {{.Image}}' %s"
+        command %= self.name
+        lines = filter(None, fabricio.run(command).splitlines())
+        return dict(map(lambda line: line.rsplit(None, 1), lines))
 
     @staticmethod
     def _get_digests(images):
@@ -623,10 +643,15 @@ class Stack(_Base):
         if not images:
             return {}
         for image in images:
-            command = 'docker pull %s' % image
-            fabricio.run(command, ignore_errors=True, quiet=False, use_cache=True)
-        command = 'docker inspect --type image --format {{.RepoDigests}} %s'
-        command %= ' '.join(images)
+            fabricio.run(
+                'docker pull %s' % image,
+                ignore_errors=True,
+                quiet=False,
+                use_cache=True,
+            )
+        command = (
+            "docker inspect --type image --format '{{index .RepoDigests 0}}' %s"
+        ) % ' '.join(images)
         digests = fabricio.run(command, ignore_errors=True, use_cache=True)
         return dict(zip_longest(images, filter(None, digests.splitlines())))
 

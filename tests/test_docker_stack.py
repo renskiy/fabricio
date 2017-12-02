@@ -31,6 +31,7 @@ class ContainerTestCase(FabricioTestCase):
 
     @mock.patch.object(fabricio, 'log')
     @mock.patch.object(service, 'dict', new=utils.OrderedDict)
+    @mock.patch.object(service, 'set', new=utils.OrderedSet)
     @mock.patch.object(json, 'loads', new=functools.partial(json.loads, object_hook=as_ordereddict))
     @mock.patch.object(fab, 'put')
     def test_update(self, put, *args):
@@ -109,7 +110,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -154,7 +155,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -199,7 +200,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -244,7 +245,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -289,7 +290,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -334,7 +335,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM image:tag\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -379,7 +380,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM registry/account/image:new-tag\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -424,7 +425,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['echo', 'FROM registry/account/image:tag\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -447,7 +448,7 @@ class ContainerTestCase(FabricioTestCase):
                     }}])),  # image info
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
-                    SucceededResult('image:tag'),  # stack images
+                    SucceededResult('service image:tag'),  # stack images
                     SucceededResult(),  # image pull
                     SucceededResult('digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
@@ -478,13 +479,13 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['docker', 'pull', 'image:tag'],
                     },
                     {
-                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image:tag'],
+                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -509,7 +510,7 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
-                    SucceededResult('image:tag'),  # stack images
+                    SucceededResult('service image:tag'),  # stack images
                     SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
@@ -539,7 +540,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'pull', 'image:tag'],
                     },
                     {
-                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image:tag'],
+                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
@@ -548,13 +549,13 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['docker', 'pull', 'image:tag'],
                     },
                     {
-                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image:tag'],
+                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=eyJpbWFnZTp0YWciOiAibmV3LWRpZ2VzdCJ9\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -580,7 +581,7 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
-                    SucceededResult('image1:tag\nimage2:tag\n'),  # stack images
+                    SucceededResult('service1 image1:tag\nservice2 image2:tag\n'),  # stack images
                     SucceededResult(),  # image1 pull
                     SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
@@ -616,7 +617,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'pull', 'image2:tag'],
                     },
                     {
-                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image1:tag', 'image2:tag'],
+                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image1:tag', 'image2:tag'],
                     },
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
@@ -625,7 +626,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
-                        'args': ['docker', 'stack', 'services', '--format', '{{.Image}}', 'stack'],
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
                         'args': ['docker', 'pull', 'image1:tag'],
@@ -634,7 +635,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'pull', 'image2:tag'],
                     },
                     {
-                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{.RepoDigests}}', 'image1:tag', 'image2:tag'],
+                        'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image1:tag', 'image2:tag'],
                     },
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=eyJpbWFnZTE6dGFnIjogIm5ldy1kaWdlc3QxIiwgImltYWdlMjp0YWciOiAibmV3LWRpZ2VzdDIifQ==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
@@ -671,8 +672,9 @@ class ContainerTestCase(FabricioTestCase):
                     else:
                         put.assert_not_called()
 
+    @mock.patch.object(service, 'dict', new=utils.OrderedDict)
     @mock.patch.object(fab, 'put')
-    def test_revert(self, put):
+    def test_revert(self, put, *args):
         cases = dict(
             worker=dict(
                 init_kwargs=dict(name='stack'),
@@ -725,35 +727,79 @@ class ContainerTestCase(FabricioTestCase):
                 ],
                 expected_compose_file=b'old-compose.yml',
             ),
-            reverted_with_same_compose=dict(
+            reverted_with_service_update=dict(
                 init_kwargs=dict(name='stack'),
                 side_effect=[
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',
+                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',  # compose.yml
+                            'fabricio.stack.images.stack': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',  # {"image:tag": "digest"}
                         },
                     }}])),  # image info
                     SucceededResult(),  # stack deploy
+                    SucceededResult('service image:tag\n'),  # stack services
+                    SucceededResult(),  # service update
                     SucceededResult(),  # update sentinel images
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                ],
+                args_parser=[args_parser] * 6,
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-backup-stack:stack',
+                        'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack'],
                     },
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'service', 'update', '--image', 'digest', 'service'],
+                    },
+                    {
+                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
+                    },
+                ],
+                expected_compose_file=b'compose.yml',
+            ),
+            reverted_with_services_update=dict(
+                init_kwargs=dict(name='stack'),
+                side_effect=[
+                    SucceededResult('  Is Manager: true'),  # manager status
+                    SucceededResult(json.dumps([{'Config': {
+                        'Labels': {
+                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',  # compose.yml
+                            'fabricio.stack.images.stack': 'eyJpbWFnZTE6dGFnIjogImRpZ2VzdDEiLCAiaW1hZ2UyOnRhZyI6ICJkaWdlc3QyIn0=',  # {"image1:tag": "digest1", "image2:tag": "digest2"}
+                        },
+                    }}])),  # image info
+                    SucceededResult(),  # stack deploy
+                    SucceededResult('service1 image1:tag\nservice2 image2:tag'),  # stack services
+                    SucceededResult(),  # service update
+                    SucceededResult(),  # service update
+                    SucceededResult(),  # update sentinel images
+                ],
+                args_parser=[args_parser] * 7,
+                expected_command_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
+                    },
+                    {
+                        'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack'],
+                    },
+                    {
+                        'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'service', 'update', '--image', 'digest1', 'service1'],
+                    },
+                    {
+                        'args': ['docker', 'service', 'update', '--image', 'digest2', 'service2'],
                     },
                     {
                         'args': ['docker', 'rmi', 'fabricio-current-stack:stack;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
@@ -768,14 +814,16 @@ class ContainerTestCase(FabricioTestCase):
                 put.reset_mock()
                 with mock.patch.dict(fab.env, dict(all_hosts=data.get('all_hosts', ['host']))):
                     stack = docker.Stack(**data.get('init_kwargs', {}))
+                    side_effects = data.get('side_effect', [])
                     side_effect = self.command_checker(
                         args_parsers=data.get('args_parser', []),
                         expected_args_set=data.get('expected_command_args', []),
-                        side_effects=data.get('side_effect', []),
+                        side_effects=side_effects,
                     )
-                    with mock.patch.object(fabricio, 'run', side_effect=side_effect):
+                    with mock.patch.object(fabricio, 'run', side_effect=side_effect) as run:
                         with mock.patch('six.BytesIO') as compose_file:
                             stack.revert()
+                    self.assertEqual(run.call_count, len(side_effects))
                     expected_compose_file = data.get('expected_compose_file')
                     if expected_compose_file:
                         put.assert_called_once()

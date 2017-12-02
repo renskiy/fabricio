@@ -5,6 +5,7 @@ Release 0.4.3
 -------------
 
 - Fix: ``docker.Stack``: pull fresh version of stack image(s) before save digest to metadata, otherwise it may not be available causing unnecessary stack update
+- Enhancement: ``docker.Stack``: update stack services with image digests from backup after stack rollback
 
 Release 0.4.2
 -------------
