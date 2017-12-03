@@ -114,11 +114,16 @@ from fabricio.apps.python.django import DjangoStack
 
 django = tasks.ImageBuildDockerTasks(
     service=DjangoStack(
-        name='django',
-        image='django',
+        # stack name
+        name='django-stack',
+        
+        # image tag which will be built and used to apply migrations on
+        # (all other stack images must be ready to the moment of stack deploy)
+        image='django-app',
+        
+        # safe options are options passing to container
+        # that does 'migrate' (or 'migrate-back') operation
         safe_options={
-            # safe options are options passing to container
-            # which does 'migrate' (or 'migrate-back') operation
             'stop-signal': 'INT',
             'env': 'DJANGO_SETTINGS_MODULE=settings',
         },
