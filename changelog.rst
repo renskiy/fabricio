@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.4.4
+-------------
+
+- Enhancement: ``DockerTasks``: full image digest can be passed instead of a tag
+- Fix: ``DockerTasks`` will not try to work with image if it is not provided by service
+
 Release 0.4.3
 -------------
 

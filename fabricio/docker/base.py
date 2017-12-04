@@ -173,7 +173,9 @@ class BaseService(object):
         raise NotImplementedError
 
     def pull_image(self, tag=None, registry=None, account=None):
-        return self.image[registry:tag:account].pull()
+        image = self.image[registry:tag:account]
+        if image:
+            return image.pull()
 
     def migrate(self, tag=None, registry=None, account=None):
         pass

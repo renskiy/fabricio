@@ -232,8 +232,7 @@ class _Base(BaseService):
 
     def pull_image(self, *args, **kwargs):
         try:
-            if self.image:
-                return super(_Base, self).pull_image(*args, **kwargs)
+            return super(_Base, self).pull_image(*args, **kwargs)
         except host_errors as error:
             self.pull_errors[fab.env.host] = True
             fabricio.log(

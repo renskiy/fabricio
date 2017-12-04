@@ -41,7 +41,7 @@ class Image(object):
             self.name = _name
             self.tag = tag or _tag or 'latest'  # TODO 'latest' is unnecessary
             self.registry = Registry(registry or _registry)
-            self.use_digest = tag is None and '@' in name
+            self.use_digest = not tag and '@' in name
         self.field_names = {}  # descriptor's cache
         self.service = None
 
@@ -94,25 +94,28 @@ class Image(object):
         else:
             registry, tag, account = None, item, None
 
-        # tag can override image registry and/or name
+        use_digest = self.use_digest
+
+        # tag can override image registry, name and/or digest
         _registry, _name, _tag = self.parse_image_name(tag)
         if not _tag:
             if _registry:
                 _tag = 'latest'
             else:
                 _tag, _name = _name, None
+        if _tag:
+            use_digest = _name and tag and '@' in tag
 
         registry = _registry or registry or self.registry
-        name = _name or account and '{account}/{name}'.format(
+        name = _name or account and self.name and '{account}/{name}'.format(
             account=account,
             name=self.name.split('/')[-1],
         ) or self.name
-        tag = _tag or tag
+        tag = _tag or tag or self.tag
 
-        if self.use_digest and not tag:
-            name = '{name}@{digest}'.format(name=name, digest=self.tag)
-        else:
-            tag = tag or self.tag
+        if use_digest:
+            name = '{name}@{digest}'.format(name=name, digest=tag)
+            tag = None
 
         return self.__class__(name=name, tag=tag, registry=registry)
 

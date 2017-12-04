@@ -1352,22 +1352,82 @@ class ImageTestCase(unittest.TestCase):
                 item='name:tag',
                 expected_str='default/name:tag',
             ),
+            override_name_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='name:tag',
+                expected_str='name:tag',
+            ),
+            override_name_and_digest=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='name@digest',
+                expected_str='default/name@digest',
+            ),
+            override_name_and_digest_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='name@digest',
+                expected_str='name@digest',
+            ),
             override_name_and_account=dict(
                 image_init_kwargs=dict(name='default', tag='default', registry='default'),
                 item='account/name:tag',
                 expected_str='default/account/name:tag',
+            ),
+            override_name_and_account_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='account/name:tag',
+                expected_str='account/name:tag',
             ),
             override_name_and_registry=dict(
                 image_init_kwargs=dict(name='default', tag='default', registry='default'),
                 item='localhost:5000/name:tag',
                 expected_str='localhost:5000/name:tag',
             ),
+            override_name_and_registry_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='localhost:5000/name:tag',
+                expected_str='localhost:5000/name:tag',
+            ),
+            override_digest_and_registry=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='localhost:5000/name@digest',
+                expected_str='localhost:5000/name@digest',
+            ),
+            override_digest_and_registry_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='localhost:5000/name@digest',
+                expected_str='localhost:5000/name@digest',
+            ),
+            override_name_and_registry_and_account=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='localhost:5000/account/name:tag',
+                expected_str='localhost:5000/account/name:tag',
+            ),
+            override_name_and_registry_and_account_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='localhost:5000/account/name:tag',
+                expected_str='localhost:5000/account/name:tag',
+            ),
+            override_digest_and_registry_and_account=dict(
+                image_init_kwargs=dict(name='default', tag='default', registry='default'),
+                item='localhost:5000/account/name@digest',
+                expected_str='localhost:5000/account/name@digest',
+            ),
+            override_digest_and_registry_and_account_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='localhost:5000/account/name@digest',
+                expected_str='localhost:5000/account/name@digest',
+            ),
             override_name_and_registry_skip_tag=dict(
                 image_init_kwargs=dict(name='default', tag='default', registry='default'),
                 item='localhost:5000/name',
                 expected_str='localhost:5000/name:latest',
             ),
-            override_name_and_registry_skip_tag_digest=dict(
+            override_name_and_registry_skip_tag_from_empty=dict(
+                image_init_kwargs=dict(),
+                item='localhost:5000/name',
+                expected_str='localhost:5000/name:latest',
+            ),
+            override_name_and_registry_skip_tag_from_digest=dict(
                 image_init_kwargs=dict(name='name@digest'),
                 item='localhost:5000/name',
                 expected_str='localhost:5000/name:latest',
