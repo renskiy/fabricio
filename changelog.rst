@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.4.5
+-------------
+
+- Enhancement: ``DockerTasks``: enabled SSH-tunneling option for all tasks
+
 Release 0.4.4
 -------------
 

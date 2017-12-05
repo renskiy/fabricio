@@ -226,7 +226,8 @@ class DockerTasks(Tasks):
         """
         revert service container(s) to a previous version
         """
-        self.service.revert()
+        with self.remote_tunnel():
+            self.service.revert()
 
     @fab.task
     @skip_unknown_host
@@ -234,11 +235,12 @@ class DockerTasks(Tasks):
         """
         apply new migrations
         """
-        self.service.migrate(
-            tag=tag,
-            registry=self.host_registry,
-            account=self.account,
-        )
+        with self.remote_tunnel():
+            self.service.migrate(
+                tag=tag,
+                registry=self.host_registry,
+                account=self.account,
+            )
 
     @fab.task(name='migrate-back')
     @skip_unknown_host
@@ -246,7 +248,8 @@ class DockerTasks(Tasks):
         """
         remove previously applied migrations if any
         """
-        self.service.migrate_back()
+        with self.remote_tunnel():
+            self.service.migrate_back()
 
     @fab.task
     @skip_unknown_host
@@ -254,7 +257,8 @@ class DockerTasks(Tasks):
         """
         backup service data
         """
-        self.service.backup()
+        with self.remote_tunnel():
+            self.service.backup()
 
     @fab.task
     @skip_unknown_host
@@ -262,7 +266,8 @@ class DockerTasks(Tasks):
         """
         restore service data
         """
-        self.service.restore(backup_name=backup_name)
+        with self.remote_tunnel():
+            self.service.restore(backup_name=backup_name)
 
     @fab.task
     @fab.hosts()
@@ -382,12 +387,13 @@ class DockerTasks(Tasks):
         """
         update service to a new version
         """
-        updated = self.service.update(
-            tag=tag,
-            registry=self.host_registry,
-            account=self.account,
-            force=utils.strtobool(force),
-        )
+        with self.remote_tunnel():
+            updated = self.service.update(
+                tag=tag,
+                registry=self.host_registry,
+                account=self.account,
+                force=utils.strtobool(force),
+            )
         if not updated:
             fabricio.log('No changes detected, update skipped.')
 
