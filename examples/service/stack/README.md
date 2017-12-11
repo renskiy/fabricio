@@ -55,7 +55,7 @@ This will update stack using new compose configuration. After that you can retur
     
 ## Customization
 
-See also "Hello, World" [Customization](../../hello_world/#customization) section.
+See also "Hello World" [Customization](../../hello_world/#customization) section.
 
 ### Custom docker-compose.yml
 

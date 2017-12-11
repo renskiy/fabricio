@@ -60,9 +60,7 @@ Type :code:`fab --list` in your terminal to see available Fabric commands:
     Available commands:
 
         nginx           full service deploy (prepare -> push -> upgrade)
-        nginx.deploy    full service deploy (prepare -> push -> upgrade)
         nginx.rollback  rollback service to a previous version (migrate-back -> revert)
-        nginx.upgrade   upgrade service to a new version (backup -> pull -> migrate -> update)
 
 Finally, to deploy such configuration you simply have to execute following bash command:
 
@@ -70,11 +68,9 @@ Finally, to deploy such configuration you simply have to execute following bash 
 
     fab nginx
 
-To display detailed info about command (including available options) use following command: ``fab --display <command>``.
-
 See also Fabricio `examples and recipes`_.
 
-.. _examples and recipes: https://github.com/renskiy/fabricio/tree/master/examples
+.. _examples and recipes: https://github.com/renskiy/fabricio/tree/master/examples/
 
 Requirements
 ============
@@ -181,13 +177,9 @@ Here is the list of available commands:
         staging             select staging infrastructure to run task(s) on
         staging.confirm     automatically confirm staging infrastructure selection
         balancer            full service deploy (prepare -> push -> upgrade)
-        balancer.deploy     full service deploy (prepare -> push -> upgrade)
         balancer.rollback   rollback service to a previous version (migrate-back -> revert)
-        balancer.upgrade    upgrade service to a new version (backup -> pull -> migrate -> update)
         web                 full service deploy (prepare -> push -> upgrade)
-        web.deploy          full service deploy (prepare -> push -> upgrade)
         web.rollback        rollback service to a previous version (migrate-back -> revert)
-        web.upgrade         upgrade service to a new version (backup -> pull -> migrate -> update)
 
 'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 
@@ -202,9 +194,16 @@ Almost every Fabricio command takes optional argument 'tag' which means Docker i
 
 .. code:: bash
 
-    fab app.deploy:v1.2
+    fab app:release-42
 
 By default, value for tag is taken from Container/Service Image.
+
+Also it is possible to completely (and partially) replace registry/account/name/tag/digest of image to deploy:
+
+.. code:: bash
+
+    fab app:registry.example.com/registry-account/app-image:release-42
+    fab app:nginx@sha256:36b0181554913b471ae33546a9c19cc80e97f44ce5e7234995e307f14da57268
 
 Rollback
 ========
@@ -238,31 +237,28 @@ When your local Docker registry is up and run you can provide custom ``registry`
     nginx = tasks.DockerTasks(
         service=docker.Container(
             name='nginx',
-            image='nginx:stable',
+            image='nginx:stable-alpine',
             options={
                 'publish': '80:80',
             },
         ),
         registry='localhost:5000',
-        ssh_tunnel_port=5000,
+        ssh_tunnel='5000:5000',
         hosts=['user@example.com'],
     )
 
-*Note, that you can provide custom registry and/or account within 'image' parameter like this:*
-
-.. code:: python
-
-    image='custom-registry.example.com/user/image:tag'
-
-List of commands in this case updated with additional two commands:
+List of commands in this case updated with additional commands which were hidden before:
 
 ::
 
-    nginx.prepare   build Docker image
-    nginx.push      push built Docker image to the registry
-    
-The first one pulls Image from the original registry and the second pushes it to the local registry which is used as main registry for all configuration's infrastructures.
+    nginx.prepare   download Docker image from the original registry
+    nginx.push      push downloaded Docker image to intermediate registry
+    nginx.upgrade   upgrade service to a new version (backup -> pull -> migrate -> update)
 
+See also `Hello World`_ example for more details.
+
+.. _Hello World: https://github.com/renskiy/fabricio/tree/master/examples/hello_world/#ssh-tunneling
+    
 Building Docker images
 ======================
 
@@ -275,29 +271,13 @@ Using Fabricio you can also build Docker images from local sources and deploy th
     app = tasks.ImageBuildDockerTasks(
         service=docker.Container(
             name='app',
-            image='your_docker_hub_account/app',
+            image='registry.example.com/registry-account/app-image:latest-release',
         ),
         hosts=['user@example.com'],
-        build_path='src',
+        build_path='.',
     )
 
-Commands list for :code:`ImageBuildDockerTasks` is same as for :code:`DockerTasks` with provided custom registry. The only difference is that 'prepare' builds image instead of pulling it from the original registry.
-
-And of course, you can use your own private Docker registry:
-
-.. code:: python
-
-    from fabricio import docker, tasks
-
-    app = tasks.ImageBuildDockerTasks(
-        service=docker.Container(
-            name='app',
-            image='app',
-        ),
-        registry='registry.your_company.com',
-        hosts=['user@example.com'],
-        build_path='src',
-    )
+Commands list for :code:`ImageBuildDockerTasks` is same as for :code:`DockerTasks` with provided custom registry. The only difference is that 'prepare' builds image instead of pulling it from image's registry.
 
 Docker services
 ===============

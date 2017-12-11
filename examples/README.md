@@ -2,7 +2,7 @@
 
 ## Basics
 
-* [Hello, World](hello_world/)
+* [Hello World](hello_world/)
 * [Building Docker images](build_image/)
 * [Infrastructures and roles](roles/)
 * [Deploy to localhost](roles/#deploy-to-localhost)

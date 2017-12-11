@@ -15,5 +15,5 @@ django = tasks.ImageBuildDockerTasks(
     ),
     hosts=AvailableVagrantHosts(),
     registry='localhost:5000',
-    ssh_tunnel_port=5000,
+    ssh_tunnel='5000:5000',
 )

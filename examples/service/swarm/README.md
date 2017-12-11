@@ -54,8 +54,4 @@ This will update service with new options. After that you can return service to 
     
 ## Customization
 
-See "Hello, World" [Customization](../../hello_world/#customization) section.
-
-## Issues
-
-* If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`
+See "Hello World" [Customization](../../hello_world/#customization) section.

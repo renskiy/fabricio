@@ -3,7 +3,7 @@
 This example shows how to deploy configuration consisting of a single container based on custom image which automatically built from provided [Dockerfile](Dockerfile).
 
 ## Requirements
-* Fabricio 0.3.17 or greater
+* Fabricio 0.4.6 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 * [Docker](https://www.docker.com/products/overview) for Linux/Mac/Windows
@@ -35,22 +35,24 @@ Any Fabricio command can be executed in parallel mode. This mode provides advant
 
 ## Customization
 
-See also "Hello, World" [Customization](../hello_world/#customization) section.
+See also "Hello World" [Customization](../hello_world/#customization) section.
 
 ### Custom `Dockerfile`
 
 You can provide custom folder with `Dockerfile` by passing `build_path` parameter to `ImageBuildDockerTasks`:
 
 ```python
+from fabricio import tasks
+
 my_nginx = tasks.ImageBuildDockerTasks(
     # ...
-    build_path='path_to_folder_with_dockerfile'
+    build_path='path/to/folder/with/dockerfile',
 )
 ```
     
 ### Custom build params
 
-Any `docker build` option* can be passed directly to `my_nginx.prepare`:
+Any `docker build` option can be passed directly to `my_nginx.prepare`*:
 
     fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes
     
@@ -63,5 +65,4 @@ After that you should manually call `push` and `upgrade` commands to finish depl
 
 ## Issues
 
-* If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`
 * Windows users may fall into trouble with `VirtualBox` and `Hyper-V`, the latter is used by "native" Docker for Windows. Try to disable Hyper-V and use [Docker Toolbox](https://www.docker.com/products/docker-toolbox) instead in such case

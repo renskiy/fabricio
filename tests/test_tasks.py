@@ -176,7 +176,7 @@ class DockerTasksTestCase(unittest.TestCase):
     maxDiff = None
 
     def setUp(self):
-        self.stderr, sys.stderr = sys.stderr, six.BytesIO()
+        self.stderr, sys.stderr = sys.stderr, six.StringIO()
         self.fab_settings = fab.settings(fab.hide('everything'))
         self.fab_settings.__enter__()
 
@@ -188,48 +188,55 @@ class DockerTasksTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 init_kwargs=dict(service='service'),
-                expected_commands_list=['upgrade', 'rollback', 'deploy'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore', 'pull', 'update', 'prepare', 'push'],
+                expected_commands_list=['rollback'],
+                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore', 'pull', 'update', 'prepare', 'push', 'upgrade'],
             ),
             prepare_tasks=dict(
                 init_kwargs=dict(service='service', registry='registry'),
-                expected_commands_list=['rollback', 'deploy', 'prepare', 'push', 'upgrade'],
+                expected_commands_list=['rollback', 'prepare', 'push', 'upgrade'],
                 unexpected_commands_list=['backup', 'restore', 'migrate', 'migrate-back', 'pull', 'update', 'revert'],
             ),
             migrate_tasks=dict(
                 init_kwargs=dict(service='service', migrate_commands=True),
-                expected_commands_list=['rollback', 'deploy', 'migrate', 'migrate-back', 'upgrade'],
-                unexpected_commands_list=['backup', 'restore', 'prepare', 'push', 'pull', 'update', 'revert'],
+                expected_commands_list=['rollback', 'migrate', 'migrate-back'],
+                unexpected_commands_list=['backup', 'restore', 'prepare', 'push', 'pull', 'update', 'revert', 'upgrade'],
             ),
             backup_tasks=dict(
                 init_kwargs=dict(service='service', backup_commands=True),
-                expected_commands_list=['rollback', 'deploy', 'backup', 'restore', 'upgrade'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'revert'],
+                expected_commands_list=['rollback', 'backup', 'restore'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'revert', 'upgrade'],
             ),
             revert_task=dict(
                 init_kwargs=dict(service='service', revert_command=True),
-                expected_commands_list=['rollback', 'deploy', 'revert', 'upgrade'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'backup', 'restore'],
+                expected_commands_list=['rollback', 'revert'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'backup', 'restore', 'upgrade'],
             ),
             pull_task=dict(
                 init_kwargs=dict(service='service', pull_command=True),
-                expected_commands_list=['rollback', 'deploy', 'pull', 'upgrade'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'revert', 'update', 'backup', 'restore'],
+                expected_commands_list=['rollback', 'pull'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'revert', 'update', 'backup', 'restore', 'upgrade'],
             ),
             update_task=dict(
                 init_kwargs=dict(service='service', update_command=True),
-                expected_commands_list=['rollback', 'deploy', 'update', 'upgrade'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'revert', 'backup', 'restore'],
+                expected_commands_list=['rollback', 'update'],
+                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'revert', 'backup', 'restore', 'upgrade'],
+            ),
+            complex=dict(
+                init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True),
+                expected_commands_list=['pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade'],
+                unexpected_commands_list=[],
             ),
             all_tasks=dict(
                 init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True),
-                expected_commands_list=['pull', 'rollback', 'update', 'deploy', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade'],
+                expected_commands_list=['pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'deploy'],
                 unexpected_commands_list=[],
+                env=dict(tasks='task'),
             ),
         )
         for case, data in cases.items():
             with self.subTest(case=case):
-                tasks_list = tasks.DockerTasks(**data['init_kwargs'])
+                with mock.patch.dict(fab.env, data.get('env', {})):
+                    tasks_list = tasks.DockerTasks(**data['init_kwargs'])
                 docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
                 for expected_command in data['expected_commands_list']:
                     self.assertIn(expected_command, new_style)
@@ -260,20 +267,13 @@ class DockerTasksTestCase(unittest.TestCase):
         )
         rollback.reset_mock()
 
-    def test_pull_raises_error_if_ssh_tunnel_credentials_can_not_be_obtained(self):
-        tasks_list = tasks.DockerTasks(
-            service=docker.Container(name='name', image='image'),
-            ssh_tunnel_port=1234,
-            hosts=['host'],
-        )
-        with self.assertRaises(ValueError):
-            fab.execute(tasks_list.pull)
-
     @mock.patch.multiple(docker.Container, backup=mock.DEFAULT, migrate=mock.DEFAULT, update=mock.DEFAULT)
     @mock.patch.multiple(fabricio, run=mock.DEFAULT, local=mock.DEFAULT)
     @mock.patch.object(fab, 'remote_tunnel', return_value=mock.MagicMock())
     def test_deploy(self, remote_tunnel, run, local, backup, migrate, update):
         cases = dict(
+            # TODO empty registry
+            # TODO empty account
             default=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(),
@@ -294,7 +294,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry='registry:5000',
             ),
-            custom_image_registry_with_ssh_tunnel=dict(
+            custom_image_registry_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(ssh_tunnel_port=1234),
                 expected_calls=[
@@ -329,7 +329,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 image_registry=None,
                 service=docker.Container(name='name'),
             ),
-            custom_registry_with_ssh_tunnel=dict(
+            custom_registry_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(registry='host:5000', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -344,7 +344,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry=None,
             ),
-            custom_registry_with_ssh_tunnel_no_image=dict(
+            custom_registry_with_ssh_tunnel_no_image_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(registry='host:5000', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -379,7 +379,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 image_registry=None,
                 service=docker.Container(name='name'),
             ),
-            custom_account_with_ssh_tunnel=dict(
+            custom_account_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(account='account', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -409,7 +409,7 @@ class DockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry='registry:5000',
             ),
-            custom_registry_and_image_registry_with_ssh_tunnel=dict(
+            custom_registry_and_image_registry_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(registry='host:4000', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -496,7 +496,7 @@ class DockerTasksTestCase(unittest.TestCase):
             ),
             complex=dict(
                 deploy_kwargs=dict(force=True, backup=True, tag='tag'),
-                init_kwargs=dict(registry='host:4000', ssh_tunnel_port=1234, account='account'),
+                init_kwargs=dict(registry='host:4000', account='account'),
                 expected_calls=[
                     mock.call.local('docker pull registry:5000/test:tag', quiet=False, use_cache=True),
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
@@ -504,9 +504,9 @@ class DockerTasksTestCase(unittest.TestCase):
                     mock.call.local('docker push host:4000/account/test:tag', quiet=False, use_cache=True),
                     mock.call.local('docker rmi host:4000/account/test:tag', use_cache=True),
                     mock.call.backup(),
-                    mock.call.run('docker pull localhost:1234/account/test:tag', quiet=False),
-                    mock.call.migrate(tag='tag', registry='localhost:1234', account='account'),
-                    mock.call.update(force=True, tag='tag', registry='localhost:1234', account='account'),
+                    mock.call.run('docker pull host:4000/account/test:tag', quiet=False),
+                    mock.call.migrate(tag='tag', registry='host:4000', account='account'),
+                    mock.call.update(force=True, tag='tag', registry='host:4000', account='account'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -598,7 +598,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry='registry:5000',
             ),
-            custom_image_registry_with_ssh_tunnel=dict(
+            custom_image_registry_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(ssh_tunnel_port=1234),
                 expected_calls=[
@@ -624,7 +624,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry=None,
             ),
-            custom_registry_with_ssh_tunnel=dict(
+            custom_registry_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(registry='host:5000', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -650,7 +650,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry=None,
             ),
-            custom_account_with_ssh_tunnel=dict(
+            custom_account_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(account='account', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -676,7 +676,7 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                 ],
                 image_registry='registry:5000',
             ),
-            custom_registry_and_image_registry_with_ssh_tunnel=dict(
+            custom_registry_and_image_registry_with_ssh_tunnel_deprecated=dict(
                 deploy_kwargs=dict(),
                 init_kwargs=dict(registry='host:4000', ssh_tunnel_port=1234),
                 expected_calls=[
@@ -795,15 +795,15 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
             ),
             complex=dict(
                 deploy_kwargs=dict(force=True, backup=True, tag='tag'),
-                init_kwargs=dict(registry='host:4000', ssh_tunnel_port=1234, build_path='foo', account='account'),
+                init_kwargs=dict(registry='host:4000', build_path='foo', account='account'),
                 expected_calls=[
                     mock.call.local('docker build --tag=host:4000/account/test:tag --pull=1 --force-rm=1 foo', quiet=False, use_cache=True),
                     mock.call.local('for img in $(docker images --filter "dangling=true" --quiet); do docker rmi "$img"; done', ignore_errors=True),
                     mock.call.local('docker push host:4000/account/test:tag', quiet=False, use_cache=True),
                     mock.call.backup(),
-                    mock.call.run('docker pull localhost:1234/account/test:tag', quiet=False),
-                    mock.call.migrate(tag='tag', registry='localhost:1234', account='account'),
-                    mock.call.update(force=True, tag='tag', registry='localhost:1234', account='account'),
+                    mock.call.run('docker pull host:4000/account/test:tag', quiet=False),
+                    mock.call.migrate(tag='tag', registry='host:4000', account='account'),
+                    mock.call.update(force=True, tag='tag', registry='host:4000', account='account'),
                 ],
                 image_registry='registry:5000',
             ),
@@ -922,3 +922,55 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
         docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
         for expected_command in expected_commands_list:
             self.assertIn(expected_command, new_style)
+
+
+class SshTunnelTestCase(unittest.TestCase):
+
+    def test_init(self):
+        cases = dict(
+            full=dict(
+                mapping='bind_address:1111:host:2222',
+                expected_bind_address='bind_address',
+                expected_port=1111,
+                expected_host='host',
+                expected_host_port=2222,
+            ),
+            single_port_int=dict(
+                mapping=1111,
+                expected_bind_address='127.0.0.1',
+                expected_port=1111,
+                expected_host='localhost',
+                expected_host_port=1111,
+            ),
+            single_port_str=dict(
+                mapping='1111',
+                expected_bind_address='127.0.0.1',
+                expected_port=1111,
+                expected_host='localhost',
+                expected_host_port=1111,
+            ),
+            double_ports=dict(
+                mapping='1111:2222',
+                expected_bind_address='127.0.0.1',
+                expected_port=1111,
+                expected_host='localhost',
+                expected_host_port=2222,
+            ),
+            double_ports_with_host=dict(
+                mapping='1111:host:2222',
+                expected_bind_address='127.0.0.1',
+                expected_port=1111,
+                expected_host='host',
+                expected_host_port=2222,
+            ),
+        )
+        for case, data in cases.items():
+            with self.subTest(case):
+                tunnel = tasks.SshTunnel(data['mapping'])
+                self.assertEqual(tunnel.bind_address, data['expected_bind_address'])
+                self.assertEqual(tunnel.port, data['expected_port'])
+                self.assertEqual(tunnel.host, data['expected_host'])
+                self.assertEqual(tunnel.host_port, data['expected_host_port'])
+
+    def test_init_none_mapping(self):
+        self.assertIsNone(tasks.SshTunnel(None))

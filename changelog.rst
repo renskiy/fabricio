@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.4.6
+-------------
+
+- Change: ``DockerTasks`` now uses explicit SSH tunnel definition (see `#154`_)
+
+.. _#154: https://github.com/renskiy/fabricio/issues/154
+
 Release 0.4.5
 -------------
 

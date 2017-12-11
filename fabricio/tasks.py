@@ -1,8 +1,9 @@
-import contextlib
+import contextlib2 as contextlib
 import functools
 import os
 import sys
 import types
+import warnings
 
 from fabric import api as fab, colors, state
 from fabric.contrib import console
@@ -55,6 +56,32 @@ def skip_unknown_host(func):
         )
     _task.wrapped = func  # compatibility with 'fab --display <task>' option
     return _task
+
+
+class SshTunnel(object):
+
+    bind_address = '127.0.0.1'
+
+    host = 'localhost'
+
+    def __new__(cls, mapping):
+        if mapping is None:
+            return None
+        return super(SshTunnel, cls).__new__(cls)
+
+    def __init__(self, mapping):
+        mapping = str(mapping)
+        parts = mapping.split(':', 3)
+        if len(parts) == 4:
+            self.bind_address, port, self.host, host_port = parts
+        elif len(parts) == 3:
+            port, self.host, host_port = parts
+        elif len(parts) == 2:
+            port, host_port = parts
+        else:
+            port = host_port = parts[0]
+        self.port = int(port)
+        self.host_port = int(host_port)
 
 
 class Tasks(object):
@@ -127,13 +154,17 @@ class Infrastructure(Tasks):
         *args, **kwargs
     ):
         super(Infrastructure, self).__init__(*args, **kwargs)
+
         # We need to be sure that `default()` will be at first place
         # every time when vars(self) is being invoked.
-        # See Fabric's `extract_tasks()`
+        # This is necessary to exclude `default` from the list of task
+        # because of it's already there as default task.
+        # See `fabric.main.extract_tasks()` for details
         self.__dict__ = utils.OrderedDict(
-            (('default', self.default), ),
+            [('default', self.default)],
             **self.__dict__
         )
+
         self.callback = callback
         self.color = color
         self.name = name = name or callback.__name__
@@ -141,7 +172,11 @@ class Infrastructure(Tasks):
         self.default.__doc__ = self.default.__doc__.format(name=name)
         self.confirm.__doc__ = self.confirm.__doc__.format(name=name)
 
-    @fab.task(default=True, name='confirm')
+    @fab.task(
+        default=True,
+        # mock another task name to exclude this task from the tasks list
+        name='confirm',
+    )
     def default(self, *args, **kwargs):
         """
         select {name} infrastructure to run task(s) on
@@ -169,12 +204,16 @@ infrastructure = Infrastructure
 
 class DockerTasks(Tasks):
 
+    _warnings_stacklevel = 2
+
     def __init__(
         self,
         service=None,
         registry=None,
+        host_registry=None,
         account=None,
-        ssh_tunnel_port=None,
+        ssh_tunnel_port=None,  # deprecated
+        ssh_tunnel=None,
         migrate_commands=False,
         backup_commands=False,
         pull_command=False,
@@ -183,10 +222,38 @@ class DockerTasks(Tasks):
         **kwargs
     ):
         super(DockerTasks, self).__init__(**kwargs)
+
+        # We need to be sure that `deploy()` will be at first place
+        # every time when vars(self) is being invoked.
+        # This is necessary to exclude `deploy` from the list of task
+        # because of it's already there as default task.
+        # See `fabric.main.extract_tasks()` for details
+        self.__dict__ = utils.OrderedDict(
+            [('deploy', self.deploy)],
+            **self.__dict__
+        )
+
         self.service = service
         self.registry = registry
+        self.host_registry = host_registry or registry
         self.account = account
-        self.ssh_tunnel_port = ssh_tunnel_port
+        self.ssh_tunnel = ssh_tunnel
+
+        if ssh_tunnel_port:
+            warnings.warn(
+                'ssh_tunnel_port is deprecated and will be removed in v0.5, '
+                'use ssh_tunnel instead',
+                RuntimeWarning, stacklevel=self._warnings_stacklevel,
+            )
+            registry = self.registry or self.image and self.image.registry
+            assert registry, 'must provide registry if using ssh_tunnel_port'
+            self.host_registry = 'localhost:%d' % ssh_tunnel_port
+            self.ssh_tunnel = '{port}:{host}:{host_port}'.format(
+                port=ssh_tunnel_port,
+                host=registry.host,
+                host_port=registry.port,
+            )
+
         # if there is at least one task to run then assume it is command mode,
         # there is no other way to find this out
         command_mode = bool(fab.env.tasks)
@@ -197,8 +264,15 @@ class DockerTasks(Tasks):
         self.revert.use_task_objects = command_mode or revert_command
         self.pull.use_task_objects = command_mode or pull_command
         self.update.use_task_objects = command_mode or update_command
-        self.prepare.use_task_objects = command_mode or registry is not None
-        self.push.use_task_objects = command_mode or registry is not None
+        if command_mode:
+            # set original name for `deploy` method to allow explicit invocation
+            self.deploy.name = 'deploy'
+
+        # enable following commands only in custom registry mode
+        custom_mode = bool(registry or account)
+        self.prepare.use_task_objects = command_mode or custom_mode
+        self.push.use_task_objects = command_mode or custom_mode
+        self.upgrade.use_task_objects = command_mode or custom_mode
 
     def _set_registry(self, registry):
         self.__dict__['registry'] = docker.Registry(registry)
@@ -208,13 +282,21 @@ class DockerTasks(Tasks):
 
     registry = property(_get_registry, _set_registry)
 
-    @property
-    def host_registry(self):
-        return docker.Registry(
-            'localhost:{port}'.format(port=self.ssh_tunnel_port)
-            if self.ssh_tunnel_port else
-            self.registry
-        )
+    def _set_host_registry(self, host_registry):
+        self.__dict__['host_registry'] = docker.Registry(host_registry)
+
+    def _get_host_registry(self):
+        return self.__dict__.get('host_registry')
+
+    host_registry = property(_get_host_registry, _set_host_registry)
+
+    def _set_ssh_tunnel(self, ssh_tunnel):
+        self.__dict__['ssh_tunnel'] = SshTunnel(ssh_tunnel)
+
+    def _get_ssh_tunnel(self):
+        return self.__dict__.get('ssh_tunnel')
+
+    ssh_tunnel = property(_get_ssh_tunnel, _set_ssh_tunnel)
 
     @property
     def image(self):
@@ -316,7 +398,7 @@ class DockerTasks(Tasks):
     @fab.roles()
     def push(self, tag=None):
         """
-        push downloaded Docker image to the registry
+        push downloaded Docker image to intermediate registry
         """
         if self.registry is None and self.account is None:
             return
@@ -346,30 +428,18 @@ class DockerTasks(Tasks):
 
     @contextlib.contextmanager
     def remote_tunnel(self):
-        if self.ssh_tunnel_port:
-            if self.registry:
-                local_port = self.registry.port
-                local_host = self.registry.host
-            elif self.image.registry:
-                local_port = self.image.registry.port
-                local_host = self.image.registry.host
-            else:
-                raise ValueError(
-                    'Either local host or local port for SSH tunnel '
-                    'can not be obtained'
-                )
-            with contextlib.closing(open(os.devnull, 'w')) as output:
-                with utils.patch(sys, 'stdout', output):
-                    # forward sys.stdout to os.devnull to prevent
-                    # printing debug messages by fab.remote_tunnel
-
-                    with fab.remote_tunnel(
-                        remote_port=self.host_registry.port,
-                        local_port=local_port,
-                        local_host=local_host,
-                    ):
-                        yield
-        else:
+        with contextlib.ExitStack() as stack:
+            if self.ssh_tunnel:
+                output = stack.enter_context(contextlib.closing(open(os.devnull, 'w')))  # noqa
+                # forward sys.stdout to os.devnull to prevent
+                # printing debug messages by fab.remote_tunnel
+                stack.enter_context(utils.patch(sys, 'stdout', output))
+                stack.enter_context(fab.remote_tunnel(
+                    remote_bind_address=self.ssh_tunnel.bind_address,
+                    remote_port=self.ssh_tunnel.port,
+                    local_host=self.ssh_tunnel.host,
+                    local_port=self.ssh_tunnel.host_port,
+                ))
             yield
 
     @fab.task
@@ -417,7 +487,11 @@ class DockerTasks(Tasks):
             execute(self.migrate, tag=tag)
         execute(self.update, tag=tag, force=force)
 
-    @fab.task(default=True)
+    @fab.task(
+        default=True,
+        # mock another task name to exclude this task from the tasks list
+        name='rollback',
+    )
     @fab.hosts()
     @fab.roles()
     def deploy(
@@ -443,11 +517,14 @@ class DockerTasks(Tasks):
 
 class ImageBuildDockerTasks(DockerTasks):
 
+    _warnings_stacklevel = 3
+
     def __init__(self, service=None, build_path='.', **kwargs):
         super(ImageBuildDockerTasks, self).__init__(service, **kwargs)
         self.build_path = build_path
         self.prepare.use_task_objects = True
         self.push.use_task_objects = True
+        self.upgrade.use_task_objects = True
 
     @fab.task
     @fab.hosts()
@@ -471,7 +548,6 @@ class ImageBuildDockerTasks(DockerTasks):
 
         fabricio.local(
             'docker build {options} {build_path}'.format(
-                image=image,
                 build_path=self.build_path,
                 options=options,
             ),

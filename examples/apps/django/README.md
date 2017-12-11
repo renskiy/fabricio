@@ -4,7 +4,7 @@ This example shows how to deploy [Django](https://www.djangoproject.com) configu
 
 ## Requirements
 
-* Fabricio 0.4.1 or greater
+* Fabricio 0.4.6 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 * [Docker](https://www.docker.com/products/overview) for Linux/Mac/Windows
@@ -42,7 +42,7 @@ This will apply new migration. After that run 'rollback' command which should re
     
 ## Customization
 
-See also "Hello, World" [Customization](../../hello_world/#customization) section.
+See also "Hello World" [Customization](../../hello_world/#customization) section.
 
 ### DJANGO_SETTINGS_MODULE customization
 
@@ -134,5 +134,4 @@ django = tasks.ImageBuildDockerTasks(
 
 ## Issues
 
-* If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`
 * Windows users may fall into trouble with `VirtualBox` and `Hyper-V`, the latter is used by "native" Docker for Windows. Try to disable Hyper-V and use [Docker Toolbox](https://www.docker.com/products/docker-toolbox) instead in such case

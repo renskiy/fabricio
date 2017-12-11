@@ -21,15 +21,6 @@ class Container(BaseService):
 
     stop_timeout = Attribute(default=10)
 
-    deprecated_options = {
-        'ports': 'publish',
-        'labels': 'label',
-        'volumes': 'volume',
-        'links': 'link',
-        'hosts': 'add_host',
-        'restart_policy': 'restart',
-    }
-
     user = Option(safe=True)
     publish = Option()
     env = Option(safe=True)

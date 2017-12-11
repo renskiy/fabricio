@@ -1,9 +1,9 @@
 import functools
 import json
+import warnings
 
 import docker.auth
 import docker.utils
-import six
 
 import fabricio
 
@@ -36,7 +36,7 @@ class Image(object):
         return super(Image, cls).__new__(cls)
 
     def __init__(self, name=None, tag=None, registry=None):
-        if isinstance(name, six.string_types):
+        if name is not None and not isinstance(name, Image):
             _registry, _name, _tag = self.parse_image_name(name)
             self.name = _name
             self.tag = tag or _tag or 'latest'  # TODO 'latest' is unnecessary
@@ -212,12 +212,17 @@ class Image(object):
             quiet=quiet,
         )
 
-    def create(self, command=None, name=None, options=()):
-        run_command = 'docker create {options} {image}{command}'
+    def create(self, command=None, name=None, options=()):  # pragma: no cover
+        warnings.warn('Image.create() is deprecated', DeprecationWarning)
+        warnings.warn(
+            'Image.create() is deprecated',
+            RuntimeWarning, stacklevel=2,
+        )
+        run_command = 'docker create {options} {image} {command}'.rstrip()
         return fabricio.run(
             run_command.format(
                 image=self,
-                command=command and ' {0}'.format(command) or '',
+                command=command or '',
                 options=self.make_container_options(name=name, options=options),
             ),
         )
