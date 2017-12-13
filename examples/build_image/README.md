@@ -56,12 +56,18 @@ Any `docker build` option can be passed directly to `my_nginx.prepare`*:
 
     fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes
     
+\* Fabricio uses `--pull` and `--force-rm` options by default when building images.
+
 After that you should manually call `push` and `upgrade` commands to finish deploy:
 
     fab my_nginx.push:tag
     fab my_nginx.upgrade:tag
-    
-\* Fabricio uses `--pull` and `--force-rm` options by default when building images.
+
+Or, all in one line:
+
+    fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes my_nginx.push:tag my_nginx.upgrade:tag
+
+*See also how's Fabric work with [per-task arguments](http://docs.fabfile.org/en/1.14/usage/fab.html#per-task-arguments).*
 
 ## Issues
 
