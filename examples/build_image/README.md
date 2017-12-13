@@ -56,7 +56,7 @@ Any `docker build` option can be passed directly to `my_nginx.prepare`*:
 
     fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes
     
-\* Fabricio uses `--pull` and `--force-rm` options by default when building images.
+*\* Fabricio uses `--pull` and `--force-rm` options by default. However, these can be revoked: `prepare:pull=no,force-rm=no`.*
 
 After that you should manually call `push` and `upgrade` commands to finish deploy:
 
