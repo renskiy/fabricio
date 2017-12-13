@@ -47,7 +47,3 @@ This will lead to a new master promotion.
 Add new VM definition to `Vagrantfile` and then run deploy again:
 
     fab --parallel db
-
-## Issues
-
-* If you see warnings in `Vagrant` logs about Guest Extensions version is not match VirtualBox version try to install `vagrant-vbguest` plugin that automatically installs Guest Extensions of version which corresponds to your version of VirtualBox: `vagrant plugin install vagrant-vbguest`
