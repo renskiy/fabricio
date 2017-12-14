@@ -34,11 +34,15 @@ If no infrastructure selected then Fabricio will use Fabric's default roles defi
 
 ## Deploy to localhost
 
-Same configuration can be deployed to `localhost` infrastructure even without SSH daemon enabled locally:
+Same configuration can be deployed to localhost:
 
     fab localhost nginx
+
+even without SSH daemon enabled:
+
+    fab monkey-patch localhost nginx
     
-This is possible due to Python "monkey patch" applied inside the `localhost` infrastructure definition (see [fabfile.py](fabfile.py#L28)).
+The latter is possible due to special "monkey-patch" command applied before any other. See [fabfile.py](fabfile.py) for details.
 
 ## Parallel execution
 

@@ -41,7 +41,6 @@ The most basic :code:`fabfile.py` you can use with the Fabricio is something lik
 
     from fabricio import docker, tasks
     
-    
     nginx = tasks.DockerTasks(
         service=docker.Container(
             name='nginx',
@@ -126,14 +125,12 @@ You can define as many roles and infrastructures as you need. The following exam
     from fabric import colors, api as fab
     from fabricio import docker, tasks
 
-
     @tasks.infrastructure
     def staging():
         fab.env.roledefs.update(
             balancer=['user@staging.example.com'],
             web=['user@staging.example.com'],
         )
-
 
     @tasks.infrastructure(color=colors.red)
     def production():
@@ -186,6 +183,10 @@ Here is the list of available commands:
 .. code:: bash
 
     fab staging balancer web
+
+See `Infrastructures and roles`_ example for more details.
+
+.. _Infrastructures and roles: https://github.com/renskiy/fabricio/blob/master/examples/roles
 
 Tags
 ====
@@ -255,7 +256,7 @@ List of commands in this case updated with additional commands which were hidden
     nginx.push      push downloaded Docker image to intermediate registry
     nginx.upgrade   upgrade service to a new version (backup -> pull -> migrate -> update)
 
-See also `Hello World`_ example for more details.
+See `Hello World`_ example for more details.
 
 .. _Hello World: https://github.com/renskiy/fabricio/tree/master/examples/hello_world/#ssh-tunneling
     
@@ -279,10 +280,14 @@ Using Fabricio you can also build Docker images from local sources and deploy th
 
 Commands list for :code:`ImageBuildDockerTasks` is same as for :code:`DockerTasks` with provided custom registry. The only difference is that 'prepare' builds image instead of pulling it from image's registry.
 
+See `Building Docker images`_ example for more details.
+
+.. _Building Docker images: https://github.com/renskiy/fabricio/blob/master/examples/build_image
+
 Docker services
 ===============
 
-Fabricio can work with Docker services:
+Fabricio can deploy Docker services:
 
 .. code:: python
 
@@ -299,6 +304,10 @@ Fabricio can work with Docker services:
         ),
         hosts=['user@manager'],
     )
+
+See `Docker services`_ example for more details.
+
+.. _Docker services: https://github.com/renskiy/fabricio/blob/master/examples/service/swarm/
 
 Docker stacks
 =============
@@ -318,3 +327,7 @@ Docker stacks are also supported (available since Docker 1.13):
         ),
         hosts=['user@manager'],
     )
+
+See `Docker stacks`_ example for more details.
+
+.. _Docker stacks: https://github.com/renskiy/fabricio/blob/master/examples/service/stack/

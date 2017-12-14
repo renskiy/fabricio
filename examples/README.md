@@ -1,5 +1,10 @@
 # Fabricio examples and recipes
 
+## How to use examples
+
+1. Clone (or download) this repository to any directory.
+2. Go to the folder with selected example and follow instructions in `README.md`.
+
 ## Basics
 
 * [Hello World](hello_world/)

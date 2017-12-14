@@ -21,17 +21,26 @@ def vagrant():
     )
 
 
-@tasks.infrastructure
-def localhost():
-    # monkeypatching `run` method to be able to run docker commands
-    # on localhost instead of remote server
+@fab.task(name='monkey-patch')
+def monkey_patch():
+    """
+    apply monkey patch
+    """
+    # replace fabricio.run by fabricio.local to run all commands on localhost
     fabricio.run = functools.partial(fabricio.local, capture=True)
 
+    # uncomment row below to disable file uploading (e.g. docker-compose.yml)
+    # fab.put = lambda *args, **kwargs: None
+
+
+@tasks.infrastructure
+def localhost():
     fab.env.update(
         roledefs={
             'web': ['localhost'],
         },
     )
+
 
 nginx = tasks.DockerTasks(
     service=docker.Container(
