@@ -1,9 +1,11 @@
-import functools
 import json
 import warnings
 
 import docker.auth
 import docker.utils
+import six
+
+from functools import partial
 
 import fabricio
 
@@ -29,6 +31,10 @@ class Image(object):
     registry = None
 
     use_digest = False
+
+    @property
+    def temp_tag(self):
+        return 'fabricio-temp-image:' + self.name.rsplit('/')[-1]
 
     def __new__(cls, name=None, tag=None, registry=None):
         if isinstance(name, Image):
@@ -164,7 +170,7 @@ class Image(object):
     def get_delete_callback(self, force=False):
         command = 'docker rmi {force}{image}'
         force = force and '--force ' or ''
-        return functools.partial(
+        return partial(
             fabricio.run,
             command.format(image=self, force=force),
             ignore_errors=True,
@@ -227,8 +233,57 @@ class Image(object):
             ),
         )
 
-    def pull(self):
-        return fabricio.run(
-            'docker pull {image}'.format(image=self),
+    def pull(self, local=False, use_cache=False, ignore_errors=False):
+        run = fabricio.local if local else fabricio.run
+        run = partial(run, use_cache=use_cache, ignore_errors=ignore_errors)
+        run_ignore_errors = partial(run, ignore_errors=True)
+
+        image = six.text_type(self)
+
+        run_ignore_errors(
+            'docker tag {image} {tag} '
+            '&& docker rmi {image}'.format(image=image, tag=self.temp_tag)
+        )
+        pull_result = run('docker pull ' + image, quiet=False)
+        if pull_result.succeeded:
+            run_ignore_errors('docker rmi {tag}'.format(tag=self.temp_tag))
+
+    def build(self, local=False, build_path='.', options=None, use_cache=False):
+        if local:
+            run = fabricio.local
+            run_capture_output = partial(run, capture=True)
+        else:
+            run = run_capture_output = fabricio.run
+        run = partial(run, use_cache=use_cache)
+        run_capture_output = partial(run_capture_output, use_cache=use_cache)
+        run_ignore_errors = partial(run, ignore_errors=True)
+
+        image = six.text_type(self)
+        options = options or utils.Options()
+        options['tag'] = image
+
+        # default options
+        options.setdefault('pull', 1)
+        options.setdefault('force-rm', 1)
+
+        with utils.patch(fabricio, 'run', run_capture_output):
+            try:
+                old_parent_id = self.info['Parent']
+            except ImageNotFoundError:
+                old_parent_id = ''
+
+        run_ignore_errors(
+            'docker tag {image} {tag} '
+            '&& docker rmi {image}'.format(image=image, tag=self.temp_tag)
+        )
+        run(
+            'docker build {options} {build_path}'.format(
+                options=options,
+                build_path=build_path,
+            ),
             quiet=False,
         )
+        run_ignore_errors('docker rmi {tag} {old_parent}'.format(
+            tag=self.temp_tag,
+            old_parent=old_parent_id,
+        ))

@@ -10,8 +10,7 @@ import fabricio
 
 from fabricio import docker, utils
 from fabricio.docker import service
-from tests import SucceededResult, args_parser, FabricioTestCase, \
-    docker_inspect_args_parser
+from tests import SucceededResult, args_parser, FabricioTestCase
 
 
 def as_ordereddict(result):
@@ -42,9 +41,6 @@ class ContainerTestCase(FabricioTestCase):
                 side_effect=[
                     SucceededResult('  Is Manager: false'),  # manager status
                 ],
-                args_parser=[
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
@@ -65,19 +61,11 @@ class ContainerTestCase(FabricioTestCase):
                         },
                     }}])),  # image info
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                 ],
                 expected_result=False,
                 expected_compose_file='docker-compose.yml',
@@ -91,13 +79,6 @@ class ContainerTestCase(FabricioTestCase):
                     RuntimeError(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
-                ],
-                args_parser=[
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
                 ],
                 expected_command_args=[
                     {
@@ -131,23 +112,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -176,23 +145,11 @@ class ContainerTestCase(FabricioTestCase):
                     RuntimeError(),  # stack images
                     RuntimeError(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -221,23 +178,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=compose.yml', 'stack'],
                     },
@@ -266,23 +211,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=compose.yml', 'stack'],
                     },
@@ -311,23 +244,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -356,23 +277,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -401,23 +310,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -449,29 +346,15 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                     SucceededResult('service image:tag'),  # stack images
-                    SucceededResult(),  # image pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
-                ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
                 ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -481,9 +364,7 @@ class ContainerTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
-                    {
-                        'args': ['docker', 'pull', 'image:tag'],
-                    },
+                    {'args': ['docker', 'tag', 'image:tag', 'fabricio-temp-image:image', '&&', 'docker', 'rmi', 'image:tag']}, {'args': ['docker', 'pull', 'image:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image']},
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
@@ -506,39 +387,21 @@ class ContainerTestCase(FabricioTestCase):
                             'fabricio.stack.images.stack': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',
                         },
                     }}])),  # image info
-                    SucceededResult(),  # image pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                     SucceededResult('service image:tag'),  # stack images
-                    SucceededResult(),  # image pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
-                ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
                 ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
-                    {
-                        'args': ['docker', 'pull', 'image:tag'],
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
+                    {'args': ['docker', 'tag', 'image:tag', 'fabricio-temp-image:image', '&&', 'docker', 'rmi', 'image:tag']}, {'args': ['docker', 'pull', 'image:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image']},
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
@@ -551,9 +414,7 @@ class ContainerTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
-                    {
-                        'args': ['docker', 'pull', 'image:tag'],
-                    },
+                    {'args': ['docker', 'tag', 'image:tag', 'fabricio-temp-image:image', '&&', 'docker', 'rmi', 'image:tag']}, {'args': ['docker', 'pull', 'image:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image']},
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
@@ -576,46 +437,24 @@ class ContainerTestCase(FabricioTestCase):
                             'fabricio.stack.images.stack': 'eyJpbWFnZTE6dGFnIjogImRpZ2VzdDEiLCAiaW1hZ2UyOnRhZyI6ICJkaWdlc3QyIn0=',
                         },
                     }}])),  # image info
-                    SucceededResult(),  # image1 pull
-                    SucceededResult(),  # image2 pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image1 pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                     SucceededResult('service1 image1:tag\nservice2 image2:tag\n'),  # stack images
-                    SucceededResult(),  # image1 pull
-                    SucceededResult(),  # image2 pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image1 pull
+                    SucceededResult(), SucceededResult(), SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # build new sentinel image
-                ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
-                    args_parser,
                 ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-current-stack:stack',
-                    },
-                    {
-                        'args': ['docker', 'pull', 'image1:tag'],
-                    },
-                    {
-                        'args': ['docker', 'pull', 'image2:tag'],
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
+                    {'args': ['docker', 'tag', 'image1:tag', 'fabricio-temp-image:image1', '&&', 'docker', 'rmi', 'image1:tag']}, {'args': ['docker', 'pull', 'image1:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image1']},
+                    {'args': ['docker', 'tag', 'image2:tag', 'fabricio-temp-image:image2', '&&', 'docker', 'rmi', 'image2:tag']}, {'args': ['docker', 'pull', 'image2:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image2']},
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image1:tag', 'image2:tag'],
                     },
@@ -628,12 +467,8 @@ class ContainerTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
-                    {
-                        'args': ['docker', 'pull', 'image1:tag'],
-                    },
-                    {
-                        'args': ['docker', 'pull', 'image2:tag'],
-                    },
+                    {'args': ['docker', 'tag', 'image1:tag', 'fabricio-temp-image:image1', '&&', 'docker', 'rmi', 'image1:tag']}, {'args': ['docker', 'pull', 'image1:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image1']},
+                    {'args': ['docker', 'tag', 'image2:tag', 'fabricio-temp-image:image2', '&&', 'docker', 'rmi', 'image2:tag']}, {'args': ['docker', 'pull', 'image2:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image2']},
                     {
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image1:tag', 'image2:tag'],
                     },
@@ -655,7 +490,7 @@ class ContainerTestCase(FabricioTestCase):
                     put.reset_mock()
                     stack = docker.Stack(**data.get('init_kwargs', {}))
                     side_effect = self.command_checker(
-                        args_parsers=data.get('args_parser', []),
+                        args_parsers=args_parser,
                         expected_args_set=data.get('expected_command_args', []),
                         side_effects=data.get('side_effect', []),
                     )
@@ -681,9 +516,6 @@ class ContainerTestCase(FabricioTestCase):
                 side_effect=[
                     SucceededResult('  Is Manager: false'),  # manager status
                 ],
-                args_parser=[
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
@@ -703,21 +535,11 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult(),  # update sentinel images
                 ],
-                args_parser=[
-                    args_parser,
-                    docker_inspect_args_parser,
-                    args_parser,
-                    args_parser,
-                ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
-                    {
-                        'executable': ['docker', 'inspect'],
-                        'type': 'image',
-                        'image_or_container': 'fabricio-backup-stack:stack',
-                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
@@ -742,7 +564,6 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # service update
                     SucceededResult(),  # update sentinel images
                 ],
-                args_parser=[args_parser] * 6,
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
@@ -781,7 +602,6 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult(),  # service update
                     SucceededResult(),  # update sentinel images
                 ],
-                args_parser=[args_parser] * 7,
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
@@ -816,7 +636,7 @@ class ContainerTestCase(FabricioTestCase):
                     stack = docker.Stack(**data.get('init_kwargs', {}))
                     side_effects = data.get('side_effect', [])
                     side_effect = self.command_checker(
-                        args_parsers=data.get('args_parser', []),
+                        args_parsers=args_parser,
                         expected_args_set=data.get('expected_command_args', []),
                         side_effects=side_effects,
                     )
@@ -833,16 +653,12 @@ class ContainerTestCase(FabricioTestCase):
 
     def test_revert_raises_error_when_backup_not_found(self):
         side_effect = self.command_checker(
-            args_parsers=[args_parser, docker_inspect_args_parser],
+            args_parsers=args_parser,
             expected_args_set=[
                 {
                     'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                 },
-                {
-                    'executable': ['docker', 'inspect'],
-                    'type': 'image',
-                    'image_or_container': 'fabricio-backup-stack:stack',
-                },
+                {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
             ],
             side_effects=[
                 SucceededResult('  Is Manager: true'),  # manager status

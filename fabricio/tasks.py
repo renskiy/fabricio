@@ -377,18 +377,19 @@ class DockerTasks(Tasks):
         """
         if self.registry is None and self.account is None:
             return
-        image = self.image[tag]
-        if not image:
-            return
-        fabricio.local(
-            'docker pull {image}'.format(image=image),
-            quiet=False,
-            use_cache=True,
-        )
-        self.delete_dangling_images()
+        image = self.image[tag]  # type: docker.Image
+        if image:
+            image.pull(local=True, use_cache=True)
 
-    @staticmethod
-    def delete_dangling_images():
+    def delete_dangling_images(self):  # pragma: no cover
+        warnings.warn(
+            'delete_dangling_images() is deprecated and will be removed in v0.5',  # noqa
+            DeprecationWarning,
+        )
+        warnings.warn(
+            'delete_dangling_images() is deprecated and will be removed in v0.5',  # noqa
+            RuntimeWarning, stacklevel=self._warnings_stacklevel,
+        )
         fabricio.local(dangling_images_delete_command(), ignore_errors=True)
 
     def push_image(self, tag=None):
@@ -518,27 +519,16 @@ class ImageBuildDockerTasks(DockerTasks):
         build Docker image (see 'docker build --help' for available options)
         """
         for key, value in kwargs.items():
-            try:
+            with contextlib.suppress(ValueError):
                 kwargs[key] = utils.strtobool(value)
-            except ValueError:
-                pass
-
-        image = self.image[self.registry:tag:self.account]
-        options = utils.Options(tag=image, **kwargs)
-
-        # default options
-        options.setdefault('pull', 1)
-        options.setdefault('force-rm', 1)
-
-        fabricio.local(
-            'docker build {options} {build_path}'.format(
-                build_path=self.build_path,
-                options=options,
-            ),
-            quiet=False,
+        options = utils.Options(kwargs)
+        image = self.image[self.registry:tag:self.account]  # type: docker.Image
+        image.build(
+            local=True,
+            build_path=self.build_path,
+            options=options,
             use_cache=True,
         )
-        self.delete_dangling_images()
 
     @fab.task
     @fab.hosts()

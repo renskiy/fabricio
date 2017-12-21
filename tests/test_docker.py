@@ -15,7 +15,7 @@ from fabricio.docker.container import Option, Attribute
 from tests import SucceededResult, docker_run_args_parser, \
     docker_service_update_args_parser, \
     docker_entity_inspect_args_parser, docker_inspect_args_parser, \
-    docker_service_create_args_parser, args_parser, Command
+    docker_service_create_args_parser, args_parser, Command, FailedResult
 
 
 class TestContainer(docker.Container):
@@ -1031,6 +1031,8 @@ class ContainerTestCase(unittest.TestCase):
 
 class ImageTestCase(unittest.TestCase):
 
+    maxDiff = None
+
     def test___init___can_take_another_image_as_argument(self):
         cases = dict(
             default_image=dict(
@@ -1736,6 +1738,67 @@ class ImageTestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = container.image
 
+    @mock.patch('fabricio.run')
+    @mock.patch('fabricio.local')
+    def test_build(self, local, run):
+        cases = dict(
+            default=dict(
+                build_kwargs=dict(),
+                expected_calls=[
+                    mock.call.run('docker inspect --type image image:latest', abort_exception=docker.ImageNotFoundError, use_cache=False),
+                    mock.call.run('docker tag image:latest fabricio-temp-image:image && docker rmi image:latest', use_cache=False, ignore_errors=True),
+                    mock.call.run('docker build --tag=image:latest --pull=1 --force-rm=1 .', use_cache=False, quiet=False),
+                    mock.call.run('docker rmi fabricio-temp-image:image old_parent_id', use_cache=False, ignore_errors=True),
+                ],
+                side_effect=[
+                    SucceededResult('[{"Parent": "old_parent_id"}]'),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ],
+            ),
+            local=dict(
+                build_kwargs=dict(local=True),
+                expected_calls=[
+                    mock.call.local('docker inspect --type image image:latest', abort_exception=docker.ImageNotFoundError, use_cache=False, capture=True),
+                    mock.call.local('docker tag image:latest fabricio-temp-image:image && docker rmi image:latest', use_cache=False, ignore_errors=True),
+                    mock.call.local('docker build --tag=image:latest --pull=1 --force-rm=1 .', use_cache=False, quiet=False),
+                    mock.call.local('docker rmi fabricio-temp-image:image old_parent_id', use_cache=False, ignore_errors=True),
+                ],
+                side_effect=[
+                    SucceededResult('[{"Parent": "old_parent_id"}]'),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ],
+            ),
+            errors=dict(
+                build_kwargs=dict(),
+                expected_calls=[
+                    mock.call.run('docker inspect --type image image:latest', abort_exception=docker.ImageNotFoundError, use_cache=False),
+                    mock.call.run('docker tag image:latest fabricio-temp-image:image && docker rmi image:latest', use_cache=False, ignore_errors=True),
+                    mock.call.run('docker build --tag=image:latest --pull=1 --force-rm=1 .', use_cache=False, quiet=False),
+                    mock.call.run('docker rmi fabricio-temp-image:image ', use_cache=False, ignore_errors=True),
+                ],
+                side_effect=[
+                    docker.ImageNotFoundError(),
+                    FailedResult(),
+                    SucceededResult(),
+                    FailedResult(),
+                ],
+            ),
+        )
+        build = mock.Mock()
+        build.attach_mock(run, 'run')
+        build.attach_mock(local, 'local')
+        for case, data in cases.items():
+            with self.subTest(case=case):
+                build.reset_mock()
+                run.side_effect = local.side_effect = data['side_effect']
+                image = docker.Image('image')
+                image.build(**data['build_kwargs'])
+                self.assertListEqual(data['expected_calls'], build.mock_calls)
+
 
 class ServiceTestCase(unittest.TestCase):
 
@@ -2223,11 +2286,26 @@ class ServiceTestCase(unittest.TestCase):
     def test_pull_image(self):
         cases = dict(
             no_errors=dict(
-                side_effect=(SucceededResult(), ),
+                side_effect=[
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ],
                 expected_pull_error=None,
             ),
-            error=dict(
-                side_effect=(RuntimeError(), ),
+            ignored_errors=dict(
+                side_effect=[
+                    FailedResult(),
+                    SucceededResult(),
+                    FailedResult(),
+                ],
+                expected_pull_error=None,
+            ),
+            errors=dict(
+                side_effect=[
+                    FailedResult(),
+                    RuntimeError(),
+                ],
                 expected_pull_error=True,
             ),
         )

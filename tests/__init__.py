@@ -1,4 +1,5 @@
 import argparse
+import itertools
 import shlex
 
 import unittest2 as unittest
@@ -24,7 +25,10 @@ class FabricioTestCase(unittest.TestCase):
             if isinstance(side_effect, Exception):
                 raise side_effect
             return side_effect
-        args_parsers = iter(args_parsers)
+        if isinstance(args_parsers, argparse.ArgumentParser):
+            args_parsers = itertools.repeat(args_parsers)
+        else:
+            args_parsers = iter(args_parsers)
         expected_args_set = iter(expected_args_set)
         side_effects = iter(side_effects)
         return check_command_args

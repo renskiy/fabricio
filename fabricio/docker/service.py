@@ -642,12 +642,7 @@ class Stack(_Base):
         if not images:
             return {}
         for image in images:
-            fabricio.run(
-                'docker pull %s' % image,
-                ignore_errors=True,
-                quiet=False,
-                use_cache=True,
-            )
+            Image(image).pull(use_cache=True, ignore_errors=True)
         command = (
             'docker inspect --type image --format "{{index .RepoDigests 0}}" %s'
         ) % ' '.join(images)

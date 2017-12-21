@@ -1,6 +1,7 @@
 import copy
 import os
 import re
+import warnings
 
 from cached_property import cached_property
 from fabric import api as fab
@@ -82,7 +83,15 @@ class AvailableVagrantHosts(object):  # pragma: no cover
         return hosts
 
 
-def dangling_images_delete_command(os_name=None, repository=None):
+def dangling_images_delete_command(os_name=None, repository=None):  # pragma: no cover
+    warnings.warn(
+        'dangling_images_delete_command() is deprecated and will be removed in v0.5',  # noqa
+        DeprecationWarning,
+    )
+    warnings.warn(
+        'dangling_images_delete_command() is deprecated and will be removed in v0.5',  # noqa
+        RuntimeWarning, stacklevel=2,
+    )
     os_name = os_name or os.name
     repository = repository and ' {0}'.format(repository) or ''
     if os_name == 'posix':
