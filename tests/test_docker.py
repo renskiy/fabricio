@@ -2,6 +2,8 @@
 import json
 import shlex
 
+from collections import OrderedDict
+
 import mock
 import unittest2 as unittest
 
@@ -10,7 +12,6 @@ from fabric import api as fab
 import fabricio
 
 from fabricio import docker
-from fabricio.utils import OrderedDict
 from fabricio.docker.container import Option, Attribute
 from tests import SucceededResult, docker_run_args_parser, \
     docker_service_update_args_parser, \

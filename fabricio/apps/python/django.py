@@ -1,3 +1,4 @@
+import collections
 import itertools
 
 from six.moves import map, filter
@@ -55,7 +56,7 @@ class DjangoMixin(docker.BaseService):
             filter(None, backup_migrations.splitlines()),
         )))
 
-        revert_migrations = utils.OrderedDict()
+        revert_migrations = collections.OrderedDict()
 
         while True:
             while True:

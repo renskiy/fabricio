@@ -39,8 +39,7 @@ def get_option_value(string, option):
         if not part.startswith(option + '='):
             continue
         value = shlex.split(part.split('=', 1)[-1])
-        # removing \x00 necessary for Python 2.6
-        return value and value[0].replace('\x00', '') or None
+        return value and value[0] or None
 
 
 class ServiceError(RuntimeError):

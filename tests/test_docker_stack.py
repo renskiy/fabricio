@@ -1,3 +1,4 @@
+import collections
 import functools
 import json
 
@@ -14,7 +15,7 @@ from tests import SucceededResult, args_parser, FabricioTestCase
 
 
 def as_ordereddict(result):
-    return utils.OrderedDict(sorted(result.items()))
+    return collections.OrderedDict(sorted(result.items()))
 
 
 class ContainerTestCase(FabricioTestCase):
@@ -29,7 +30,7 @@ class ContainerTestCase(FabricioTestCase):
         self.cd.stop()
 
     @mock.patch.object(fabricio, 'log')
-    @mock.patch.object(service, 'dict', new=utils.OrderedDict)
+    @mock.patch.object(service, 'dict', new=collections.OrderedDict)
     @mock.patch.object(service, 'set', new=utils.OrderedSet)
     @mock.patch.object(json, 'loads', new=functools.partial(json.loads, object_hook=as_ordereddict))
     @mock.patch.object(fab, 'put')
@@ -507,7 +508,7 @@ class ContainerTestCase(FabricioTestCase):
                     else:
                         put.assert_not_called()
 
-    @mock.patch.object(service, 'dict', new=utils.OrderedDict)
+    @mock.patch.object(service, 'dict', new=collections.OrderedDict)
     @mock.patch.object(fab, 'put')
     def test_revert(self, put, *args):
         cases = dict(

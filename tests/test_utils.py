@@ -1,4 +1,6 @@
 # coding: utf-8
+import collections
+
 import mock
 import six
 import unittest2 as unittest
@@ -13,51 +15,51 @@ class OptionsTestCase(unittest.TestCase):
     def test_str_version(self):
         cases = dict(
             empty_options_list=dict(
-                options=utils.OrderedDict(),
+                options=collections.OrderedDict(),
                 expected_str_version='',
             ),
             with_underscore=dict(
-                options=utils.OrderedDict(foo_baz='bar'),
+                options=collections.OrderedDict(foo_baz='bar'),
                 expected_str_version='--foo_baz=bar',
             ),
             multiword=dict(
-                options=utils.OrderedDict(foo='bar baz'),
+                options=collections.OrderedDict(foo='bar baz'),
                 expected_str_version="--foo='bar baz'",
             ),
             empty=dict(
-                options=utils.OrderedDict(foo=''),
+                options=collections.OrderedDict(foo=''),
                 expected_str_version="--foo=''",
             ),
             str=dict(
-                options=utils.OrderedDict(foo='bar'),
+                options=collections.OrderedDict(foo='bar'),
                 expected_str_version='--foo=bar',
             ),
             unicode=dict(
-                options=utils.OrderedDict(foo=u'привет'),
+                options=collections.OrderedDict(foo=u'привет'),
                 expected_str_version=u"--foo='привет'",
             ),
             integer=dict(
-                options=utils.OrderedDict(foo=42),
+                options=collections.OrderedDict(foo=42),
                 expected_str_version='--foo=42',
             ),
             integer_zero=dict(
-                options=utils.OrderedDict(foo=0),
+                options=collections.OrderedDict(foo=0),
                 expected_str_version='--foo=0',
             ),
             integer_one=dict(
-                options=utils.OrderedDict(foo=1),
+                options=collections.OrderedDict(foo=1),
                 expected_str_version='--foo=1',
             ),
             integer_minus_one=dict(
-                options=utils.OrderedDict(foo=-1),
+                options=collections.OrderedDict(foo=-1),
                 expected_str_version='--foo=-1',
             ),
             image=dict(
-                options=utils.OrderedDict(image=docker.Image('image:tag')),
+                options=collections.OrderedDict(image=docker.Image('image:tag')),
                 expected_str_version='--image=image:tag',
             ),
             triple_length=dict(
-                options=utils.OrderedDict([
+                options=collections.OrderedDict([
                     ('foo', 'foo'),
                     ('bar', 'bar'),
                     ('baz', 'baz'),
@@ -65,23 +67,23 @@ class OptionsTestCase(unittest.TestCase):
                 expected_str_version='--foo=foo --bar=bar --baz=baz',
             ),
             multi_value_empty=dict(
-                options=utils.OrderedDict(foo=[]),
+                options=collections.OrderedDict(foo=[]),
                 expected_str_version='',
             ),
             multi_value=dict(
-                options=utils.OrderedDict(foo=['bar', 'baz']),
+                options=collections.OrderedDict(foo=['bar', 'baz']),
                 expected_str_version='--foo=bar --foo=baz',
             ),
             multi_value_integer=dict(
-                options=utils.OrderedDict(foo=[42, 43]),
+                options=collections.OrderedDict(foo=[42, 43]),
                 expected_str_version='--foo=42 --foo=43',
             ),
             boolean_values=dict(
-                options=utils.OrderedDict(foo=True, bar=False),
+                options=collections.OrderedDict(foo=True, bar=False),
                 expected_str_version='--foo',
             ),
             mix=dict(
-                options=utils.OrderedDict([
+                options=collections.OrderedDict([
                     ('foo', 'foo'),
                     ('bar', True),
                     ('baz', ['1', 'a']),

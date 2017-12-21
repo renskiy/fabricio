@@ -6,7 +6,7 @@ from setuptools import find_packages
 with open('README.rst') as description:
     long_description = description.read()
 
-fabric_package = sys.version_info < (3,0) and 'Fabric>=1.1,<2.0' or 'Fabric3>=1.1,<2.0'
+fabric_package = sys.version_info < (3, 0) and 'Fabric>=1.1,<2.0' or 'Fabric3>=1.1,<2.0'
 
 install_requires = [
     fabric_package,
@@ -17,12 +17,6 @@ install_requires = [
     'dpath>=1.4.0',
     'contextlib2>=0.5.5',
 ]
-
-if sys.version_info < (2,7):
-    install_requires.extend([
-        'ordereddict>=1.1',
-        'paramiko<2.4',
-    ])
 
 setup(
     name='fabricio',
@@ -42,7 +36,6 @@ setup(
         'Topic :: System :: Networking',
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 2',
-        'Programming Language :: Python :: 2.6',
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',

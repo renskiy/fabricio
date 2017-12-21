@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.4.9
+-------------
+
+- Change: dropped Python 2.6 support
+
 Release 0.4.8
 -------------
 

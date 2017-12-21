@@ -7,11 +7,6 @@ import multiprocessing
 
 from distutils import util as distutils
 
-try:
-    from collections import OrderedDict
-except ImportError:
-    from ordereddict import OrderedDict
-
 import six
 
 from fabric import api as fab
@@ -51,7 +46,7 @@ class default_property(object):
         return self
 
 
-class Options(OrderedDict):
+class Options(collections.OrderedDict):
 
     def make_option(self, option, value=None):
         option = '--' + option

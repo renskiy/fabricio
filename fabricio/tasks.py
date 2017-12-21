@@ -1,3 +1,4 @@
+import collections
 import functools
 import os
 import sys
@@ -164,7 +165,7 @@ class Infrastructure(Tasks):
         # This is necessary to exclude `default` from the list of task
         # because of it's already there as default task.
         # See `fabric.main.extract_tasks()` for details
-        self.__dict__ = utils.OrderedDict(
+        self.__dict__ = collections.OrderedDict(
             [('default', self.default)],
             **self.__dict__
         )
@@ -236,7 +237,7 @@ class DockerTasks(Tasks):
         # This is necessary to exclude `deploy` from the list of task
         # because of it's already there as default task.
         # See `fabric.main.extract_tasks()` for details
-        self.__dict__ = utils.OrderedDict(
+        self.__dict__ = collections.OrderedDict(
             [('deploy', self.deploy)],
             **self.__dict__
         )

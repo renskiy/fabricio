@@ -77,7 +77,7 @@ Requirements
 Local
 -----
 
-- Python 2.6+ or Python 3.4+*
+- Python 2.7 or Python 3.4+*
 - (optional) Docker 1.9+ for building Docker images
 
 \* `Fabric3`_ is used for compatibility with Python 3
