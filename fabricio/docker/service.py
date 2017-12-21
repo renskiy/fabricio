@@ -207,7 +207,7 @@ class _Base(BaseService):
             if self.pull_errors.get(fab.env.host, False):
                 return False
             is_manager = fabricio.run(
-                "docker info 2>&1 | grep 'Is Manager:'",
+                'docker info 2>&1 | grep "Is Manager:"',
                 use_cache=True,
             ).endswith('true')
             if is_manager:
@@ -631,7 +631,7 @@ class Stack(_Base):
         return b64encode(bucket.encode()).decode()
 
     def _get_services_images(self):
-        command = "docker stack services --format '{{.Name}} {{.Image}}' %s"
+        command = 'docker stack services --format "{{.Name}} {{.Image}}" %s'
         command %= self.name
         lines = filter(None, fabricio.run(command).splitlines())
         return dict(map(lambda line: line.rsplit(None, 1), lines))
@@ -649,7 +649,7 @@ class Stack(_Base):
                 use_cache=True,
             )
         command = (
-            "docker inspect --type image --format '{{index .RepoDigests 0}}' %s"
+            'docker inspect --type image --format "{{index .RepoDigests 0}}" %s'
         ) % ' '.join(images)
         digests = fabricio.run(command, ignore_errors=True, use_cache=True)
         return dict(zip_longest(images, filter(None, digests.splitlines())))

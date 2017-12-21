@@ -277,38 +277,40 @@ class ContainerTestCase(unittest.TestCase):
             regular=dict(
                 delete_kwargs=dict(),
                 expected_commands=[
-                    mock.call('docker rm name'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name'),
                 ],
             ),
             with_image=dict(
                 delete_kwargs=dict(delete_image=True),
                 expected_commands=[
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm name'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                 ],
             ),
             forced=dict(
                 delete_kwargs=dict(force=True),
                 expected_commands=[
-                    mock.call('docker rm --force name'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --force --volumes name'),
                 ],
             ),
-            no_dangling_removal=dict(
+            no_dangling_removal_deprecated=dict(
                 delete_kwargs=dict(delete_dangling_volumes=False),
                 expected_commands=[
-                    mock.call('docker rm name'),
+                    mock.call('docker rm  name'),
+                ],
+            ),
+            no_volumes=dict(
+                delete_kwargs=dict(volumes=False),
+                expected_commands=[
+                    mock.call('docker rm  name'),
                 ],
             ),
             complex=dict(
                 delete_kwargs=dict(force=True, delete_image=True),
                 expected_commands=[
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm --force name'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --force --volumes name'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                 ],
             ),
@@ -751,7 +753,6 @@ class ContainerTestCase(unittest.TestCase):
                 side_effect=(
                     SucceededResult('[{"Image": "image_id"}]'),  # obsolete container info
                     SucceededResult(),  # delete obsolete container
-                    SucceededResult(),  # remove obsolete volumes
                     SucceededResult(),  # delete obsolete container image
                     SucceededResult(),  # rename current container
                     SucceededResult(),  # stop current container
@@ -759,8 +760,7 @@ class ContainerTestCase(unittest.TestCase):
                 ),
                 expected_commands=[
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm name_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name_backup'),
                     mock.call('docker rmi image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -782,7 +782,6 @@ class ContainerTestCase(unittest.TestCase):
                     SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
                     SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
                     SucceededResult(),  # delete obsolete container
-                    SucceededResult(),  # remove obsolete volumes
                     SucceededResult(),  # delete obsolete container image
                     SucceededResult(),  # rename current container
                     SucceededResult(),  # stop current container
@@ -792,8 +791,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker inspect --type image image:tag', abort_exception=docker.ImageNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm name_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name_backup'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -815,7 +813,6 @@ class ContainerTestCase(unittest.TestCase):
                     SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
                     SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
                     SucceededResult(),  # delete obsolete container
-                    SucceededResult(),  # remove obsolete volumes
                     SucceededResult(),  # delete obsolete container image
                     SucceededResult(),  # rename current container
                     SucceededResult(),  # stop current container
@@ -825,8 +822,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker inspect --type image image:foo', abort_exception=docker.ImageNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm name_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name_backup'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -848,7 +844,6 @@ class ContainerTestCase(unittest.TestCase):
                     SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
                     SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
                     SucceededResult(),  # delete obsolete container
-                    SucceededResult(),  # remove obsolete volumes
                     SucceededResult(),  # delete obsolete container image
                     SucceededResult(),  # rename current container
                     SucceededResult(),  # stop current container
@@ -858,8 +853,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker inspect --type image registry/image:tag', abort_exception=docker.ImageNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm name_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name_backup'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -881,7 +875,6 @@ class ContainerTestCase(unittest.TestCase):
                     SucceededResult('[{"Id": "new_image_id"}]'),  # new image info
                     SucceededResult('[{"Image": "old_image_id"}]'),  # obsolete container info
                     SucceededResult(),  # delete obsolete container
-                    SucceededResult(),  # remove obsolete volumes
                     SucceededResult(),  # delete obsolete container image
                     SucceededResult(),  # rename current container
                     SucceededResult(),  # stop current container
@@ -891,8 +884,7 @@ class ContainerTestCase(unittest.TestCase):
                     mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
                     mock.call('docker inspect --type image registry/account/image:foo', abort_exception=docker.ImageNotFoundError),
                     mock.call('docker inspect --type container name_backup', abort_exception=docker.ContainerNotFoundError),
-                    mock.call('docker rm name_backup'),
-                    mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+                    mock.call('docker rm --volumes name_backup'),
                     mock.call('docker rmi old_image_id', ignore_errors=True),
                     mock.call('docker rename name name_backup'),
                     mock.call('docker stop --time 10 name_backup'),
@@ -1006,7 +998,6 @@ class ContainerTestCase(unittest.TestCase):
             SucceededResult(),  # start backup container
             SucceededResult('[{"Image": "failed_image_id"}]'),  # current container info
             SucceededResult(),  # delete current container
-            SucceededResult(),  # delete dangling volumes
             SucceededResult(),  # delete current container image
             SucceededResult(),  # rename backup container
         )
@@ -1015,8 +1006,7 @@ class ContainerTestCase(unittest.TestCase):
             mock.call('docker stop --time 10 name'),
             mock.call('docker start name_backup'),
             mock.call('docker inspect --type container name', abort_exception=docker.ContainerNotFoundError),
-            mock.call('docker rm name'),
-            mock.call('for volume in $(docker volume ls --filter "dangling=true" --quiet); do docker volume rm "$volume"; done'),
+            mock.call('docker rm --volumes name'),
             mock.call('docker rmi failed_image_id', ignore_errors=True),
             mock.call('docker rename name_backup name'),
         ]

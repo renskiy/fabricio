@@ -1,4 +1,5 @@
 import json
+import warnings
 
 import fabricio
 
@@ -43,22 +44,28 @@ class Container(BaseService):
 
     def delete(
         self,
-        force=False,
         delete_image=False,
-        delete_dangling_volumes=True,
+        delete_dangling_volumes=None,  # deprecated
+        **options
     ):
-        delete_image_callback = None
-        if delete_image:
-            delete_image_callback = self.image.get_delete_callback()
-        command = 'docker rm {force}{container}'
-        force = force and '--force ' or ''
-        fabricio.run(command.format(container=self, force=force))
-        if delete_dangling_volumes:
-            fabricio.run(
-                'for volume in '
-                '$(docker volume ls --filter "dangling=true" --quiet); '
-                'do docker volume rm "$volume"; done'
+        options = utils.Options(options)
+
+        if delete_dangling_volumes is not None:  # pragma: no cover
+            warnings.warn(
+                '`delete_dangling_volumes` parameter is deprecated '
+                'and will be removed in v0.5, use `volumes` instead',
+                RuntimeWarning, stacklevel=2,
             )
+            options.setdefault('volumes', delete_dangling_volumes)
+
+        delete_image_callback = delete_image and self.image.get_delete_callback()
+
+        options.setdefault('volumes', True)  # default option
+        fabricio.run('docker rm {options} {container}'.format(
+            container=self,
+            options=options,
+        ))
+
         if delete_image_callback:
             delete_image_callback()
 
