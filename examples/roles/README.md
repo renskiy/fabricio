@@ -48,10 +48,8 @@ The latter is possible due to special "monkey-patch" command applied before any 
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel vagrant.confirm nginx
+    fab --parallel vagrant nginx
     
-*Choosing infrastructure using parallel mode only available with `.confirm` suffix due to limitations of Fabric*
-
 ## Customization
 
 See "Hello World" [Customization](../hello_world/#customization) section.

@@ -177,21 +177,24 @@ class Infrastructure(Tasks):
         # mock another task name to exclude this task from the tasks list
         name='confirm',
     )
+    @fab.serial
     def default(self, *args, **kwargs):
         """
         select {name} infrastructure to run task(s) on
         """
-        if not console.confirm(
-            'Are you sure you want to select {name} '
-            'infrastructure to run task(s) on?'.format(
-                name=self.color(self.name),
-            ),
-            default=False,
-        ):
-            fab.abort('Aborted')
+        with utils.patch(fab.env, 'parallel', False):
+            if not console.confirm(
+                'Are you sure you want to select {name} '
+                'infrastructure to run task(s) on?'.format(
+                    name=self.color(self.name),
+                ),
+                default=False,
+            ):
+                fab.abort('Aborted')
         self.confirm(*args, **kwargs)
 
     @fab.task
+    @fab.serial
     def confirm(self, *args, **kwargs):
         """
         automatically confirm {name} infrastructure selection
