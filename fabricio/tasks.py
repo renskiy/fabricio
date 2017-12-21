@@ -491,13 +491,21 @@ class DockerTasks(Tasks):
         # mock another task name to exclude this task from the tasks list
         name='rollback',
     )
+    @fab.hosts()
+    @fab.roles()
     def deploy(self, tag=None, force=False, backup=False, migrate=True):
         """
         full service deploy (prepare -> push -> upgrade)
         """
         self.prepare(tag=tag)
         self.push(tag=tag)
-        self.upgrade(tag=tag, force=force, backup=backup, migrate=migrate)
+        fab.execute(
+            self.upgrade,
+            tag=tag,
+            force=force,
+            backup=backup,
+            migrate=migrate,
+        )
 
 
 class ImageBuildDockerTasks(DockerTasks):

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.4.8
+-------------
+
+- Fix: ``DockerTasks.prepare``: fixed multi-host configuration
+
 Release 0.4.7
 -------------
 
