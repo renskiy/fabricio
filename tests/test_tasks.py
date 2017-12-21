@@ -87,7 +87,7 @@ class TestCase(unittest.TestCase):
                             with self.assertRaises(AbortException):
                                 fab.execute(infrastructure.default)
 
-    def test__uncrawl(self):
+    def test__uncrawl_deprecated(self):
         cases = dict(
             case1=dict(
                 command='command1',
@@ -169,6 +169,44 @@ class TasksTestCase(unittest.TestCase):
 
         self.assertIn('parallel', tasks_list.parallel.wrapped.__dict__)
         self.assertTrue(tasks_list.parallel.wrapped.parallel)
+
+    def test_super(self):
+        class TestTasks1(tasks.Tasks):
+
+            @fab.task
+            def task(self):
+                pass
+
+            @fab.task
+            def task2(self):
+                pass
+
+            @fab.task
+            def task3(self, argument):
+                pass
+
+        class TestTasks2(TestTasks1):
+
+            @fab.task
+            def task(self):
+                super(TestTasks2, self).task()
+
+        roles = ['role_1', 'role_2']
+        hosts = ['host_1', 'host_2']
+        tasks_list = TestTasks2(roles=roles, hosts=hosts)
+        self.assertListEqual(roles, tasks_list.task.roles)
+        self.assertListEqual(hosts, tasks_list.task.hosts)
+        self.assertIsNone(getattr(super(TestTasks2, tasks_list).task, 'roles', None))
+        self.assertIsNone(getattr(super(TestTasks2, tasks_list).task, 'hosts', None))
+        with fab.settings(fab.hide('everything')):
+            fab.execute(tasks_list.task)
+
+            # check if there is enough arguments passed to methods
+            tasks_list.task()
+            tasks_list.task2()
+            tasks_list.task3('argument')
+            super(TestTasks2, tasks_list).task()
+            super(TestTasks2, tasks_list).task3('argument')
 
 
 class DockerTasksTestCase(unittest.TestCase):

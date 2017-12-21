@@ -3,7 +3,7 @@
 This example shows how to use roles within different infrastructures. There are one role and one infrastructure defined in [fabfile.py](fabfile.py). But you can define as many additional roles and infrastructures as you need.
 
 ## Requirements
-* Fabricio 0.3.19 or greater
+* Fabricio 0.4.7 or greater
 * [Vagrant](https://www.vagrantup.com)
 * One from the [list of Vagrant supported providers](https://www.vagrantup.com/docs/providers/) (this example was tested with [VirtualBox](https://www.virtualbox.org/))
 

@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.4.7
+-------------
+
+- Enhancement: honour ``super()`` behaviour inside method-based tasks
+
 Release 0.4.6
 -------------
 

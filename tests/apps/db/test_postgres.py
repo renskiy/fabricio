@@ -749,32 +749,32 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                     options=dict(volume='/data:/data'),
                     sudo=True,
                 )
-                with mock.patch.object(
-                    fabricio,
-                    'run',
+                with mock.patch(
+                    'fabricio.run',
                     side_effect=data.get('side_effect'),
                 ) as run:
-                    with mock.patch.object(
-                        container,
-                        'db_exists',
-                        return_value=data['db_exists'],
-                    ):
+                    with mock.patch('fabricio.operations.run', run):
                         with mock.patch.object(
-                            docker.Container,
-                            'update',
-                            return_value=data['parent_update_returned'],
-                        ) as update:
+                            container,
+                            'db_exists',
+                            return_value=data['db_exists'],
+                        ):
                             with mock.patch.object(
-                                six.BytesIO,
-                                'getvalue',
-                                side_effect=data['old_configs'],
-                            ):
-                                result = container.update(**data['update_kwargs'])
-                                self.assertListEqual(run.mock_calls, data['expected_commands'])
-                                self.assertEqual(result, data['expected_result'])
-                                update.assert_called_once_with(**data['expected_update_kwargs'])
-                                if data.get('expected_db_creation', False):
-                                    create_db.assert_called_once()
+                                docker.Container,
+                                'update',
+                                return_value=data['parent_update_returned'],
+                            ) as update:
+                                with mock.patch.object(
+                                    six.BytesIO,
+                                    'getvalue',
+                                    side_effect=data['old_configs'],
+                                ):
+                                    result = container.update(**data['update_kwargs'])
+                                    self.assertListEqual(run.mock_calls, data['expected_commands'])
+                                    self.assertEqual(result, data['expected_result'])
+                                    update.assert_called_once_with(**data['expected_update_kwargs'])
+                                    if data.get('expected_db_creation', False):
+                                        create_db.assert_called_once()
 
     def test_revert(self):
         cases = dict(
@@ -854,26 +854,26 @@ class PostgresqlContainerTestCase(unittest.TestCase):
         for case, data in cases.items():
             with self.subTest(case=case):
                 expected_commands = data['expected_commands']
-                with mock.patch.object(
-                    fabricio,
-                    'run',
-                    side_effect=data['side_effect']
+                with mock.patch(
+                    'fabricio.run',
+                    side_effect=data['side_effect'],
                 ) as run:
-                    with mock.patch.object(
-                        docker.Container,
-                        'revert',
-                        side_effect=data['parent_revert_returned'],
-                    ):
-                        container = TestContainer(
-                            name='name',
-                            options=dict(volume='/data:/data'),
-                            sudo=True,
-                        )
-                        container.revert()
-                        self.assertListEqual(
-                            run.mock_calls,
-                            expected_commands,
-                        )
+                    with mock.patch('fabricio.operations.run', run):
+                        with mock.patch.object(
+                            docker.Container,
+                            'revert',
+                            side_effect=data['parent_revert_returned'],
+                        ):
+                            container = TestContainer(
+                                name='name',
+                                options=dict(volume='/data:/data'),
+                                sudo=True,
+                            )
+                            container.revert()
+                            self.assertListEqual(
+                                run.mock_calls,
+                                expected_commands,
+                            )
 
     def test_revert_nothing_changed(self):
         expected_commands = [
@@ -884,27 +884,27 @@ class PostgresqlContainerTestCase(unittest.TestCase):
             FailedResult(),  # main config
             FailedResult(),  # pg_hba
         )
-        with mock.patch.object(
-            fabricio,
-            'run',
+        with mock.patch(
+            'fabricio.run',
             side_effect=side_effect,
         ) as run:
-            with mock.patch.object(
-                docker.Container,
-                'revert',
-                side_effect=RuntimeError,
-            ):
-                container = TestContainer(
-                    name='name',
-                    options=dict(volume='/data:/data'),
-                    sudo=True,
-                )
-                with self.assertRaises(RuntimeError):
-                    container.revert()
-                self.assertListEqual(
-                    run.mock_calls,
-                    expected_commands,
-                )
+            with mock.patch('fabricio.operations.run', run):
+                with mock.patch.object(
+                    docker.Container,
+                    'revert',
+                    side_effect=RuntimeError,
+                ):
+                    container = TestContainer(
+                        name='name',
+                        options=dict(volume='/data:/data'),
+                        sudo=True,
+                    )
+                    with self.assertRaises(RuntimeError):
+                        container.revert()
+                    self.assertListEqual(
+                        run.mock_calls,
+                        expected_commands,
+                    )
 
 
 class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
@@ -1013,35 +1013,36 @@ class StreamingReplicatedPostgresqlContainerTestCase(unittest.TestCase):
             self.assertDictEqual(vars(options), data['expected_args'])
         for case, data in cases.items():
             with self.subTest(case=case):
-                run.reset_mock()
-                run.side_effect = data.get('expected_args') and test_command
-                postgres.open = mock.MagicMock(
-                    return_value=six.StringIO(data.get('old_recovery_conf', '')),
-                )
-                db_exists.return_value = data['db_exists']
-                recovery_exists.return_value = data['recovery_exists']
-                fab.env.host = data['host']
-                container = postgres.StreamingReplicatedPostgresqlContainer(
-                    name='name', image='image', pg_data='/data',
-                    options=dict(volume='/data:/data'),
-                    sudo=True,
-                    **data.get('init_kwargs', {})
-                )
-                if 'set_master' in data:
-                    container.multiprocessing_data.master = data['set_master']
-                    container.master_obtained.set()
-                with mock.patch.object(container, 'update_config', return_value=True) as update_config:
-                    result = container.update_recovery_config()
-                    self.assertEqual(result, data['expected_result'])
-                    self.assertEqual(container.multiprocessing_data.master, data['expected_master_host'])
-                    expected_commands = data.get('expected_commands')
-                    if expected_commands:
-                        self.assertListEqual(run.mock_calls, expected_commands)
-                    if 'expected_recovery_conf' in data:
-                        update_config.assert_called_once_with(
-                            content=data['expected_recovery_conf'],
-                            path='/data/recovery.conf',
-                        )
+                with mock.patch('fabricio.operations.run', run):
+                    run.reset_mock()
+                    run.side_effect = data.get('expected_args') and test_command
+                    postgres.open = mock.MagicMock(
+                        return_value=six.StringIO(data.get('old_recovery_conf', '')),
+                    )
+                    db_exists.return_value = data['db_exists']
+                    recovery_exists.return_value = data['recovery_exists']
+                    fab.env.host = data['host']
+                    container = postgres.StreamingReplicatedPostgresqlContainer(
+                        name='name', image='image', pg_data='/data',
+                        options=dict(volume='/data:/data'),
+                        sudo=True,
+                        **data.get('init_kwargs', {})
+                    )
+                    if 'set_master' in data:
+                        container.multiprocessing_data.master = data['set_master']
+                        container.master_obtained.set()
+                    with mock.patch.object(container, 'update_config', return_value=True) as update_config:
+                        result = container.update_recovery_config()
+                        self.assertEqual(result, data['expected_result'])
+                        self.assertEqual(container.multiprocessing_data.master, data['expected_master_host'])
+                        expected_commands = data.get('expected_commands')
+                        if expected_commands:
+                            self.assertListEqual(run.mock_calls, expected_commands)
+                        if 'expected_recovery_conf' in data:
+                            update_config.assert_called_once_with(
+                                content=data['expected_recovery_conf'],
+                                path='/data/recovery.conf',
+                            )
 
     @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'db_exists', return_value=False)
     @mock.patch.object(postgres.StreamingReplicatedPostgresqlContainer, 'update_config')

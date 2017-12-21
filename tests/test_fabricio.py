@@ -5,7 +5,6 @@ from fabric import api as fab
 
 import fabricio
 
-from fabricio import tasks
 from tests import SucceededResult
 
 
@@ -69,10 +68,10 @@ class FabricioTestCase(unittest.TestCase):
                 mocked_method.reset_mock()
                 callback.cache.clear()
 
-                @tasks.infrastructure
+                @fabricio.infrastructure
                 def inf1(): pass
 
-                @tasks.infrastructure
+                @fabricio.infrastructure
                 def inf2(): pass
 
                 fab.execute(inf1.confirm)

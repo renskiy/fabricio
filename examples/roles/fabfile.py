@@ -2,7 +2,7 @@ import functools
 
 import fabricio
 
-from fabric import api as fab
+from fabric import api as fab, colors
 from fabricio import tasks, docker
 from fabricio.misc import AvailableVagrantHosts
 
@@ -12,7 +12,7 @@ fab.env.roledefs.update(
 )
 
 
-@tasks.infrastructure
+@fabricio.infrastructure(color=colors.red)
 def vagrant():
     fab.env.update(
         roledefs={
@@ -33,7 +33,7 @@ def monkey_patch():
     # fab.put = lambda *args, **kwargs: None
 
 
-@tasks.infrastructure
+@fabricio.infrastructure
 def localhost():
     fab.env.update(
         roledefs={

@@ -123,16 +123,16 @@ You can define as many roles and infrastructures as you need. The following exam
 .. code:: python
 
     from fabric import colors, api as fab
-    from fabricio import docker, tasks
+    from fabricio import docker, tasks, infrastructure
 
-    @tasks.infrastructure
+    @infrastructure
     def staging():
         fab.env.roledefs.update(
             balancer=['user@staging.example.com'],
             web=['user@staging.example.com'],
         )
 
-    @tasks.infrastructure(color=colors.red)
+    @infrastructure(color=colors.red)
     def production():
         fab.env.roledefs.update(
             balancer=['user@balancer.example.com'],

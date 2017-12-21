@@ -1,21 +1,37 @@
-import contextlib2 as contextlib
 import functools
 import os
 import sys
 import types
 import warnings
 
+import contextlib2 as contextlib
+
 from fabric import api as fab, colors, state
 from fabric.contrib import console
 from fabric.main import is_task_object
+from fabric.tasks import WrappedCallableTask
 
 import fabricio
 
 from fabricio import docker, utils
 from fabricio.misc import dangling_images_delete_command
 
+fab.env.setdefault('infrastructure', None)
 
-def _uncrawl(task, _cache={}):
+
+# add to Fabric's WrappedCallableTask additional method to get
+# benefits from using super() inside method-based tasks
+WrappedCallableTask.__get__ = lambda self, instance, owner: (
+    self.__class__(
+        self.wrapped.__get__(instance, owner),
+        aliases=self.aliases,
+        default=self.is_default,
+        name=self.name,
+    )
+)
+
+
+def _uncrawl(task, _cache={}):  # pragma: no cover
     if not _cache:
         def _fill_cache(mapping=state.commands, keys=[]):
             for key, value in mapping.items():
@@ -28,7 +44,16 @@ def _uncrawl(task, _cache={}):
     return _cache.get(task)
 
 
-def execute(*args, **kwargs):
+def execute(*args, **kwargs):  # pragma: no cover
+    warnings.warn(
+        'fabricio.execute() is deprecated in favour of fabric.api.execute()',
+        DeprecationWarning,
+    )
+    warnings.warn(
+        'fabricio.execute() is deprecated and will be removed in v0.5, '
+        'use fabric.api.execute() instead',
+        RuntimeWarning, stacklevel=2,
+    )
     try:
         task, args = args[0], args[1:]
     except IndexError:
@@ -95,30 +120,9 @@ class Tasks(object):
     def __new__(cls, *args, **kwargs):
         self = super(Tasks, cls).__new__(cls)
         for attr in dir(cls):
-            attr_value = getattr(cls, attr)
-            if is_task_object(attr_value):
-                task_decorator = fab.task(
-                    default=attr_value.is_default,
-                    name=attr_value.name,
-                    aliases=attr_value.aliases,
-                    task_class=attr_value.__class__,
-                )
-                bounded_task = functools.partial(attr_value.wrapped, self)
-                task = task_decorator(functools.wraps(attr_value)(bounded_task))
-                for wrapped_attr in [
-                    'parallel',
-                    'serial',
-                    'pool_size',
-                    'hosts',
-                    'roles',
-                ]:
-                    if hasattr(attr_value.wrapped, wrapped_attr):
-                        setattr(
-                            task.wrapped,
-                            wrapped_attr,
-                            getattr(attr_value.wrapped, wrapped_attr),
-                        )
-                setattr(self, attr, task)
+            obj = getattr(self, attr, None)
+            if is_task_object(obj):
+                setattr(self, attr, obj)
         return self
 
     def __init__(self, roles=(), hosts=(), create_default_roles=True):
@@ -132,9 +136,9 @@ class Tasks(object):
                 task.hosts = hosts
 
     def __iter__(self):
-        for name, attr_value in vars(self).items():
-            if is_task_object(attr_value):
-                yield attr_value
+        for obj in vars(self).values():
+            if is_task_object(obj):
+                yield obj
 
 
 class Infrastructure(Tasks):
@@ -144,7 +148,7 @@ class Infrastructure(Tasks):
             raise ValueError('only 1 positional argument allowed')
         if not args:
             return lambda callback: cls(callback, **kwargs)
-        return super(Infrastructure, cls).__new__(cls, *args, **kwargs)
+        return super(Infrastructure, cls).__new__(cls)
 
     def __init__(
         self,
@@ -201,6 +205,7 @@ class Infrastructure(Tasks):
         """
         fab.env.infrastructure = self.name
         self.callback(*args, **kwargs)
+
 
 infrastructure = Infrastructure
 
@@ -355,15 +360,13 @@ class DockerTasks(Tasks):
             self.service.restore(backup_name=backup_name)
 
     @fab.task
-    @fab.hosts()
-    @fab.roles()
     def rollback(self, migrate_back=True):
         """
         rollback service to a previous version (migrate-back -> revert)
         """
         if utils.strtobool(migrate_back):
-            execute(self.migrate_back)
-        execute(self.revert)
+            self.migrate_back()
+        self.revert()
 
     @fab.task
     @fab.hosts()
@@ -471,51 +474,29 @@ class DockerTasks(Tasks):
             fabricio.log('No changes detected, update skipped.')
 
     @fab.task
-    @fab.hosts()
-    @fab.roles()
-    def upgrade(
-        self,
-        tag=None,
-        force=False,
-        backup=False,
-        migrate=True,
-    ):
+    def upgrade(self, tag=None, force=False, backup=False, migrate=True):
         """
         upgrade service to a new version (backup -> pull -> migrate -> update)
         """
         if utils.strtobool(backup):
-            execute(self.backup)
-        execute(self.pull, tag=tag)
+            self.backup()
+        self.pull(tag=tag)
         if utils.strtobool(migrate):
-            execute(self.migrate, tag=tag)
-        execute(self.update, tag=tag, force=force)
+            self.migrate(tag=tag)
+        self.update(tag=tag, force=force)
 
     @fab.task(
         default=True,
         # mock another task name to exclude this task from the tasks list
         name='rollback',
     )
-    @fab.hosts()
-    @fab.roles()
-    def deploy(
-        self,
-        tag=None,
-        force=False,
-        backup=False,
-        migrate=True,
-    ):
+    def deploy(self, tag=None, force=False, backup=False, migrate=True):
         """
         full service deploy (prepare -> push -> upgrade)
         """
-        execute(self.prepare, tag=tag)
-        execute(self.push, tag=tag)
-        execute(
-            self.upgrade,
-            tag=tag,
-            force=force,
-            backup=backup,
-            migrate=migrate,
-        )
+        self.prepare(tag=tag)
+        self.push(tag=tag)
+        self.upgrade(tag=tag, force=force, backup=backup, migrate=migrate)
 
 
 class ImageBuildDockerTasks(DockerTasks):
