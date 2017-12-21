@@ -7,7 +7,6 @@ Release 0.4.7
 - Change: ``docker.Container.delete()`` uses ``docker rm`` with ``--volumes`` option by default
 - Enhancement: honour ``super()`` behaviour inside method-based tasks
 - Enhancement: use temporary image tag to keep cache for pulling and building images
-- Fix: allow to confirm infrastructure selection in parallel mode
 - Fix: force infrastructure confirmation to use serial mode
 
 Release 0.4.6
