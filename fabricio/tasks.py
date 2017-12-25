@@ -10,7 +10,7 @@ import contextlib2 as contextlib
 from fabric import api as fab, colors, state
 from fabric.contrib import console
 from fabric.main import is_task_object
-from fabric.tasks import WrappedCallableTask
+from fabric.tasks import WrappedCallableTask, get_task_details
 
 import fabricio
 
@@ -160,13 +160,16 @@ class Infrastructure(Tasks):
     ):
         super(Infrastructure, self).__init__(*args, **kwargs)
 
+        default = self.default
+        confirm = self.confirm
+
         # We need to be sure that `default()` will be at first place
         # every time when vars(self) is being invoked.
         # This is necessary to exclude `default` from the list of task
         # because of it's already there as default task.
         # See `fabric.main.extract_tasks()` for details
         self.__dict__ = collections.OrderedDict(
-            [('default', self.default)],
+            [('default', default)],
             **self.__dict__
         )
 
@@ -174,8 +177,16 @@ class Infrastructure(Tasks):
         self.color = color
         self.name = name = name or callback.__name__
         name = color(name)
-        self.default.__doc__ = self.default.__doc__.format(name=name)
-        self.confirm.__doc__ = self.confirm.__doc__.format(name=name)
+        doc = callback.__doc__ or ''
+        default.__doc__ = default.__doc__.format(name=name)
+        confirm.__doc__ = confirm.__doc__.format(name=name)
+        default.__details__ = functools.partial(self._details, doc, default)
+        confirm.__details__ = functools.partial(self._details, doc, confirm)
+
+    def _details(self, doc, method):
+        doc = (method.__doc__ or '') + doc
+        with utils.patch(self.callback, '__doc__', doc):
+            return get_task_details(self.callback)
 
     @fab.task(
         default=True,
@@ -237,6 +248,7 @@ class DockerTasks(Tasks):
         # This is necessary to exclude `deploy` from the list of task
         # because of it's already there as default task.
         # See `fabric.main.extract_tasks()` for details
+        self.deploy.is_default = True  # force is_default property
         self.__dict__ = collections.OrderedDict(
             [('deploy', self.deploy)],
             **self.__dict__
@@ -369,9 +381,9 @@ class DockerTasks(Tasks):
             self.migrate_back()
         self.revert()
 
-    @fab.task
     @fab.hosts()
     @fab.roles()
+    @fab.task
     def prepare(self, tag=None):
         """
         download Docker image from the original registry
@@ -401,9 +413,9 @@ class DockerTasks(Tasks):
             use_cache=True,
         )
 
-    @fab.task
     @fab.hosts()
     @fab.roles()
+    @fab.task
     def push(self, tag=None):
         """
         push downloaded Docker image to intermediate registry
@@ -487,13 +499,13 @@ class DockerTasks(Tasks):
             self.migrate(tag=tag)
         self.update(tag=tag, force=force)
 
+    @fab.hosts()
+    @fab.roles()
     @fab.task(
         default=True,
         # mock another task name to exclude this task from the tasks list
         name='rollback',
     )
-    @fab.hosts()
-    @fab.roles()
     def deploy(self, tag=None, force=False, backup=False, migrate=True):
         """
         full service deploy (prepare -> push -> upgrade)
@@ -520,9 +532,9 @@ class ImageBuildDockerTasks(DockerTasks):
         self.push.use_task_objects = True
         self.upgrade.use_task_objects = True
 
-    @fab.task
     @fab.hosts()
     @fab.roles()
+    @fab.task
     def prepare(self, tag=None, **kwargs):
         """
         build Docker image (see 'docker build --help' for available options)
@@ -539,9 +551,9 @@ class ImageBuildDockerTasks(DockerTasks):
             use_cache=True,
         )
 
-    @fab.task
     @fab.hosts()
     @fab.roles()
+    @fab.task
     def push(self, tag=None):
         """
         push built Docker image to the registry
