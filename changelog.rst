@@ -6,7 +6,9 @@ Release 0.5
 
 - Change: dropped Python 2.6 support
 - Enhancement: added new service type - ``kubernetes.Configuration``, see `Kubernetes configuration`_ example (`#148`_)
+- Fix: fixed --display behaviour for methods of ``Tasks`` (`#71`_)
 
+.. _#71: https://github.com/renskiy/fabricio/issues/71
 .. _#148: https://github.com/renskiy/fabricio/issues/148
 .. _Kubernetes configuration: examples/service/kubernetes/
 
