@@ -1,33 +1,22 @@
-import ctypes
 import functools
 import hashlib
 import itertools
 import json
-import multiprocessing
 import re
 import shlex
-import sys
 
-from base64 import b64encode, b64decode
-
-import contextlib2 as contextlib
 import dpath
 import six
 
 from cached_property import cached_property
-from fabric import colors, api as fab
-from fabric.exceptions import CommandTimeout, NetworkError
 from frozendict import frozendict
-from six.moves import map, shlex_quote, range, filter, zip_longest
+from six.moves import map, shlex_quote, range
 
 import fabricio
 
 from fabricio import utils
 
-from .base import BaseService, Option, Attribute
-from .image import Image, ImageNotFoundError
-
-host_errors = (RuntimeError, NetworkError, CommandTimeout)
+from .base import ManagedService, Option, Attribute, ServiceError
 
 
 def get_option_value(string, option):
@@ -42,15 +31,7 @@ def get_option_value(string, option):
         return value and value[0] or None
 
 
-class ServiceError(RuntimeError):
-    pass
-
-
 class ServiceNotFoundError(ServiceError):
-    pass
-
-
-class StackError(ServiceError):
     pass
 
 
@@ -193,71 +174,7 @@ class PlacementPrefOption(RemovableOption):
             )
 
 
-class _Base(BaseService):
-
-    def __init__(self, *args, **kwargs):
-        super(_Base, self).__init__(*args, **kwargs)
-        self.manager_found = multiprocessing.Event()
-        self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
-        self.pull_errors = multiprocessing.Manager().dict()
-
-    def is_manager(self):
-        try:
-            if self.pull_errors.get(fab.env.host, False):
-                return False
-            is_manager = fabricio.run(
-                'docker info 2>&1 | grep "Is Manager:"',
-                use_cache=True,
-            ).endswith('true')
-            if is_manager:
-                self.manager_found.set()
-            return is_manager
-        except host_errors as error:
-            fabricio.log(
-                'WARNING: {error}'.format(error=error),
-                output=sys.stderr,
-                color=colors.red,
-            )
-            return False
-        finally:
-            with self.is_manager_call_count.get_lock():
-                self.is_manager_call_count.value += 1
-                if self.is_manager_call_count.value >= len(fab.env.all_hosts):
-                    if not self.manager_found.is_set():
-                        msg = 'Service manager with pulled image was not found'
-                        raise ServiceError(msg)
-                    self.manager_found.clear()
-                    self.is_manager_call_count.value = 0
-
-    def pull_image(self, *args, **kwargs):
-        try:
-            return super(_Base, self).pull_image(*args, **kwargs)
-        except host_errors as error:
-            self.pull_errors[fab.env.host] = True
-            fabricio.log(
-                'WARNING: {error}'.format(error=error),
-                output=sys.stderr,
-                color=colors.red,
-            )
-
-    def migrate(self, *args, **kwargs):
-        if self.is_manager():
-            super(_Base, self).migrate(*args, **kwargs)
-
-    def migrate_back(self):
-        if self.is_manager():
-            super(_Base, self).migrate_back()
-
-    def backup(self):
-        if self.is_manager():
-            super(_Base, self).backup()
-
-    def restore(self, backup_name=None):
-        if self.is_manager():
-            super(_Base, self).restore(backup_name=backup_name)
-
-
-class Service(_Base):
+class Service(ManagedService):
 
     options_label_name = 'fabricio.service.options'
 
@@ -464,189 +381,3 @@ class Service(_Base):
         for label, value in labels.items():
             service_labels.append("{0}={1}".format(label, value))
         self.label = service_labels
-
-
-class Stack(_Base):
-
-    temp_dir = Attribute(default='/tmp')
-
-    compose_file = Option(name='compose-file', default='docker-compose.yml')
-
-    image_id = None
-
-    info = None
-
-    def __init__(self, *args, **kwargs):
-        super(Stack, self).__init__(*args, **kwargs)
-        self.stack_updated = multiprocessing.Event()
-
-    @property
-    def compose_label(self):
-        return 'fabricio.stack.compose.{0}'.format(self.name)
-
-    @property
-    def images_info_label(self):
-        return 'fabricio.stack.images.{0}'.format(self.name)
-
-    @property
-    def current_settings_tag(self):
-        return 'fabricio-current-stack:{0}'.format(self.name)
-
-    @property
-    def backup_settings_tag(self):
-        return 'fabricio-backup-stack:{0}'.format(self.name)
-
-    @property
-    def actual_compose_file(self):
-        return self.options.get('compose-file')
-
-    def update(self, tag=None, registry=None, account=None, force=False):
-        if not self.is_manager():
-            return False
-        self.reset_stack_updated_status()
-        compose_file = open(self.actual_compose_file, 'rb').read()
-        new_settings = b64encode(compose_file).decode()
-        result = self._update(compose_file, new_settings, force=force)
-        if self.stack_updated.is_set():
-            image = self.image[registry:tag:account]
-            self.save_new_settings(new_settings, image)
-        return result is None or result
-
-    @utils.once_per_command(block=True)
-    def _update(self, compose_file, new_settings, force=False):
-        if not force:
-            settings, digests = self.current_settings
-            digests = digests and json.loads(b64decode(digests).decode())
-            if settings == new_settings and digests is not None:
-                new_digests = self._get_digests(digests)
-                if digests == new_digests:
-                    return False
-        with fab.cd(self.temp_dir):
-            fab.put(six.BytesIO(compose_file), self.actual_compose_file)
-            fabricio.run('docker stack deploy {options} {name}'.format(
-                options=utils.Options(self.options),
-                name=self.name,
-            ))
-        self.stack_updated.set()
-        return True
-
-    def revert(self):
-        if not self.is_manager():
-            return False
-        self.reset_stack_updated_status()
-        self._revert()
-        if self.stack_updated.is_set():
-            self.rotate_sentinel_images(rollback=True)
-
-    @utils.once_per_command(block=True)
-    def _revert(self):
-        backup_settings, backup_digests = self.backup_settings
-        if not backup_settings:
-            raise StackError('stack backup settings not found')
-        compose_file = b64decode(backup_settings)
-        self._update(compose_file, backup_settings, force=True)
-
-        # update stack services with image digests from backup
-        backup_digests = backup_digests and b64decode(backup_digests).decode()
-        backup_digests = backup_digests and json.loads(backup_digests)
-        if backup_digests:
-            images = self._get_services_images()
-            for service, image in images.items():
-                digest = backup_digests[image]
-                command = 'docker service update --image {digest} {service}'
-                command = command.format(digest=digest, service=service)
-                fabricio.run(command)
-
-    @utils.once_per_command(block=True)
-    def reset_stack_updated_status(self):
-        self.stack_updated.clear()
-
-    @property
-    def current_settings(self):
-        return self._get_settings(Image(self.current_settings_tag))
-
-    @property
-    def backup_settings(self):
-        return self._get_settings(Image(self.backup_settings_tag))
-
-    def _get_settings(self, image):
-        with contextlib.suppress(ImageNotFoundError):
-            image_labels = image.info.get('Config', {}).get('Labels', {})
-            return (
-                image_labels.get(self.compose_label),
-                image_labels.get(self.images_info_label),
-            )
-        return None, None
-
-    def rotate_sentinel_images(self, rollback=False):
-        backup_tag = self.backup_settings_tag
-        current_tag = self.current_settings_tag
-        if rollback:
-            backup_tag, current_tag = current_tag, backup_tag
-        with contextlib.suppress(host_errors):
-            fabricio.run(
-                (
-                    'docker rmi {backup_tag}'
-                    '; docker tag {current_tag} {backup_tag}'
-                    '; docker rmi {current_tag}'
-                ).format(
-                    backup_tag=backup_tag,
-                    current_tag=current_tag,
-                ),
-            )
-
-    def save_new_settings(self, settings, image):
-        self.rotate_sentinel_images()
-
-        labels = [(self.compose_label, settings)]
-        with contextlib.suppress(host_errors):
-            images = self.get_images()
-            images and labels.append((self.images_info_label, images))
-
-        dockerfile = (
-            'FROM {image}\n'
-            'LABEL {labels}\n'
-        ).format(
-            image=image or 'scratch',
-            labels=' '.join(itertools.starmap('{0}={1}'.format, labels)),
-        )
-        build_command = 'echo {dockerfile} | docker build --tag {tag} -'.format(
-            dockerfile=shlex_quote(dockerfile),
-            tag=self.current_settings_tag,
-        )
-        try:
-            fabricio.run(build_command)
-        except host_errors as error:
-            fabricio.log(
-                'WARNING: {error}'.format(error=error),
-                output=sys.stderr,
-                color=colors.red,
-            )
-
-    def get_images(self):
-        images = self._get_services_images()
-        digests = self._get_digests(set(images.values()))
-        bucket = json.dumps(digests, sort_keys=True)
-        return b64encode(bucket.encode()).decode()
-
-    def _get_services_images(self):
-        command = 'docker stack services --format "{{.Name}} {{.Image}}" %s'
-        command %= self.name
-        lines = filter(None, fabricio.run(command).splitlines())
-        return dict(map(lambda line: line.rsplit(None, 1), lines))
-
-    @staticmethod
-    def _get_digests(images):
-        images = list(images)
-        if not images:
-            return {}
-        for image in images:
-            Image(image).pull(use_cache=True, ignore_errors=True)
-        command = (
-            'docker inspect --type image --format "{{index .RepoDigests 0}}" %s'
-        ) % ' '.join(images)
-        digests = fabricio.run(command, ignore_errors=True, use_cache=True)
-        return dict(zip_longest(images, filter(None, digests.splitlines())))
-
-    def get_backup_version(self):
-        return self.fork(image=self.backup_settings_tag)

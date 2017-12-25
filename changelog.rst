@@ -1,10 +1,14 @@
 Changelog
 =========
 
-Release 0.4.9
--------------
+Release 0.5
+-----------
 
 - Change: dropped Python 2.6 support
+- Enhancement: added new service type - ``kubernetes.Configuration``, see `Kubernetes configuration`_ example (`#148`_)
+
+.. _#148: https://github.com/renskiy/fabricio/issues/148
+.. _Kubernetes configuration: examples/service/kubernetes/
 
 Release 0.4.8
 -------------

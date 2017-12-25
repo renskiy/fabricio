@@ -10,7 +10,7 @@ from fabric import api as fab
 import fabricio
 
 from fabricio import docker, utils
-from fabricio.docker import service
+from fabricio.docker import stack as stack_module
 from tests import SucceededResult, args_parser, FabricioTestCase
 
 
@@ -18,20 +18,20 @@ def as_ordereddict(result):
     return collections.OrderedDict(sorted(result.items()))
 
 
-class ContainerTestCase(FabricioTestCase):
+class StackTestCase(FabricioTestCase):
 
     def setUp(self):
-        service.open = mock.MagicMock()
+        stack_module.open = mock.MagicMock()
         self.cd = mock.patch.object(fab, 'cd')
         self.cd.start()
 
     def tearDown(self):
-        service.open = open
+        stack_module.open = open
         self.cd.stop()
 
     @mock.patch.object(fabricio, 'log')
-    @mock.patch.object(service, 'dict', new=collections.OrderedDict)
-    @mock.patch.object(service, 'set', new=utils.OrderedSet)
+    @mock.patch.object(stack_module, 'dict', new=collections.OrderedDict)
+    @mock.patch.object(stack_module, 'set', new=utils.OrderedSet)
     @mock.patch.object(json, 'loads', new=functools.partial(json.loads, object_hook=as_ordereddict))
     @mock.patch.object(fab, 'put')
     def test_update(self, put, *args):
@@ -47,7 +47,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                 ],
-                expected_result=False,
+                expected_result=None,
                 all_hosts=['host1', 'host2'],
             ),
             no_changes=dict(
@@ -57,8 +57,8 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',
-                            'fabricio.stack.images.stack': 'e30=',
+                            'fabricio.configuration': 'Y29tcG9zZS55bWw=',
+                            'fabricio.digests': 'e30=',
                         },
                     }}])),  # image info
                 ],
@@ -70,6 +70,7 @@ class ContainerTestCase(FabricioTestCase):
                 ],
                 expected_result=False,
                 expected_compose_file='docker-compose.yml',
+                should_upload_compose_file=True,
             ),
             forced=dict(
                 init_kwargs=dict(name='stack'),
@@ -95,7 +96,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -128,7 +129,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -161,7 +162,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -194,7 +195,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -227,7 +228,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -260,7 +261,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM image:tag\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM image:tag\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -293,7 +294,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM registry/account/image:new-tag\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM registry/account/image:new-tag\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -326,7 +327,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
                     },
                     {
-                        'args': ['echo', 'FROM registry/account/image:tag\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM registry/account/image:tag\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -340,8 +341,8 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'b2xkLWNvbXBvc2UueW1s',
-                            'fabricio.stack.images.stack': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',
+                            'fabricio.configuration': 'b2xkLWNvbXBvc2UueW1s',
+                            'fabricio.digests': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',
                         },
                     }}])),  # image info
                     SucceededResult(),  # stack deploy
@@ -370,7 +371,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -384,8 +385,8 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',
-                            'fabricio.stack.images.stack': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',
+                            'fabricio.configuration': 'Y29tcG9zZS55bWw=',
+                            'fabricio.digests': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',
                         },
                     }}])),  # image info
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
@@ -420,7 +421,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=eyJpbWFnZTp0YWciOiAibmV3LWRpZ2VzdCJ9\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=eyJpbWFnZTp0YWciOiAibmV3LWRpZ2VzdCJ9\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -434,8 +435,8 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',
-                            'fabricio.stack.images.stack': 'eyJpbWFnZTE6dGFnIjogImRpZ2VzdDEiLCAiaW1hZ2UyOnRhZyI6ICJkaWdlc3QyIn0=',
+                            'fabricio.configuration': 'Y29tcG9zZS55bWw=',
+                            'fabricio.digests': 'eyJpbWFnZTE6dGFnIjogImRpZ2VzdDEiLCAiaW1hZ2UyOnRhZyI6ICJkaWdlc3QyIn0=',
                         },
                     }}])),  # image info
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image1 pull
@@ -474,7 +475,7 @@ class ContainerTestCase(FabricioTestCase):
                         'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image1:tag', 'image2:tag'],
                     },
                     {
-                        'args': ['echo', 'FROM scratch\nLABEL fabricio.stack.compose.stack=Y29tcG9zZS55bWw= fabricio.stack.images.stack=eyJpbWFnZTE6dGFnIjogIm5ldy1kaWdlc3QxIiwgImltYWdlMjp0YWciOiAibmV3LWRpZ2VzdDIifQ==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=eyJpbWFnZTE6dGFnIjogIm5ldy1kaWdlc3QxIiwgImltYWdlMjp0YWciOiAibmV3LWRpZ2VzdDIifQ==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
                 ],
                 expected_result=True,
@@ -486,8 +487,8 @@ class ContainerTestCase(FabricioTestCase):
             with self.subTest(case):
                 fab.env.command = '{0}__{1}'.format(self, case)
                 with mock.patch.dict(fab.env, dict(all_hosts=data.get('all_hosts', ['host']))):
-                    service.open.return_value = six.BytesIO(b'compose.yml')
-                    service.open.reset_mock()
+                    stack_module.open.return_value = six.BytesIO(b'compose.yml')
+                    stack_module.open.reset_mock()
                     put.reset_mock()
                     stack = docker.Stack(**data.get('init_kwargs', {}))
                     side_effect = self.command_checker(
@@ -501,14 +502,14 @@ class ContainerTestCase(FabricioTestCase):
                     self.assertEqual(data['expected_result'], result)
                     expected_compose_file_name = data.get('expected_compose_file_name')
                     if expected_compose_file_name:
-                        service.open.assert_called_once_with(expected_compose_file_name, 'rb')
+                        stack_module.open.assert_called_once_with(expected_compose_file_name, 'rb')
                     if data.get('should_upload_compose_file', False):
                         put.assert_called_once()
                         compose_file.assert_called_once_with(b'compose.yml')
                     else:
                         put.assert_not_called()
 
-    @mock.patch.object(service, 'dict', new=collections.OrderedDict)
+    @mock.patch.object(stack_module, 'dict', new=collections.OrderedDict)
     @mock.patch.object(fab, 'put')
     def test_revert(self, put, *args):
         cases = dict(
@@ -530,7 +531,7 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'b2xkLWNvbXBvc2UueW1s',
+                            'fabricio.configuration': 'b2xkLWNvbXBvc2UueW1s',
                         },
                     }}])),  # image info
                     SucceededResult(),  # stack deploy
@@ -556,8 +557,8 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',  # compose.yml
-                            'fabricio.stack.images.stack': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',  # {"image:tag": "digest"}
+                            'fabricio.configuration': 'Y29tcG9zZS55bWw=',  # compose.yml
+                            'fabricio.digests': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',  # {"image:tag": "digest"}
                         },
                     }}])),  # image info
                     SucceededResult(),  # stack deploy
@@ -593,8 +594,8 @@ class ContainerTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(json.dumps([{'Config': {
                         'Labels': {
-                            'fabricio.stack.compose.stack': 'Y29tcG9zZS55bWw=',  # compose.yml
-                            'fabricio.stack.images.stack': 'eyJpbWFnZTE6dGFnIjogImRpZ2VzdDEiLCAiaW1hZ2UyOnRhZyI6ICJkaWdlc3QyIn0=',  # {"image1:tag": "digest1", "image2:tag": "digest2"}
+                            'fabricio.configuration': 'Y29tcG9zZS55bWw=',  # compose.yml
+                            'fabricio.digests': 'eyJpbWFnZTE6dGFnIjogImRpZ2VzdDEiLCAiaW1hZ2UyOnRhZyI6ICJkaWdlc3QyIn0=',  # {"image1:tag": "digest1", "image2:tag": "digest2"}
                         },
                     }}])),  # image info
                     SucceededResult(),  # stack deploy
@@ -670,3 +671,11 @@ class ContainerTestCase(FabricioTestCase):
             stack = docker.Stack(name='stack')
             with self.assertRaises(docker.ServiceError):
                 stack.revert()
+
+    @mock.patch.object(docker.Stack, 'is_manager', return_value=True)
+    @mock.patch.object(docker.Stack, '_revert')
+    def test_revert_does_not_rollback_sentinels_on_error(self, *args):
+        with mock.patch.object(docker.Stack, 'rotate_sentinel_images') as rotate_sentinel_images:
+            stack = docker.Stack(name='stack')
+            stack.revert()
+            rotate_sentinel_images.assert_not_called()

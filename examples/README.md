@@ -14,8 +14,9 @@
 
 ## Services
 
-* [Docker services (swarm mode)](service/swarm/)
-* [Docker stacks (Docker Compose 3.0+)](service/stack/)
+* [Docker service (swarm mode)](service/swarm/)
+* [Docker stack (Docker Compose 3.0+)](service/stack/)
+* [Kubernetes configuration](service/kubernetes/)
 
 ## Applications
 

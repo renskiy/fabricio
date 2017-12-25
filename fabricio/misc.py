@@ -85,11 +85,11 @@ class AvailableVagrantHosts(object):  # pragma: no cover
 
 def dangling_images_delete_command(os_name=None, repository=None):  # pragma: no cover
     warnings.warn(
-        'dangling_images_delete_command() is deprecated and will be removed in v0.5',  # noqa
+        'dangling_images_delete_command() is deprecated and will be removed in v0.6',  # noqa
         DeprecationWarning,
     )
     warnings.warn(
-        'dangling_images_delete_command() is deprecated and will be removed in v0.5',  # noqa
+        'dangling_images_delete_command() is deprecated and will be removed in v0.6',  # noqa
         RuntimeWarning, stacklevel=2,
     )
     os_name = os_name or os.name

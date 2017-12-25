@@ -118,7 +118,7 @@ django = tasks.ImageBuildDockerTasks(
         name='django-stack',
         
         # image tag which will be built and used to apply migrations on
-        # (all other stack images must be ready to the moment of stack deploy)
+        # (all other stack services images must be ready to the moment of stack deploy)
         image='django-app',
         
         # safe options are options passing to container
@@ -131,6 +131,38 @@ django = tasks.ImageBuildDockerTasks(
     # ...
 )
 ```
+
+### DjangoKubernetes
+
+To use Django within the Kubernetes cluster one can take `DjangoKubernetes` service type:
+
+```python
+from fabricio import tasks
+from fabricio.apps.python.django import DjangoKubernetes
+
+django = tasks.ImageBuildDockerTasks(
+    service=DjangoKubernetes(
+        # configuration name
+        name='django-k8s',
+
+        # image tag which will be built and used to apply migrations on
+        # (all other configuration images must be ready to the moment of configuration deploy)
+        image='django-app',
+
+        # safe options are options passing to container
+        # that does 'migrate' (or 'migrate-back') operation
+        safe_options={
+            'stop-signal': 'INT',
+            'env': 'DJANGO_SETTINGS_MODULE=settings',
+        },
+    ),
+    # ...
+)
+```
+
+See also [Kubernetes example](../../service/kubernetes/).
+
+*New in 0.5*
 
 ## Issues
 

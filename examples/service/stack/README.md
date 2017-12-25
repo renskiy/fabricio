@@ -1,4 +1,4 @@
-# Fabricio: Docker stacks
+# Fabricio: Docker stack
 
 This example shows how to deploy Docker stack consisting of a single service based on [official Nginx image](https://hub.docker.com/_/nginx/).
 
@@ -33,7 +33,7 @@ After cluster has been successfully initialized everything is ready to work with
     
 ## Deploy idempotency
 
-Fabricio will try to deploy stack either if content of provided Docker Compose configuration file was changed or any image of stack services has newer version since last successful deploy attempt. However stack deploy can be forced by using `force` flag:
+Fabricio tries to deploy stack either if content of provided Docker Compose configuration file was changed or any image of stack services has newer version since last successful deploy attempt. However stack deploy can be forced by using `force` flag:
 
     fab stack:force=yes
     
@@ -72,7 +72,7 @@ docker.Stack(
 )
 ```
 
-`compose-file` option (as well as any other option) can be a callable taking `Stack` instance as parameter:
+`compose-file` option (as well as any other option) can be a callable taking `docker.Stack` instance as parameter:
 
 ```python
 from fabric import api as fab
@@ -83,7 +83,7 @@ def compose_file(
 ):
     # select compose file depending on infrastructure name
     # (see 'Infrastructures and roles' example)
-    return '%s-compose.yml' % (fab.env.infrastructure or 'docker')
+    return '%s-compose.yml' % (fab.env.infrastructure or 'default')
 
 docker.Stack(
     name='my-stack', 

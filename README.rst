@@ -27,6 +27,7 @@ Features
 - DB master-slave configurations support
 - Docker services (Swarm mode)
 - Docker stacks (Docker Compose 3.0+)
+- Kubernetes configurations
 
 See changelog_ for detailed info.
 
@@ -331,3 +332,26 @@ Docker stacks are also supported (available since Docker 1.13):
 See `Docker stacks`_ example for more details.
 
 .. _Docker stacks: https://github.com/renskiy/fabricio/blob/master/examples/service/stack/
+
+Kubernetes configuration
+========================
+
+Kubernetes configuration can be deployed using following settings:
+
+.. code:: python
+
+    from fabricio import kubernetes, tasks
+
+    nginx = tasks.DockerTasks(
+        service=kubernetes.Configuration(
+            name='my-k8s',
+            options={
+                'filename': 'configuration.yml',
+            },
+        ),
+        hosts=['user@manager'],
+    )
+
+See `Kubernetes configuration`_ example for more details.
+
+.. _Kubernetes configuration: https://github.com/renskiy/fabricio/blob/master/examples/service/kubernetes/

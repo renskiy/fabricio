@@ -14,7 +14,7 @@ install:
     - pip install coveralls
 
 script:
-    coverage run --source=fabricio -m unittest2 discover tests
+    coverage run --source=fabricio -m unittest2 discover tests -v
 
 after_success:
     coveralls

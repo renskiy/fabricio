@@ -5,10 +5,10 @@ import fabricio
 
 from fabricio import utils
 
-from .base import BaseService, Option, Attribute
+from .base import BaseService, Option, Attribute, ServiceError
 
 
-class ContainerError(RuntimeError):
+class ContainerError(ServiceError):
     pass
 
 
@@ -53,7 +53,7 @@ class Container(BaseService):
         if delete_dangling_volumes is not None:  # pragma: no cover
             warnings.warn(
                 '`delete_dangling_volumes` parameter is deprecated '
-                'and will be removed in v0.5, use `volumes` instead',
+                'and will be removed in v0.6, use `volumes` instead',
                 RuntimeWarning, stacklevel=2,
             )
             options.setdefault('volumes', delete_dangling_volumes)

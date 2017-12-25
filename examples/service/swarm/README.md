@@ -1,4 +1,4 @@
-# Fabricio: Docker services
+# Fabricio: Docker service
 
 This example shows how to deploy Docker swarm mode configuration consisting of a single service based on [official Nginx image](https://hub.docker.com/_/nginx/).
 

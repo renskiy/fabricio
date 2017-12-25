@@ -51,7 +51,7 @@ def execute(*args, **kwargs):  # pragma: no cover
         DeprecationWarning,
     )
     warnings.warn(
-        'fabricio.execute() is deprecated and will be removed in v0.5, '
+        'fabricio.execute() is deprecated and will be removed in v0.6, '
         'use fabric.api.execute() instead',
         RuntimeWarning, stacklevel=2,
     )
@@ -250,7 +250,7 @@ class DockerTasks(Tasks):
 
         if ssh_tunnel_port:
             warnings.warn(
-                'ssh_tunnel_port is deprecated and will be removed in v0.5, '
+                'ssh_tunnel_port is deprecated and will be removed in v0.6, '
                 'use ssh_tunnel instead',
                 RuntimeWarning, stacklevel=self._warnings_stacklevel,
             )
@@ -384,11 +384,11 @@ class DockerTasks(Tasks):
 
     def delete_dangling_images(self):  # pragma: no cover
         warnings.warn(
-            'delete_dangling_images() is deprecated and will be removed in v0.5',  # noqa
+            'delete_dangling_images() is deprecated and will be removed in v0.6',  # noqa
             DeprecationWarning,
         )
         warnings.warn(
-            'delete_dangling_images() is deprecated and will be removed in v0.5',  # noqa
+            'delete_dangling_images() is deprecated and will be removed in v0.6',  # noqa
             RuntimeWarning, stacklevel=self._warnings_stacklevel,
         )
         fabricio.local(dangling_images_delete_command(), ignore_errors=True)
@@ -472,7 +472,7 @@ class DockerTasks(Tasks):
                 account=self.account,
                 force=utils.strtobool(force),
             )
-        if not updated:
+        if updated is False:
             fabricio.log('No changes detected, update skipped.')
 
     @fab.task

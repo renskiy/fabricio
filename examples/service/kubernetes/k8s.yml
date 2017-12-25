@@ -1,0 +1,49 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: deployment1
+  labels:
+    app: nginx-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx-redis
+  template:
+    metadata:
+      labels:
+        app: nginx-redis
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 80
+      - name: redis
+        image: redis:alpine
+        ports:
+        - containerPort: 6379
+
+---
+
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: deployment2
+  labels:
+    app: nginx
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        ports:
+        - containerPort: 8080

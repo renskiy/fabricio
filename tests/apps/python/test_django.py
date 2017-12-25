@@ -7,15 +7,16 @@ from fabric import api as fab
 
 import fabricio
 
-from fabricio.apps.python.django import DjangoContainer, DjangoService, DjangoStack
-from fabricio.docker.service import _Base
+from fabricio.apps.python.django import *
+from fabricio.docker.service import ManagedService
 from tests import SucceededResult, docker_run_args_parser, args_parser, \
     docker_inspect_args_parser
 
 
 class DjangoContainerTestCase(unittest.TestCase):
 
-    @mock.patch.object(_Base, 'is_manager', return_value=True)
+    @mock.patch.object(ManagedService, 'is_manager', return_value=True)
+    @mock.patch.object(kubernetes.Configuration, 'is_manager', return_value=True)
     def test_migrate(self, *args):
         cases = dict(
             container_default=dict(
@@ -60,6 +61,20 @@ class DjangoContainerTestCase(unittest.TestCase):
                 service_init_kwargs=dict(name='name', image='image:tag'),
                 service_type=DjangoStack,
             ),
+            kubernetes_default=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'image:tag',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
+                kwargs=dict(),
+                service_init_kwargs=dict(name='name', image='image:tag'),
+                service_type=DjangoKubernetes,
+            ),
             container_with_tag_and_registry_and_account=dict(
                 expected_args={
                     'executable': ['docker'],
@@ -101,6 +116,20 @@ class DjangoContainerTestCase(unittest.TestCase):
                 kwargs=dict(tag='foo', registry='registry', account='account'),
                 service_init_kwargs=dict(name='name', image='image:tag'),
                 service_type=DjangoStack,
+            ),
+            kubernetes_with_tag_and_registry_and_account=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'interactive': True,
+                    'image': 'registry/account/image:foo',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
+                kwargs=dict(tag='foo', registry='registry', account='account'),
+                service_init_kwargs=dict(name='name', image='image:tag'),
+                service_type=DjangoKubernetes,
             ),
             customized_container=dict(
                 expected_args={
@@ -205,6 +234,25 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ),
                 service_type=DjangoStack,
             ),
+            customized_kubernetes=dict(
+                expected_args={
+                    'executable': ['docker'],
+                    'run_or_create': ['run'],
+                    'rm': True,
+                    'tty': True,
+                    'custom-option': 'custom-option',
+                    'interactive': True,
+                    'image': 'image:tag',
+                    'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                },
+                kwargs=dict(),
+                service_init_kwargs=dict(
+                    name='name',
+                    image='image:tag',
+                    safe_options={'custom-option': 'custom-option'},
+                ),
+                service_type=DjangoKubernetes,
+            ),
         )
 
         def test_command(command, *args, **kwargs):
@@ -219,7 +267,8 @@ class DjangoContainerTestCase(unittest.TestCase):
                         service.migrate(**data['kwargs'])
                         run.assert_called_once()
 
-    @mock.patch.object(_Base, 'is_manager', return_value=True)
+    @mock.patch.object(ManagedService, 'is_manager', return_value=True)
+    @mock.patch.object(kubernetes.Configuration, 'is_manager', return_value=True)
     def test_migrate_back(self, *args):
         cases = dict(
             container_no_change=dict(
@@ -383,6 +432,56 @@ class DjangoContainerTestCase(unittest.TestCase):
                     },
                 ],
                 service_type=DjangoStack,
+            ),
+            kubernetes_no_change=dict(
+                side_effect=(
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                    },
+                ],
+                service_type=DjangoKubernetes,
             ),
             service_double_revert=dict(
                 side_effect=(
@@ -594,6 +693,48 @@ class DjangoContainerTestCase(unittest.TestCase):
                     },
                 ],
                 service_type=DjangoStack,
+            ),
+            kubernetes_no_migrations=dict(
+                side_effect=(
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                    },
+                ],
+                service_type=DjangoKubernetes,
             ),
             container_regular=dict(
                 side_effect=(
@@ -869,6 +1010,93 @@ class DjangoContainerTestCase(unittest.TestCase):
                     },
                 ],
                 service_type=DjangoStack,
+            ),
+            kubernetes_regular=dict(
+                side_effect=(
+                    SucceededResult(
+                        'app0.0001_initial\n'
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                        'app3.0001_initial\n'
+                        'app2.0002_foo\n'
+                        'app3.0002_foo\n'
+                    ),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ),
+                args_parsers=[
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                expected_args=[
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                    },
+                ],
+                service_type=DjangoKubernetes,
             ),
             container_custom_options=dict(
                 side_effect=(
@@ -1271,6 +1499,104 @@ class DjangoContainerTestCase(unittest.TestCase):
                     },
                 ),
                 service_type=DjangoStack,
+            ),
+            kubernetes_custom_options=dict(
+                side_effect=(
+                    SucceededResult(
+                        'app0.0001_initial\n'
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                        'app3.0001_initial\n'
+                        'app2.0002_foo\n'
+                        'app3.0002_foo\n'
+                    ),
+                    SucceededResult(
+                        'app1.0001_initial\n'
+                        'app1.0002_foo\n'
+                        'app2.0001_initial\n'
+                    ),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                    SucceededResult(),
+                ),
+                expected_args=[
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'custom-option': 'custom-option',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'custom-option': 'custom-option',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'showmigrations', '--plan', '|', 'egrep', "'^\\[X\\]'", '|', 'awk', "'{print", "$2}'", '&&', 'test', '${PIPESTATUS[0]}', '-eq', '0'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'custom-option': 'custom-option',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app3', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'custom-option': 'custom-option',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app2', '0001_initial'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'custom-option': 'custom-option',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'image:tag',
+                        'command': ['python', 'manage.py', 'migrate', '--no-input', 'app0', 'zero'],
+                    },
+                    {
+                        'executable': ['docker'],
+                        'run_or_create': ['run'],
+                        'custom-option': 'custom-option',
+                        'rm': True,
+                        'tty': True,
+                        'interactive': True,
+                        'image': 'fabricio-backup-kubernetes:name',
+                        'command': ['python', 'manage.py', 'migrate', '--noinput'],
+                    },
+                ],
+                args_parsers=[
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                    docker_run_args_parser,
+                ],
+                init_kwargs=dict(
+                    safe_options={
+                        'custom-option': 'custom-option',
+                    },
+                ),
+                service_type=DjangoKubernetes,
             ),
         )
 

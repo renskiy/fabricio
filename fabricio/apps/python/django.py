@@ -3,7 +3,7 @@ import itertools
 
 from six.moves import map, filter
 
-from fabricio import docker, utils
+from fabricio import docker, kubernetes, utils
 
 
 class Migration(str):
@@ -122,4 +122,8 @@ class DjangoService(docker.Service, DjangoMixin):
 
 
 class DjangoStack(docker.Stack, DjangoMixin):
+    pass
+
+
+class DjangoKubernetes(kubernetes.Configuration, DjangoMixin):
     pass
