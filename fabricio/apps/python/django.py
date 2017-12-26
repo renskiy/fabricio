@@ -1,12 +1,14 @@
 import collections
 import itertools
 
+import six
+
 from six.moves import map, filter
 
 from fabricio import docker, kubernetes, utils
 
 
-class Migration(str):
+class Migration(six.text_type):
 
     def __init__(self, *args, **kwargs):
         super(Migration, self).__init__(**kwargs)

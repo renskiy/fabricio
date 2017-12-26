@@ -6,6 +6,7 @@ import types
 import warnings
 
 import contextlib2 as contextlib
+import six
 
 from fabric import api as fab, colors, state
 from fabric.contrib import console
@@ -96,7 +97,7 @@ class SshTunnel(object):
         return super(SshTunnel, cls).__new__(cls)
 
     def __init__(self, mapping):
-        mapping = str(mapping)
+        mapping = six.text_type(mapping)
         parts = mapping.split(':', 3)
         if len(parts) == 4:
             self.bind_address, port, self.host, host_port = parts

@@ -166,7 +166,7 @@ class PlacementPrefOption(RemovableOption):
         values = super(PlacementPrefOption, self).get_current_values(*args, **kwargs)  # noqa
         for value in values:
             yield ','.join(
-                u'{strategy}={descriptor}'.format(
+                '{strategy}={descriptor}'.format(
                     strategy=strategy.lower(),
                     descriptor=shlex_quote(descriptor[strategy + 'Descriptor'])
                 )

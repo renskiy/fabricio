@@ -11,8 +11,6 @@ import fabricio
 
 from fabricio import utils
 
-from .registry import Registry
-
 
 class ImageError(RuntimeError):
     pass
@@ -20,6 +18,19 @@ class ImageError(RuntimeError):
 
 class ImageNotFoundError(ImageError):
     pass
+
+
+class Registry(six.text_type):
+
+    def __new__(cls, value=None, *args, **kwargs):
+        if value is None:
+            return None
+        return super(Registry, cls).__new__(cls, value, *args, **kwargs)
+
+    def __init__(self, *args, **kwargs):
+        super(Registry, self).__init__(**kwargs)
+        self.host, _, port = self.partition(':')
+        self.port = port and int(port)
 
 
 class Image(object):

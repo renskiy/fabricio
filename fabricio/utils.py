@@ -77,7 +77,7 @@ class Options(collections.OrderedDict):
 
 
 def strtobool(value):
-    return distutils.strtobool(str(value))
+    return distutils.strtobool(six.text_type(value))
 
 
 def once_per_command(func=None, block=False, default=None):

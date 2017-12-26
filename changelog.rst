@@ -1,6 +1,13 @@
 Changelog
 =========
 
+Release 0.5.2
+-------------
+
+- Fix: full unicode support for Python 2 (`#100`_)
+
+.. _#100: https://github.com/renskiy/fabricio/issues/100
+
 Release 0.5
 -----------
 

@@ -26,7 +26,7 @@ setup(
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],
     url='https://github.com/renskiy/fabricio',
     license='MIT',
-    description='fabricio',
+    description='Fabricio, Docker deploy automation tool',
     long_description=long_description,
     classifiers=[
         'Development Status :: 4 - Beta',
