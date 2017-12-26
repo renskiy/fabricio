@@ -41,11 +41,11 @@ class FabricioTestCase(unittest.TestCase):
 
                 callback.cache.clear()
 
-                mocked_method.side_effect = RuntimeError
-                with self.assertRaises(RuntimeError):
+                mocked_method.side_effect = fabricio.Error
+                with self.assertRaises(fabricio.Error):
                     callback('command', use_cache=True)
         
-                with self.assertRaises(RuntimeError):
+                with self.assertRaises(fabricio.Error):
                     callback('command', use_cache=True)
         
                 self.assertEqual(2, mocked_method.call_count)

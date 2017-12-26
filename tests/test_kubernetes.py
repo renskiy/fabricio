@@ -75,7 +75,7 @@ class StackTestCase(FabricioTestCase):
                 side_effect=[
                     SucceededResult(),  # manager status
                     SucceededResult(),  # configuration deploy
-                    RuntimeError(),  # update sentinel images
+                    fabricio.Error(),  # update sentinel images
                     SucceededResult(),  # configuration images
                     SucceededResult(),  # build new sentinel image
                 ],
@@ -120,9 +120,9 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # configuration deploy
-                    RuntimeError(),  # update sentinel images
-                    RuntimeError(),  # configuration images
-                    RuntimeError(),  # build new sentinel image
+                    fabricio.Error(),  # update sentinel images
+                    fabricio.Error(),  # configuration images
+                    fabricio.Error(),  # build new sentinel image
                 ],
                 expected_command_args=[
                     {'args': ['kubectl', 'config', 'current-context']},

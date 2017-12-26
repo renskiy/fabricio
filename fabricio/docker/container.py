@@ -142,12 +142,12 @@ class Container(BaseService):
         obsolete_container = self.get_backup_version()
         try:
             obsolete_container.delete(delete_image=True)
-        except RuntimeError:
+        except fabricio.Error:
             pass  # backup container not found
         try:
             backup_container = self.fork()
             backup_container.rename(obsolete_container.name)
-        except RuntimeError:
+        except fabricio.Error:
             pass  # current container not found
         else:
             backup_container.stop()

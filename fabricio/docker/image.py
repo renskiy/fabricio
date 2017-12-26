@@ -12,7 +12,7 @@ import fabricio
 from fabricio import utils
 
 
-class ImageError(RuntimeError):
+class ImageError(fabricio.Error):
     pass
 
 
@@ -166,7 +166,7 @@ class Image(object):
         if not self.use_digest:
             for repo_digest in self.info.get('RepoDigests', ()):
                 return repo_digest
-            raise RuntimeError('image has no digest')
+            raise ImageError('image has no digest')
         return repr(self)
 
     @utils.default_property

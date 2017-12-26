@@ -78,7 +78,7 @@ class StackTestCase(FabricioTestCase):
                 side_effect=[
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(),  # stack deploy
-                    RuntimeError(),  # update sentinel images
+                    fabricio.Error(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
                 ],
@@ -143,9 +143,9 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
-                    RuntimeError(),  # update sentinel images
-                    RuntimeError(),  # stack images
-                    RuntimeError(),  # build new sentinel image
+                    fabricio.Error(),  # update sentinel images
+                    fabricio.Error(),  # stack images
+                    fabricio.Error(),  # build new sentinel image
                 ],
                 expected_command_args=[
                     {

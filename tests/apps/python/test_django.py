@@ -1629,9 +1629,9 @@ class DjangoContainerTestCase(unittest.TestCase):
     def test_migrate_back_errors(self):
         cases = dict(
             current_container_not_found=dict(
-                expected_exception=RuntimeError,
+                expected_exception=fabricio.Error,
                 side_effect=(
-                    RuntimeError(),
+                    fabricio.Error(),
                 ),
                 args_parsers=[
                     docker_inspect_args_parser,
@@ -1645,13 +1645,13 @@ class DjangoContainerTestCase(unittest.TestCase):
                 ],
             ),
             backup_container_not_found=dict(
-                expected_exception=RuntimeError,
+                expected_exception=fabricio.Error,
                 side_effect=(
                     SucceededResult('[{"Image": "current_image_id"}]'),
                     SucceededResult(
                         'app1.0001_initial\n'
                     ),
-                    RuntimeError(),
+                    fabricio.Error(),
                 ),
                 args_parsers=[
                     docker_inspect_args_parser,

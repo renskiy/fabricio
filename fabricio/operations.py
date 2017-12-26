@@ -4,8 +4,16 @@ import hashlib
 import sys
 
 from fabric import colors, api as fab
+from fabric.exceptions import CommandTimeout, NetworkError
 
 from fabricio import utils
+
+
+class Error(RuntimeError):
+    pass
+
+
+host_errors = (Error, NetworkError, CommandTimeout)
 
 
 def _command(
@@ -15,7 +23,7 @@ def _command(
     quiet=True,
     hide=('running', 'aborts'),
     show=(),
-    abort_exception=RuntimeError,
+    abort_exception=Error,
     **kwargs
 ):
     if quiet:

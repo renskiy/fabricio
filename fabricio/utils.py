@@ -10,10 +10,7 @@ from distutils import util as distutils
 import six
 
 from fabric import api as fab
-from fabric.exceptions import CommandTimeout, NetworkError
 from six.moves import shlex_quote
-
-host_errors = (RuntimeError, NetworkError, CommandTimeout)
 
 DEFAULT = object()
 

@@ -154,7 +154,7 @@ class Stack(ManagedService):
         current_tag = self.current_settings_tag
         if rollback:
             backup_tag, current_tag = current_tag, backup_tag
-        with contextlib.suppress(utils.host_errors):
+        with contextlib.suppress(fabricio.host_errors):
             fabricio.run(
                 (
                     'docker rmi {backup_tag}'
@@ -170,7 +170,7 @@ class Stack(ManagedService):
         self.rotate_sentinel_images()
 
         labels = [(self.configuration_label, settings)]
-        with contextlib.suppress(utils.host_errors):
+        with contextlib.suppress(fabricio.host_errors):
             digests = self._get_digests(self.images)
             bucket = json.dumps(digests, sort_keys=True)
             bucket = b64encode(bucket.encode()).decode()
@@ -190,7 +190,7 @@ class Stack(ManagedService):
 
         try:
             fabricio.run(build_command)
-        except utils.host_errors as error:
+        except fabricio.host_errors as error:
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
                 output=sys.stderr,

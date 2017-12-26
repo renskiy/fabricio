@@ -955,7 +955,7 @@ class ContainerTestCase(unittest.TestCase):
                 side_effect=(
                     docker.ContainerNotFoundError,  # current container info
                     docker.ContainerNotFoundError,  # obsolete container info
-                    RuntimeError,  # rename current container
+                    fabricio.Error,  # rename current container
                     SucceededResult('new_container_id'),  # run new container
                 ),
                 expected_commands=[
@@ -1107,11 +1107,11 @@ class ImageTestCase(unittest.TestCase):
                 abort_exception=docker.ImageNotFoundError,
             )
 
-    @mock.patch.object(fabricio, 'run', side_effect=RuntimeError)
+    @mock.patch.object(fabricio, 'run', side_effect=fabricio.Error)
     def test_info_raises_error_if_image_not_found(self, run):
         image = docker.Image(name='name')
         expected_command = 'docker inspect --type image name:latest'
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(fabricio.Error):
             image.info
         run.assert_called_once_with(
             expected_command,
@@ -1861,7 +1861,7 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    RuntimeError(),  # manager status
+                    fabricio.Error(),  # manager status
                 ),
                 args_parsers=[
                     args_parser,
@@ -1880,7 +1880,7 @@ class ServiceTestCase(unittest.TestCase):
                 ),
                 update_kwargs=dict(),
                 side_effect=(
-                    RuntimeError(),  # manager status
+                    fabricio.Error(),  # manager status
                 ),
                 args_parsers=[
                     args_parser,
@@ -2305,7 +2305,7 @@ class ServiceTestCase(unittest.TestCase):
             errors=dict(
                 side_effect=[
                     FailedResult(),
-                    RuntimeError(),
+                    fabricio.Error(),
                 ],
                 expected_pull_error=True,
             ),

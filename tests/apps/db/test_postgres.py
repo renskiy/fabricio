@@ -892,14 +892,14 @@ class PostgresqlContainerTestCase(unittest.TestCase):
                 with mock.patch.object(
                     docker.Container,
                     'revert',
-                    side_effect=RuntimeError,
+                    side_effect=fabricio.Error,
                 ):
                     container = TestContainer(
                         name='name',
                         options=dict(volume='/data:/data'),
                         sudo=True,
                     )
-                    with self.assertRaises(RuntimeError):
+                    with self.assertRaises(fabricio.Error):
                         container.revert()
                     self.assertListEqual(
                         run.mock_calls,
