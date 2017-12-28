@@ -25,7 +25,7 @@ class TestCase(unittest.TestCase):
 
     def setUp(self):
         self.stderr = sys.stderr
-        sys.stderr = six.BytesIO()
+        sys.stderr = six.StringIO()
 
     def tearDown(self):
         sys.stderr = self.stderr
@@ -60,10 +60,6 @@ class TestCase(unittest.TestCase):
             invoked=dict(
                 decorator=tasks.infrastructure(),
                 expected_infrastructure='task',
-            ),
-            with_custom_name=dict(
-                decorator=tasks.infrastructure(name='infrastructure'),
-                expected_infrastructure='infrastructure',
             ),
         )
 

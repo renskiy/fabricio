@@ -11,7 +11,7 @@ import six
 from fabric import api as fab, colors, state
 from fabric.contrib import console
 from fabric.main import is_task_object
-from fabric.tasks import WrappedCallableTask, get_task_details
+from fabric.tasks import Task, WrappedCallableTask, get_task_details
 
 import fabricio
 
@@ -113,7 +113,7 @@ class SshTunnel(object):
 
 class Tasks(object):
 
-    @property
+    @utils.default_property
     def __name__(self):
         return self
 
@@ -143,26 +143,31 @@ class Tasks(object):
                 yield obj
 
 
-class Infrastructure(Tasks):
+class Infrastructure(Task, Tasks):
+    """
+    select {title} infrastructure, '{name}.confirm' skips confirmation dialog
+    """
 
-    def __new__(cls, *args, **kwargs):
-        if len(args) > 1:
-            raise ValueError('only 1 positional argument allowed')
-        if not args:
-            return lambda callback: cls(callback, **kwargs)
+    def __new__(cls, callback=None, **kwargs):
+        if not callback:
+            return functools.partial(cls, **kwargs)
         return super(Infrastructure, cls).__new__(cls)
 
-    def __init__(
-        self,
-        callback=None,
-        color=colors.yellow,
-        name=None,
-        *args, **kwargs
-    ):
-        super(Infrastructure, self).__init__(*args, **kwargs)
+    def __init__(self, callback, color=colors.yellow, title=None):
+        super(Infrastructure, self).__init__()
 
-        default = self.default
-        confirm = self.confirm
+        default, confirm = self.default, self.confirm
+
+        self.callback = callback
+        self.name = getattr(callback, '__name__', self.name)
+        self.title = color(title or self.name)
+        self.__doc__ = (self.__doc__ or '').format(**self.__dict__)
+        default.__doc__ = (default.__doc__ or '').format(**self.__dict__)
+        confirm.__doc__ = (confirm.__doc__ or '').format(**self.__dict__)
+
+        self.use_task_objects = not fab.env.tasks
+
+        default.is_default = True
 
         # We need to be sure that `default()` will be at first place
         # every time when vars(self) is being invoked.
@@ -174,50 +179,40 @@ class Infrastructure(Tasks):
             **self.__dict__
         )
 
-        self.callback = callback
-        self.color = color
-        self.name = name = name or callback.__name__
-        name = color(name)
-        doc = callback.__doc__ or ''
-        default.__doc__ = default.__doc__.format(name=name)
-        confirm.__doc__ = confirm.__doc__.format(name=name)
-        default.__details__ = functools.partial(self._details, doc, default)
-        confirm.__details__ = functools.partial(self._details, doc, confirm)
-
-    def _details(self, doc, method):
-        doc = (method.__doc__ or '') + doc
-        with utils.patch(self.callback, '__doc__', doc):
-            return get_task_details(self.callback)
-
     @fab.task(
-        default=True,
         # mock another task name to exclude this task from the tasks list
         name='confirm',
     )
     @fab.serial
     def default(self, *args, **kwargs):
         """
-        select {name} infrastructure to run task(s) on
+        select {title} infrastructure
         """
         with utils.patch(fab.env, 'parallel', False):
             if not console.confirm(
-                'Are you sure you want to select {name} '
-                'infrastructure to run task(s) on?'.format(
-                    name=self.color(self.name),
-                ),
+                'Are you sure you want to select {title} '
+                'infrastructure to run task(s) on?'.format(title=self.title),
                 default=False,
             ):
                 fab.abort('Aborted')
-        self.confirm(*args, **kwargs)
+        return self.confirm(*args, **kwargs)
 
     @fab.task
     @fab.serial
     def confirm(self, *args, **kwargs):
         """
-        automatically confirm {name} infrastructure selection
+        select {title} infrastructure skipping confirmation dialog
         """
         fab.env.infrastructure = self.name
-        self.callback(*args, **kwargs)
+        return self.run(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        return self.callback(*args, **kwargs)
+
+    def __details__(self):
+        doc = self.__doc__ + (self.callback.__doc__ or '')
+        with utils.patch(self.callback, '__doc__', doc):
+            return get_task_details(self.callback)
 
 
 infrastructure = Infrastructure

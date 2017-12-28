@@ -30,7 +30,7 @@ This command will start deploy of `nginx` container to the `vagrant` infrastruct
 
 Also you can use `vagrant.confirm` command to skip confirmation dialog and start tasks execution immediately.
 
-If no infrastructure selected then Fabricio will use Fabric's default roles definition (see `fabfile.py` for details). Also if there is no hosts found for a role then any task which needs to be executed on a remote host will be skipped.
+If no infrastructure selected then Fabricio will use default roles definition (in that case you should manually set default roles in your `fabfile.py`, see [Fabric documentation](http://docs.fabfile.org/)). Also if there is no hosts found for a role then any task which needs to be executed on a remote host will be skipped.
 
 ## Deploy to localhost
 
@@ -40,9 +40,9 @@ Same configuration can be deployed to localhost:
 
 even without SSH daemon enabled:
 
-    fab monkey-patch localhost nginx
+    fab localhost:force_local=yes nginx
     
-The latter is possible due to special "monkey-patch" command applied before any other. See [fabfile.py](fabfile.py) for details.
+The latter is possible due to special "force_local" parameter passed to `localhost` infrastructure definition. See [fabfile.py](fabfile.py) for details.
 
 ## Parallel execution
 

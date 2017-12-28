@@ -119,7 +119,7 @@ and then:
 Roles and infrastructures
 =========================
 
-You can define as many roles and infrastructures as you need. The following example shows 'production' and 'staging' configurations for two-roles deploy configuration:
+You can define as many roles and infrastructures as you need. The following example shows 'production' and 'test' configurations for two-roles deploy configuration:
 
 .. code:: python
 
@@ -127,10 +127,10 @@ You can define as many roles and infrastructures as you need. The following exam
     from fabricio import docker, tasks, infrastructure
 
     @infrastructure
-    def staging():
+    def test():
         fab.env.roledefs.update(
-            balancer=['user@staging.example.com'],
-            web=['user@staging.example.com'],
+            balancer=['user@test.example.com'],
+            web=['user@test.example.com'],
         )
 
     @infrastructure(color=colors.red)
@@ -170,20 +170,18 @@ Here is the list of available commands:
 
     Available commands:
 
-        production          select production infrastructure to run task(s) on
-        production.confirm  automatically confirm production infrastructure selection
-        staging             select staging infrastructure to run task(s) on
-        staging.confirm     automatically confirm staging infrastructure selection
+        production          select production infrastructure, 'production.confirm' skips confirmation dialog
+        test                select test infrastructure, 'test.confirm' skips confirmation dialog
         balancer            full service deploy (prepare -> push -> upgrade)
         balancer.rollback   rollback service to a previous version (migrate-back -> revert)
         web                 full service deploy (prepare -> push -> upgrade)
         web.rollback        rollback service to a previous version (migrate-back -> revert)
 
-'production' and 'staging' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
+'production' and 'test' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
 
 .. code:: bash
 
-    fab staging balancer web
+    fab test balancer web
 
 See `Infrastructures and roles`_ example for more details.
 
