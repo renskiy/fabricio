@@ -5,7 +5,7 @@ import six
 
 from six.moves import map, filter
 
-from fabricio import docker, kubernetes, utils
+from fabricio import docker, kubernetes, utils, once_per_task
 
 
 class Migration(six.text_type):
@@ -30,7 +30,7 @@ class DjangoMixin(docker.BaseService):
             options=options,
         )
 
-    @utils.once_per_command
+    @once_per_task
     def migrate(self, tag=None, registry=None, account=None):
         self._migrate(
             image=self.image[registry:tag:account],
@@ -77,7 +77,7 @@ class DjangoMixin(docker.BaseService):
             if backup_migration is None:
                 return revert_migrations.values()
 
-    @utils.once_per_command
+    @once_per_task
     def migrate_back(self):
         migrations_command = (
             'python manage.py showmigrations --plan '  # execute plan

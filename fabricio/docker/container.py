@@ -1,6 +1,8 @@
 import json
 import warnings
 
+import contextlib2 as contextlib
+
 import fabricio
 
 from fabricio import utils
@@ -140,10 +142,8 @@ class Container(BaseService):
             except ContainerNotFoundError:
                 pass
         obsolete_container = self.get_backup_version()
-        try:
+        with contextlib.suppress(fabricio.Error):
             obsolete_container.delete(delete_image=True)
-        except fabricio.Error:
-            pass  # backup container not found
         try:
             backup_container = self.fork()
             backup_container.rename(obsolete_container.name)
@@ -167,3 +167,8 @@ class Container(BaseService):
 
     def get_backup_version(self):
         return self.fork(name='{container}_backup'.format(container=self))
+
+    def destroy(self):
+        self.delete(force=True, delete_image=True)
+        with contextlib.suppress(fabricio.Error):
+            self.get_backup_version().delete(force=True, delete_image=True)

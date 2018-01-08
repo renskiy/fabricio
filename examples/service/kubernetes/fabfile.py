@@ -49,4 +49,5 @@ k8s = tasks.DockerTasks(
         options={'filename': 'k8s.yml'},
     ),
     hosts=hosts,
+    destroy_command=True,
 )

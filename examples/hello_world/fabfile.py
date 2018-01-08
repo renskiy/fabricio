@@ -10,4 +10,5 @@ nginx = tasks.DockerTasks(
         ),
     ),
     hosts=AvailableVagrantHosts(),
+    destroy_command=True,
 )

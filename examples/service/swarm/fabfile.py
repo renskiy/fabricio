@@ -47,4 +47,5 @@ nginx = tasks.DockerTasks(
         ),
     ),
     hosts=hosts,
+    destroy_command=True,
 )

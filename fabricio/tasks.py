@@ -1,4 +1,3 @@
-import collections
 import functools
 import os
 import sys
@@ -33,7 +32,7 @@ WrappedCallableTask.__get__ = lambda self, instance, owner: (
 )
 
 
-def _uncrawl(task, _cache={}):  # pragma: no cover
+def get_task_name(task, _cache={}):
     if not _cache:
         def _fill_cache(mapping=state.commands, keys=[]):
             for key, value in mapping.items():
@@ -44,6 +43,11 @@ def _uncrawl(task, _cache={}):  # pragma: no cover
                     _cache[value] = '.'.join(_keys)
         _fill_cache()
     return _cache.get(task)
+
+
+def is_task_mode():
+    # if there is at least one task to run then assume it is task mode
+    return bool(fab.env.tasks)
 
 
 def execute(*args, **kwargs):  # pragma: no cover
@@ -65,24 +69,22 @@ def execute(*args, **kwargs):  # pragma: no cover
         task_name=getattr(task, 'name', task.__name__),
         id=id(task),
     )
-    with utils.patch(task, 'name', _uncrawl(task) or default_name):
+    with utils.patch(task, 'name', get_task_name(task) or default_name):
         return fab.execute(task, *args, **kwargs)
 
 
-def skip_unknown_host(func):
-    @functools.wraps(func)
-    def _task(*args, **kwargs):
-        if fab.env.get('host_string', False):
-            return func(*args, **kwargs)
-        fabricio.log(
-            "'{func}' execution was skipped due to no host provided "
-            "(command: {command})".format(
-                func=func.__name__,
-                command=fab.env.command,
-            )
-        )
-    _task.wrapped = func  # compatibility with 'fab --display <task>' option
-    return _task
+def skip_unknown_host(*args, **kwargs):  # pragma: no cover
+    warnings.warn(
+        'skip_unknown_host decorator moved to fabricio.decorators module,'
+        'this one will be removed in 0.6',
+        DeprecationWarning,
+    )
+    warnings.warn(
+        'skip_unknown_host decorator moved to fabricio.decorators module'
+        'this one will be removed in 0.6',
+        RuntimeWarning, stacklevel=2,
+    )
+    return fabricio.skip_unknown_host(*args, **kwargs)
 
 
 class SshTunnel(object):
@@ -156,6 +158,13 @@ class Infrastructure(Task, Tasks):
     def __init__(self, callback, color=colors.yellow, title=None):
         super(Infrastructure, self).__init__()
 
+        # We need to be sure that `default()` will be at first place
+        # every time when vars(self) is being invoked.
+        # This is necessary to exclude `default` from the list of task
+        # because of it's already there as default task.
+        # See `fabric.main.extract_tasks()` for details
+        self.__dict__ = utils.PriorityDict(self.__dict__, priority=['default'])
+
         default, confirm = self.default, self.confirm
 
         self.callback = callback
@@ -165,21 +174,11 @@ class Infrastructure(Task, Tasks):
         default.__doc__ = (default.__doc__ or '').format(**self.__dict__)
         confirm.__doc__ = (confirm.__doc__ or '').format(**self.__dict__)
 
-        self.use_task_objects = not fab.env.tasks
-
-        default.is_default = True
-
-        # We need to be sure that `default()` will be at first place
-        # every time when vars(self) is being invoked.
-        # This is necessary to exclude `default` from the list of task
-        # because of it's already there as default task.
-        # See `fabric.main.extract_tasks()` for details
-        self.__dict__ = collections.OrderedDict(
-            [('default', default)],
-            **self.__dict__
-        )
+        # enable "module" behaviour in task mode
+        self.use_task_objects = not is_task_mode()
 
     @fab.task(
+        default=True,
         # mock another task name to exclude this task from the tasks list
         name='confirm',
     )
@@ -235,8 +234,11 @@ class DockerTasks(Tasks):
         pull_command=False,
         update_command=False,
         revert_command=False,
+        destroy_command=False,
         **kwargs
     ):
+        self.destroy = self.DestroyTask(tasks=self)
+
         super(DockerTasks, self).__init__(**kwargs)
 
         # We need to be sure that `deploy()` will be at first place
@@ -244,11 +246,11 @@ class DockerTasks(Tasks):
         # This is necessary to exclude `deploy` from the list of task
         # because of it's already there as default task.
         # See `fabric.main.extract_tasks()` for details
-        self.deploy.is_default = True  # force is_default property
-        self.__dict__ = collections.OrderedDict(
-            [('deploy', self.deploy)],
-            **self.__dict__
-        )
+        self.__dict__ = utils.PriorityDict(self.__dict__, priority=['deploy'])
+
+        # reassign is_default property which is being lost
+        # after applying @fab.hosts/@fab.roles decorators
+        self.deploy.is_default = True
 
         self.service = service
         self.registry = registry
@@ -271,25 +273,29 @@ class DockerTasks(Tasks):
                 host_port=registry.port,
             )
 
-        # if there is at least one task to run then assume it is command mode,
-        # there is no other way to find this out
-        command_mode = bool(fab.env.tasks)
-        self.backup.use_task_objects = command_mode or backup_commands
-        self.restore.use_task_objects = command_mode or backup_commands
-        self.migrate.use_task_objects = command_mode or migrate_commands
-        self.migrate_back.use_task_objects = command_mode or migrate_commands
-        self.revert.use_task_objects = command_mode or revert_command
-        self.pull.use_task_objects = command_mode or pull_command
-        self.update.use_task_objects = command_mode or update_command
-        if command_mode:
-            # set original name for `deploy` method to allow explicit invocation
+        task_mode = is_task_mode()
+        self.backup.use_task_objects = task_mode or backup_commands
+        self.restore.use_task_objects = task_mode or backup_commands
+        self.migrate.use_task_objects = task_mode or migrate_commands
+        self.migrate_back.use_task_objects = task_mode or migrate_commands
+        self.revert.use_task_objects = task_mode or revert_command
+        self.pull.use_task_objects = task_mode or pull_command
+        self.update.use_task_objects = task_mode or update_command
+        self.destroy.use_task_objects = not task_mode
+
+        # hide 'destroy' task in the tasks list by removing it from instance
+        if not (destroy_command or task_mode):
+            del self.destroy
+
+        # set original name for `deploy` method to allow explicit invocation
+        if task_mode:
             self.deploy.name = 'deploy'
 
-        # enable following commands only in custom registry mode
-        custom_mode = bool(registry or account)
-        self.prepare.use_task_objects = command_mode or custom_mode
-        self.push.use_task_objects = command_mode or custom_mode
-        self.upgrade.use_task_objects = command_mode or custom_mode
+        # enable following commands only if used custom registry or account
+        custom_registry_mode = task_mode or bool(registry or account)
+        self.prepare.use_task_objects = custom_registry_mode
+        self.push.use_task_objects = custom_registry_mode
+        self.upgrade.use_task_objects = custom_registry_mode
 
     def _set_registry(self, registry):
         self.__dict__['registry'] = docker.Registry(registry)
@@ -320,7 +326,7 @@ class DockerTasks(Tasks):
         return self.service.image
 
     @fab.task
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def revert(self):
         """
         revert service container(s) to a previous version
@@ -329,7 +335,7 @@ class DockerTasks(Tasks):
             self.service.revert()
 
     @fab.task
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def migrate(self, tag=None):
         """
         apply new migrations
@@ -342,7 +348,7 @@ class DockerTasks(Tasks):
             )
 
     @fab.task(name='migrate-back')
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def migrate_back(self):
         """
         remove previously applied migrations if any
@@ -351,7 +357,7 @@ class DockerTasks(Tasks):
             self.service.migrate_back()
 
     @fab.task
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def backup(self):
         """
         backup service data
@@ -360,7 +366,7 @@ class DockerTasks(Tasks):
             self.service.backup()
 
     @fab.task
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def restore(self, backup_name=None):
         """
         restore service data
@@ -459,7 +465,7 @@ class DockerTasks(Tasks):
             yield
 
     @fab.task
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def pull(self, tag=None):
         """
         pull Docker image from the registry
@@ -468,7 +474,7 @@ class DockerTasks(Tasks):
             self.pull_image(tag=tag)
 
     @fab.task
-    @skip_unknown_host
+    @fabricio.skip_unknown_host
     def update(self, tag=None, force=False):
         """
         update service to a new version
@@ -515,6 +521,69 @@ class DockerTasks(Tasks):
             backup=backup,
             migrate=migrate,
         )
+
+    class DestroyTask(Task, Tasks):
+        """
+        delete service, 'destroy.confirm' skips confirmation dialog
+        """
+
+        name = 'destroy'
+
+        def __init__(self, tasks, name=None):
+            super(DockerTasks.DestroyTask, self).__init__()
+
+            # We need to be sure that `default()` will be at first place
+            # every time when vars(self) is being invoked.
+            # This is necessary to exclude `default` from the list of task
+            # because of it's already there as default task.
+            # See `fabric.main.extract_tasks()` for details
+            self.__dict__ = utils.PriorityDict(self.__dict__, priority=['default'])
+
+            self.tasks = tasks
+            self.name = name or self.name
+
+            # hide actual 'destroy' task from the tasks list
+            self.run.use_task_objects = False
+
+        @fab.task(
+            default=True,
+            # mock another task name to exclude this task from the tasks list
+            name='confirm',
+        )
+        def default(self, *args, **kwargs):
+            """
+            delete service
+            """
+            with utils.patch(fab.env, 'parallel', False):
+                message = 'Are you sure you want to destroy {name} service?'
+                if not console.confirm(
+                    message.format(name=colors.red(self.tasks.service.name)),
+                    default=False,
+                ):
+                    fab.abort('Aborted')
+            return self.confirm(*args, **kwargs)
+
+        @fab.task
+        def confirm(self, *args, **kwargs):
+            """
+            delete service skipping confirmation dialog
+            """
+            self.run.hosts = self.hosts
+            self.run.roles = self.roles
+            return fab.execute(self.run, *args, **kwargs)
+
+        @fab.task(name='destroy')
+        def run(self, *args, **kwargs):
+            with self.tasks.remote_tunnel():
+                return self.tasks.service.destroy(*args, **kwargs)
+
+        def __details__(self):
+            with utils.patch(
+                six.get_method_function(self.tasks.service.destroy),
+                '__doc__',
+                self.__doc__ + (self.tasks.service.destroy.__doc__ or ''),
+            ):
+                return get_task_details(self.tasks.service.destroy)
 
 
 class ImageBuildDockerTasks(DockerTasks):

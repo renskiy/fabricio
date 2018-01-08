@@ -1,4 +1,3 @@
-import ctypes
 import itertools
 import multiprocessing
 import sys
@@ -201,6 +200,9 @@ class BaseService(object):
     def restore(self, backup_name=None):
         pass
 
+    def destroy(self):
+        raise NotImplementedError
+
     @property
     def info(self):
         raise NotImplementedError
@@ -210,43 +212,39 @@ class ManagedService(BaseService):
 
     def __init__(self, *args, **kwargs):
         super(ManagedService, self).__init__(*args, **kwargs)
-        self.manager_found = multiprocessing.Event()
-        self.is_manager_call_count = multiprocessing.Value(ctypes.c_int, 0)
-        self.pull_errors = multiprocessing.Manager().dict()
+        self.managers = multiprocessing.Manager().dict()
 
-    def is_manager(self):
+    def _is_manager(self):
+        command = 'docker info 2>&1 | grep "Is Manager:"'
+        return fabricio.run(command).endswith('true')
+
+    def is_manager(self, raise_manager_error=True):
+        is_manager = self.managers.get(fab.env.host)
         try:
-            if self.pull_errors.get(fab.env.host, False):
-                return False
-            is_manager = fabricio.run(
-                'docker info 2>&1 | grep "Is Manager:"',
-                use_cache=True,
-            ).endswith('true')
-            if is_manager:
-                self.manager_found.set()
-            return is_manager
+            if is_manager is None:
+                is_manager = self.managers[fab.env.host] = self._is_manager()
         except fabricio.host_errors as error:
+            is_manager = self.managers[fab.env.host] = False
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
                 output=sys.stderr,
                 color=colors.red,
             )
-            return False
         finally:
-            with self.is_manager_call_count.get_lock():
-                self.is_manager_call_count.value += 1
-                if self.is_manager_call_count.value >= len(fab.env.all_hosts):
-                    if not self.manager_found.is_set():
-                        msg = 'Service manager with pulled image was not found'
-                        raise ServiceError(msg)
-                    self.manager_found.clear()
-                    self.is_manager_call_count.value = 0
+            if (
+                raise_manager_error
+                and len(self.managers) >= len(fab.env.all_hosts)
+                and not any(self.managers.values())
+            ):
+                msg = 'service manager not found or it failed to pull image'
+                raise ServiceError(msg)
+        return is_manager
 
     def pull_image(self, *args, **kwargs):
         try:
             return super(ManagedService, self).pull_image(*args, **kwargs)
         except fabricio.host_errors as error:
-            self.pull_errors[fab.env.host] = True
+            self.managers[fab.env.host] = False
             fabricio.log(
                 'WARNING: {error}'.format(error=error),
                 output=sys.stderr,

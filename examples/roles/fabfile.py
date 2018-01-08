@@ -46,4 +46,5 @@ nginx = tasks.DockerTasks(
         ),
     ),
     roles=['web'],
+    destroy_command=True,
 )

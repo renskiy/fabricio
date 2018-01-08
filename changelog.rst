@@ -5,16 +5,19 @@ Release 0.5.2
 -------------
 
 - Change: ``fabricio.infrastructure``: removed ``name`` parameter
-- Fix: full unicode support for Python 2 (`#100`_)
+- Enhancement: added new service command - ``destroy`` (`#118`_)
+- Enhancement: full unicode support for Python 2 (`#100`_)
+- Fix: ``DockerTasks``: fixed instance properties assignment
 
 .. _#100: https://github.com/renskiy/fabricio/issues/100
+.. _#118: https://github.com/renskiy/fabricio/issues/118
 
 Release 0.5
 -----------
 
 - Change: dropped Python 2.6 support
 - Enhancement: added new service type - ``kubernetes.Configuration``, see `Kubernetes configuration`_ example (`#148`_)
-- Fix: fixed --display behaviour for methods of ``Tasks`` (`#71`_)
+- Fix: fixed ``--display`` behaviour for methods of ``Tasks`` (`#71`_)
 
 .. _#71: https://github.com/renskiy/fabricio/issues/71
 .. _#148: https://github.com/renskiy/fabricio/issues/148

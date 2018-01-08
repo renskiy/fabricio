@@ -16,4 +16,5 @@ db = tasks.DockerTasks(
         ),
     ),
     hosts=AvailableVagrantHosts(guest_network_interface='eth1'),
+    destroy_command=True,
 )

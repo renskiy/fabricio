@@ -2,6 +2,7 @@ import itertools
 import json
 import multiprocessing
 import sys
+import warnings
 
 from base64 import b64encode, b64decode
 
@@ -27,7 +28,15 @@ class Stack(ManagedService):
 
     temp_dir = Attribute(default='/tmp')
 
-    compose_file = Option(name='compose-file', default='docker-compose.yml')
+    config = Option(name='compose-file', default='docker-compose.yml')
+
+    @property
+    def compose_file(self):  # pragma: no cover
+        warnings.warn(
+            "'compose_file' option is deprecated and will be removed in v0.6, "
+            "use 'config' or 'compose-file' instead", DeprecationWarning,
+        )
+        return self.config
 
     configuration_label = 'fabricio.configuration'
 
@@ -36,6 +45,15 @@ class Stack(ManagedService):
     get_update_command = 'docker stack deploy {options} {name}'.format
 
     def __init__(self, *args, **kwargs):
+        options = kwargs.setdefault('options', {})
+        if 'compose_file' in options:  # pragma: no cover
+            warnings.warn(
+                "'compose_file' option is deprecated and will be removed"
+                " in v0.6, use 'config' or 'compose-file' instead",
+                RuntimeWarning, stacklevel=2,
+            )
+            options.setdefault('config', options['compose_file'])
+
         super(Stack, self).__init__(*args, **kwargs)
         self._updated = multiprocessing.Event()
 
@@ -47,11 +65,8 @@ class Stack(ManagedService):
     def backup_settings_tag(self):
         return 'fabricio-backup-stack:{0}'.format(self.name)
 
-    def read_configuration(self):
-        return open(self.compose_file, 'rb').read()
-
     def upload_configuration(self, configuration):
-        fab.put(six.BytesIO(configuration), self.compose_file)
+        fab.put(six.BytesIO(configuration), self.config)
 
     def update(self, tag=None, registry=None, account=None, force=False):
         if not self.is_manager():
@@ -59,32 +74,32 @@ class Stack(ManagedService):
 
         self.reset_update_status()
 
-        configuration = self.read_configuration()
-        new_settings = b64encode(configuration).decode()
-
+        configuration = open(self.config, 'rb').read()
         with fab.cd(self.temp_dir):
-            self.upload_configuration(configuration)
-
-            result = self._update(new_settings, force=force)
+            result = self._update(configuration, force=force)
 
             if self._updated.is_set():
-                image = self.image[registry:tag:account]
-                self.save_new_settings(new_settings, image)
+                self.save_new_settings(
+                    configuration=configuration,
+                    image=self.image[registry:tag:account],
+                )
 
-            return result is None or result
+        return result is None or result
 
-    @utils.once_per_command(block=True)
-    def _update(self, new_settings, force=False, set_update_status=True):
+    @fabricio.once_per_task(block=True)
+    def _update(self, new_configuration, force=False, set_update_status=True):
         if not force:
-            settings, digests = self.current_settings
-            digests = digests and json.loads(b64decode(digests).decode())
-            if settings == new_settings and digests is not None:
+            configuration, digests = self.current_settings
+            if configuration == new_configuration and digests is not None:
                 new_digests = self._get_digests(digests)
                 if digests == new_digests:
                     return False
 
+        self.upload_configuration(new_configuration)
+
         options = utils.Options(self.options)
-        fabricio.run(self.get_update_command(options=options, name=self.name))
+        command = self.get_update_command(options=options, name=self.name)
+        fabricio.run(command)
 
         if set_update_status:
             self._updated.set()
@@ -95,26 +110,22 @@ class Stack(ManagedService):
         if not self.is_manager():
             return
         self.reset_update_status()
-        self._revert()
+        with fab.cd(self.temp_dir):
+            self._revert()
         if self._updated.is_set():
             self.rotate_sentinel_images(rollback=True)
 
-    @utils.once_per_command(block=True)
+    @fabricio.once_per_task(block=True)
     def _revert(self):
-        settings, digests = self.backup_settings
-        if not settings:
-            raise ServiceError('service backup not found')
+        configuration, digests = self.backup_settings
 
-        with fab.cd(self.temp_dir):
-            configuration = b64decode(settings)
-            self.upload_configuration(configuration)
+        if configuration is None:
+            raise ServiceError('backup configuration not found')
 
-            self._update(settings, force=True, set_update_status=False)
+        self._update(configuration, force=True, set_update_status=False)
 
-            digests = digests and b64decode(digests).decode()
-            digests = digests and json.loads(digests)
-            if digests:
-                self._revert_images(digests)
+        if digests:
+            self._revert_images(digests)
 
         # set updated status if everything was OK
         self._updated.set()
@@ -127,7 +138,7 @@ class Stack(ManagedService):
             command = command.format(digest=digest, service=service)
             fabricio.run(command)
 
-    @utils.once_per_command(block=True)
+    @fabricio.once_per_task(block=True)
     def reset_update_status(self):
         self._updated.clear()
 
@@ -142,10 +153,11 @@ class Stack(ManagedService):
     def _get_settings(self, image):
         try:
             labels = image.info.get('Config', {}).get('Labels', {})
-            return (
-                labels.get(self.configuration_label),
-                labels.get(self.digests_label),
-            )
+            configuration = labels.get(self.configuration_label)
+            configuration = configuration and b64decode(configuration)
+            digests = labels.get(self.digests_label)
+            digests = digests and json.loads(b64decode(digests).decode())
+            return configuration, digests
         except ImageNotFoundError:
             return None, None
 
@@ -154,27 +166,34 @@ class Stack(ManagedService):
         current_tag = self.current_settings_tag
         if rollback:
             backup_tag, current_tag = current_tag, backup_tag
+
+        backup_images = [backup_tag]
+        with contextlib.suppress(ImageNotFoundError):
+            backup_images.append(Image(backup_tag).info['Parent'])
+
         with contextlib.suppress(fabricio.host_errors):
+            # TODO make separate call for each docker command
             fabricio.run(
                 (
-                    'docker rmi {backup_tag}'
+                    'docker rmi {backup_images}'
                     '; docker tag {current_tag} {backup_tag}'
                     '; docker rmi {current_tag}'
                 ).format(
-                    backup_tag=backup_tag,
+                    backup_images=' '.join(backup_images),
                     current_tag=current_tag,
+                    backup_tag=backup_tag,
                 ),
             )
 
-    def save_new_settings(self, settings, image):
+    def save_new_settings(self, configuration, image):
         self.rotate_sentinel_images()
 
-        labels = [(self.configuration_label, settings)]
+        labels = [(self.configuration_label, b64encode(configuration).decode())]
         with contextlib.suppress(fabricio.host_errors):
             digests = self._get_digests(self.images)
-            bucket = json.dumps(digests, sort_keys=True)
-            bucket = b64encode(bucket.encode()).decode()
-            labels.append((self.digests_label, bucket))
+            digests_bucket = json.dumps(digests, sort_keys=True)
+            digests_bucket = b64encode(digests_bucket.encode()).decode()
+            labels.append((self.digests_label, digests_bucket))
 
         dockerfile = (
             'FROM {image}\n'
@@ -225,3 +244,31 @@ class Stack(ManagedService):
 
     def get_backup_version(self):
         return self.fork(image=self.backup_settings_tag)
+
+    def destroy(self, **options):
+        """
+        any passed argument will be forwarded to 'docker stack rm' as option
+        """
+        if self.is_manager():
+            self.reset_update_status()
+            self._destroy(**options)
+            if self._updated.is_set():
+                self.remove_sentinel_images()
+
+    def remove_sentinel_images(self):
+        images = [self.current_settings_tag, self.backup_settings_tag]
+        with contextlib.suppress(ImageNotFoundError):
+            images.append(Image(self.current_settings_tag).info['Parent'])
+            images.append(Image(self.backup_settings_tag).info['Parent'])
+        fabricio.run(
+            'docker rmi {images}'.format(images=' '.join(images)),
+            ignore_errors=True,
+        )
+
+    @fabricio.once_per_task(block=True)
+    def _destroy(self, **options):
+        fabricio.run('docker stack rm {options} {name}'.format(
+            options=utils.Options(options),
+            name=self.name,
+        ))
+        self._updated.set()

@@ -23,28 +23,6 @@ class TestContainer(docker.Container):
 
 class TestCase(unittest.TestCase):
 
-    def setUp(self):
-        self.stderr = sys.stderr
-        sys.stderr = six.StringIO()
-
-    def tearDown(self):
-        sys.stderr = self.stderr
-
-    def test_skip_unknown_host(self):
-
-        mocked_task = mock.Mock()
-
-        @fabricio.tasks.skip_unknown_host
-        def task():
-            mocked_task()
-
-        with fab.settings(fab.hide('everything')):
-            fab.execute(task)
-            mocked_task.assert_not_called()
-
-            fab.execute(task, host='host')
-            mocked_task.assert_called_once()
-
     def test_infrastructure(self):
         class AbortException(Exception):
             pass
@@ -83,7 +61,22 @@ class TestCase(unittest.TestCase):
                             with self.assertRaises(AbortException):
                                 fab.execute(infrastructure.default)
 
-    def test__uncrawl_deprecated(self):
+    def test_infrastructure_details(self):
+        class Infrastructure(tasks.Infrastructure):
+            """
+            inf {name}
+            """
+        @Infrastructure
+        def infrastructure(foo='bar'):
+            """
+            func
+            """
+        self.assertListEqual(
+            ['inf', 'infrastructure', 'func', 'Arguments:', "foo='bar'"],
+            infrastructure.__details__().split(),
+        )
+
+    def test_get_task_name(self):
         cases = dict(
             case1=dict(
                 command='command1',
@@ -111,7 +104,7 @@ class TestCase(unittest.TestCase):
             for case, data in cases.items():
                 with self.subTest(case=case):
                     self.assertEqual(
-                        tasks._uncrawl(data['command']),
+                        tasks.get_task_name(data['command']),
                         data['expected'],
                     )
 
@@ -222,48 +215,43 @@ class DockerTasksTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 init_kwargs=dict(service='service'),
-                expected_commands_list=['rollback'],
-                unexpected_commands_list=['revert', 'migrate', 'migrate-back', 'backup', 'restore', 'pull', 'update', 'prepare', 'push', 'upgrade'],
+                expected_commands={'rollback'},
             ),
             prepare_tasks=dict(
                 init_kwargs=dict(service='service', registry='registry'),
-                expected_commands_list=['rollback', 'prepare', 'push', 'upgrade'],
-                unexpected_commands_list=['backup', 'restore', 'migrate', 'migrate-back', 'pull', 'update', 'revert'],
+                expected_commands={'rollback', 'prepare', 'push', 'upgrade'},
             ),
             migrate_tasks=dict(
                 init_kwargs=dict(service='service', migrate_commands=True),
-                expected_commands_list=['rollback', 'migrate', 'migrate-back'],
-                unexpected_commands_list=['backup', 'restore', 'prepare', 'push', 'pull', 'update', 'revert', 'upgrade'],
+                expected_commands={'rollback', 'migrate', 'migrate-back'},
             ),
             backup_tasks=dict(
                 init_kwargs=dict(service='service', backup_commands=True),
-                expected_commands_list=['rollback', 'backup', 'restore'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'revert', 'upgrade'],
+                expected_commands={'rollback', 'backup', 'restore'},
             ),
             revert_task=dict(
                 init_kwargs=dict(service='service', revert_command=True),
-                expected_commands_list=['rollback', 'revert'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'update', 'backup', 'restore', 'upgrade'],
+                expected_commands={'rollback', 'revert'},
             ),
             pull_task=dict(
                 init_kwargs=dict(service='service', pull_command=True),
-                expected_commands_list=['rollback', 'pull'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'revert', 'update', 'backup', 'restore', 'upgrade'],
+                expected_commands={'rollback', 'pull'},
             ),
             update_task=dict(
                 init_kwargs=dict(service='service', update_command=True),
-                expected_commands_list=['rollback', 'update'],
-                unexpected_commands_list=['migrate', 'migrate-back', 'prepare', 'push', 'pull', 'revert', 'backup', 'restore', 'upgrade'],
+                expected_commands={'rollback', 'update'},
+            ),
+            destroy_task=dict(
+                init_kwargs=dict(service='service', destroy_command=True),
+                expected_commands={'rollback', 'destroy'},
             ),
             complex=dict(
-                init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True),
-                expected_commands_list=['pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade'],
-                unexpected_commands_list=[],
+                init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True, destroy_command=True),
+                expected_commands={'pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'destroy'},
             ),
-            all_tasks=dict(
+            task_mode=dict(
                 init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True),
-                expected_commands_list=['pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'deploy'],
-                unexpected_commands_list=[],
+                expected_commands={'pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'deploy', 'destroy'},
                 env=dict(tasks='task'),
             ),
         )
@@ -272,10 +260,56 @@ class DockerTasksTestCase(unittest.TestCase):
                 with mock.patch.dict(fab.env, data.get('env', {})):
                     tasks_list = tasks.DockerTasks(**data['init_kwargs'])
                 docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
-                for expected_command in data['expected_commands_list']:
-                    self.assertIn(expected_command, new_style)
-                for unexpected_command in data['unexpected_commands_list']:
-                    self.assertNotIn(unexpected_command, new_style)
+                self.assertSetEqual(set(new_style), data['expected_commands'])
+
+    @mock.patch.object(docker.Container, 'destroy')
+    @mock.patch.object(console, 'confirm', return_value=True)
+    @mock.patch.dict(fab.env, dict(tasks='task'))
+    def test_destroy(self, confirm, destroy):
+        service = docker.Container(name='name')
+        tasks_list = tasks.DockerTasks(service=service)
+        cases = dict(
+            explicit=dict(
+                execute=tasks_list.destroy,
+                expected_calls=[mock.call.destroy('args', kwargs='kwargs')],
+            ),
+            default=dict(
+                execute=tasks_list.destroy.default,
+                expected_calls=[
+                    mock.call.confirm(mock.ANY, default=mock.ANY),
+                    mock.call.destroy('args', kwargs='kwargs'),
+                ],
+            ),
+            confirm=dict(
+                execute=tasks_list.destroy.confirm,
+                expected_calls=[mock.call.destroy('args', kwargs='kwargs')],
+            ),
+        )
+        calls = mock.Mock()
+        calls.attach_mock(destroy, 'destroy')
+        calls.attach_mock(confirm, 'confirm')
+        for case, data in cases.items():
+            with self.subTest(case):
+                calls.reset_mock()
+                fab.execute(data['execute'], 'args', kwargs='kwargs')
+                self.assertListEqual(data['expected_calls'], calls.mock_calls)
+
+    @mock.patch.dict(fab.env, dict(tasks='task'))
+    def test_destroy_details(self):
+        class Service(docker.Container):
+            def destroy(self, foo='bar'):
+                """
+                service doc
+                """
+        class DockerTasks(tasks.DockerTasks):
+            class DestroyTask(tasks.DockerTasks.DestroyTask):
+                """
+                tasks doc
+                """
+        self.assertEqual(
+            "\ntasks doc\n\nservice doc\n\nArguments: self, foo='bar'",
+            DockerTasks(Service()).destroy.__details__(),
+        )
 
     @mock.patch.multiple(TestContainer, revert=mock.DEFAULT, migrate_back=mock.DEFAULT)
     def test_rollback(self, revert, migrate_back):

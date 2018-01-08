@@ -2271,15 +2271,15 @@ class ServiceTestCase(unittest.TestCase):
     def test_is_manager_returns_false_if_pull_error(self, *args):
         with mock.patch.object(fabricio, 'run') as run:
             service = docker.Service(name='service')
-            service.pull_errors[fab.env.host] = True
+            service.managers[fab.env.host] = False
             self.assertFalse(service.is_manager())
             run.assert_not_called()
 
     @mock.patch.dict(fab.env, dict(all_hosts=['host']))
-    def test_is_manager_raises_error_if_all_pulls_failed(self, *args):
+    def test_is_manager_raises_error_if_all_pulls_failed(self):
         with mock.patch.object(fabricio, 'run') as run:
             service = docker.Service(name='service')
-            service.pull_errors[fab.env.host] = True
+            service.managers[fab.env.host] = False
             with self.assertRaises(docker.ServiceError):
                 service.is_manager()
             run.assert_not_called()
@@ -2292,7 +2292,7 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult(),
                     SucceededResult(),
                 ],
-                expected_pull_error=None,
+                expected_manager_status=None,
             ),
             ignored_errors=dict(
                 side_effect=[
@@ -2300,14 +2300,14 @@ class ServiceTestCase(unittest.TestCase):
                     SucceededResult(),
                     FailedResult(),
                 ],
-                expected_pull_error=None,
+                expected_manager_status=None,
             ),
             errors=dict(
                 side_effect=[
                     FailedResult(),
                     fabricio.Error(),
                 ],
-                expected_pull_error=True,
+                expected_manager_status=False,
             ),
         )
         for case, test_data in cases.items():
@@ -2320,8 +2320,8 @@ class ServiceTestCase(unittest.TestCase):
                 ):
                     service.pull_image()
                     self.assertEqual(
-                        test_data['expected_pull_error'],
-                        service.pull_errors.get(fab.env.host),
+                        test_data['expected_manager_status'],
+                        service.managers.get(fab.env.host),
                     )
 
     def test_update_options(self):

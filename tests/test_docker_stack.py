@@ -70,7 +70,6 @@ class StackTestCase(FabricioTestCase):
                 ],
                 expected_result=False,
                 expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
             ),
             forced=dict(
                 init_kwargs=dict(name='stack'),
@@ -78,6 +77,7 @@ class StackTestCase(FabricioTestCase):
                 side_effect=[
                     SucceededResult('  Is Manager: true'),  # manager status
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # backup image info
                     fabricio.Error(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -88,6 +88,9 @@ class StackTestCase(FabricioTestCase):
                     },
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
+                    },
+                    {
+                        'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack'],
                     },
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
@@ -108,8 +111,9 @@ class StackTestCase(FabricioTestCase):
                 update_kwargs=dict(),
                 side_effect=[
                     SucceededResult('  Is Manager: true'),  # manager status
-                    docker.ImageNotFoundError(),  # image info
+                    docker.ImageNotFoundError(),  # current image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -122,6 +126,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -143,6 +148,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
                     fabricio.Error(),  # update sentinel images
                     fabricio.Error(),  # stack images
                     fabricio.Error(),  # build new sentinel image
@@ -155,6 +161,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -170,12 +177,13 @@ class StackTestCase(FabricioTestCase):
                 should_upload_compose_file=True,
             ),
             created_with_custom_compose=dict(
-                init_kwargs=dict(name='stack', options=dict(compose_file='compose.yml')),
+                init_kwargs=dict(name='stack', options=dict(config='compose.yml')),
                 update_kwargs=dict(),
                 side_effect=[
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -188,6 +196,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -209,6 +218,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -221,6 +231,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -242,6 +253,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -254,6 +266,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -275,6 +288,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -287,6 +301,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -308,6 +323,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('  Is Manager: true'),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
@@ -320,6 +336,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -344,8 +361,9 @@ class StackTestCase(FabricioTestCase):
                             'fabricio.configuration': 'b2xkLWNvbXBvc2UueW1s',
                             'fabricio.digests': 'eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=',
                         },
-                    }}])),  # image info
+                    }}])),  # current image info
                     SucceededResult(),  # stack deploy
+                    SucceededResult('[{"Parent": "backup_parent_id"}]'),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult('service image:tag'),  # stack images
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
@@ -360,8 +378,9 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
-                        'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
+                        'args': ['docker', 'rmi', 'fabricio-backup-stack:stack' , 'backup_parent_id;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
                     {
                         'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
@@ -392,6 +411,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult('service image:tag'),  # stack images
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
@@ -410,6 +430,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -443,6 +464,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult('service1 image1:tag\nservice2 image2:tag\n'),  # stack images
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image1 pull
@@ -463,6 +485,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
                     },
@@ -533,8 +556,9 @@ class StackTestCase(FabricioTestCase):
                         'Labels': {
                             'fabricio.configuration': 'b2xkLWNvbXBvc2UueW1s',
                         },
-                    }}])),  # image info
+                    }}])),  # backup image info
                     SucceededResult(),  # stack deploy
+                    SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
                 expected_command_args=[
@@ -545,8 +569,9 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
-                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
+                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
                     },
                 ],
                 expected_compose_file=b'old-compose.yml',
@@ -564,6 +589,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult('service image:tag\n'),  # stack services
                     SucceededResult(),  # service update
+                    SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
                 expected_command_args=[
@@ -582,13 +608,14 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'service', 'update', '--image', 'digest', 'service'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
-                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
+                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
                     },
                 ],
                 expected_compose_file=b'compose.yml',
             ),
-            reverted_with_services_update=dict(
+            reverted_with_services_updates=dict(
                 init_kwargs=dict(name='stack'),
                 side_effect=[
                     SucceededResult('  Is Manager: true'),  # manager status
@@ -602,6 +629,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('service1 image1:tag\nservice2 image2:tag'),  # stack services
                     SucceededResult(),  # service update
                     SucceededResult(),  # service update
+                    SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
                 expected_command_args=[
@@ -623,8 +651,9 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'service', 'update', '--image', 'digest2', 'service2'],
                     },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
-                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
+                        'args': ['docker', 'rmi', 'fabricio-current-stack:stack', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
                     },
                 ],
                 expected_compose_file=b'compose.yml',
@@ -679,3 +708,18 @@ class StackTestCase(FabricioTestCase):
             stack = docker.Stack(name='stack')
             stack.revert()
             rotate_sentinel_images.assert_not_called()
+
+    @mock.patch.object(docker.ManagedService, 'is_manager', return_value=True)
+    @mock.patch.object(fabricio, 'run', return_value='[{"Parent": "parent_id"}]')
+    def test_destroy(self, run, *_):
+        stack = docker.Stack(name='name')
+        stack.destroy()
+        self.assertListEqual(
+            [
+                mock.call('docker stack rm  name'),
+                mock.call('docker inspect --type image fabricio-current-stack:name', abort_exception=docker.ImageNotFoundError),
+                mock.call('docker inspect --type image fabricio-backup-stack:name', abort_exception=docker.ImageNotFoundError),
+                mock.call('docker rmi fabricio-current-stack:name fabricio-backup-stack:name parent_id parent_id', ignore_errors=True),
+            ],
+            run.mock_calls,
+        )

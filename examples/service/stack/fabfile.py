@@ -38,4 +38,5 @@ swarm_init.worker_join_command = None
 stack = tasks.DockerTasks(
     service=docker.Stack(name='my-stack'),
     hosts=hosts,
+    destroy_command=True,
 )

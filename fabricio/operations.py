@@ -124,10 +124,19 @@ def move_file(path_from, path_to, sudo=False, force=True, ignore_errors=False):
     )
 
 
-def remove_file(path, sudo=False, force=True, ignore_errors=False):
+def remove_file(
+    path,
+    sudo=False,
+    force=True,
+    recursive=False,
+    ignore_errors=False,
+):
+    options = ''
+    options += force and 'f' or ''
+    options += recursive and 'r' or ''
     return run(
-        'rm {force}{path}'.format(
-            force=force and '-f ' or '',
+        'rm {options}{path}'.format(
+            options=options and ('-' + options + ' '),
             path=path,
         ),
         sudo=sudo,

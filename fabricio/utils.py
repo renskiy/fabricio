@@ -1,16 +1,14 @@
 import collections
 import contextlib
-import ctypes
-import functools
-import hashlib
-import multiprocessing
+import warnings
 
 from distutils import util as distutils
 
 import six
 
-from fabric import api as fab
 from six.moves import shlex_quote
+
+import fabricio
 
 DEFAULT = object()
 
@@ -77,37 +75,40 @@ def strtobool(value):
     return distutils.strtobool(six.text_type(value))
 
 
-def once_per_command(func=None, block=False, default=None):
-    if func is None:
-        return functools.partial(once_per_command, block=block, default=default)
-
-    @functools.wraps(func)
-    def _func(*args, **kwargs):
-        lock = last_hash.get_lock()
-        if lock.acquire(block):
-            try:
-                command = fab.env.command or ''
-                infrastructure = fab.env.infrastructure or ''
-                current_session = hashlib.md5()
-                current_session.update(command.encode('utf-16be'))
-                current_session.update(infrastructure.encode('utf-16be'))
-                for host in fab.env.all_hosts:
-                    current_session.update(host.encode('utf-16be'))
-                current_hash = current_session.digest()
-                if current_hash != last_hash.raw:
-                    last_hash.raw = current_hash
-                    return func(*args, **kwargs)
-                return default
-            finally:
-                lock.release()
-
-    last_hash = multiprocessing.Array(ctypes.c_char, hashlib.md5().digest_size)
-    return _func
+def once_per_command(*args, **kwargs):  # pragma: no cover
+    warnings.warn(
+        'once_per_command renamed to fabricio.decorators.once_per_task, '
+        'this one will be removed in 0.6',
+        DeprecationWarning,
+    )
+    warnings.warn(
+        'once_per_command renamed to fabricio.decorators.once_per_task, '
+        'this one will be removed in 0.6',
+        RuntimeWarning, stacklevel=2,
+    )
+    return fabricio.once_per_task(*args, **kwargs)
 
 
 class AttrDict(dict):
     __getattr__ = dict.__getitem__
     __setattr__ = dict.__setitem__
+
+
+class PriorityDict(dict):
+
+    def __init__(self, iterable=None, priority=None, **kwargs):
+        super(PriorityDict, self).__init__(iterable, **kwargs)
+        self.priority = priority or []
+
+    def items(self):
+        seen = set()
+        for key in self.priority:
+            if key in self:
+                yield key, self[key]
+                seen.add(key)
+        for key in self:
+            if key not in seen:
+                yield key, self[key]
 
 
 class OrderedSet(collections.MutableSet):  # pragma: no cover

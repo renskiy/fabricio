@@ -20,13 +20,15 @@ def as_ordereddict(result):
 
 class StackTestCase(FabricioTestCase):
 
+    maxDiff = None
+
     def setUp(self):
-        kubernetes.open = mock.MagicMock()
+        stack_module.open = mock.MagicMock()
         self.cd = mock.patch.object(fab, 'cd')
         self.cd.start()
 
     def tearDown(self):
-        kubernetes.open = open
+        stack_module.open = open
         self.cd.stop()
 
     @mock.patch.object(fabricio, 'log')
@@ -67,7 +69,6 @@ class StackTestCase(FabricioTestCase):
                 ],
                 expected_result=False,
                 expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
             ),
             forced=dict(
                 init_kwargs=dict(),
@@ -75,6 +76,7 @@ class StackTestCase(FabricioTestCase):
                 side_effect=[
                     SucceededResult(),  # manager status
                     SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # backup image info
                     fabricio.Error(),  # update sentinel images
                     SucceededResult(),  # configuration images
                     SucceededResult(),  # build new sentinel image
@@ -82,6 +84,7 @@ class StackTestCase(FabricioTestCase):
                 expected_command_args=[
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
                     {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
@@ -97,6 +100,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # configuration images
                     SucceededResult(),  # build new sentinel image
@@ -105,6 +109,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
                     {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
@@ -120,6 +125,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # image info
                     fabricio.Error(),  # update sentinel images
                     fabricio.Error(),  # configuration images
                     fabricio.Error(),  # build new sentinel image
@@ -128,6 +134,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
                     {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
@@ -143,6 +150,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # configuration images
                     SucceededResult(),  # build new sentinel image
@@ -151,6 +159,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
                     {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['echo', 'FROM image:tag\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
@@ -166,6 +175,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # configuration images
                     SucceededResult(),  # build new sentinel image
@@ -174,6 +184,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
                     {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['echo', 'FROM registry/account/image:new-tag\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
@@ -189,6 +200,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # manager status
                     docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # configuration images
                     SucceededResult(),  # build new sentinel image
@@ -197,6 +209,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
                     {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['echo', 'FROM registry/account/image:tag\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
@@ -217,6 +230,7 @@ class StackTestCase(FabricioTestCase):
                         },
                     }}])),  # image info
                     SucceededResult(),  # configuration deploy
+                    SucceededResult('[{"Parent": "backup_parent_id"}]'),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult('kind name image:tag'),  # configuration images
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
@@ -227,7 +241,8 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
-                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s', 'backup_parent_id;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['docker', 'tag', 'image:tag', 'fabricio-temp-image:image', '&&', 'docker', 'rmi', 'image:tag']}, {'args': ['docker', 'pull', 'image:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image']},
                     {'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag']},
@@ -251,6 +266,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # configuration deploy
+                    SucceededResult('[{"Parent": "backup_parent_id"}]'),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult('kind name image:tag'),  # configuration images
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
@@ -263,7 +279,8 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['docker', 'tag', 'image:tag', 'fabricio-temp-image:image', '&&', 'docker', 'rmi', 'image:tag']}, {'args': ['docker', 'pull', 'image:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image']},
                     {'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
-                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s', 'backup_parent_id;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['docker', 'tag', 'image:tag', 'fabricio-temp-image:image', '&&', 'docker', 'rmi', 'image:tag']}, {'args': ['docker', 'pull', 'image:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image']},
                     {'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image:tag']},
@@ -288,6 +305,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # configuration deploy
+                    SucceededResult('[{"Parent": "backup_parent_id"}]'),  # backup image info
                     SucceededResult(),  # update sentinel images
                     SucceededResult('kind1 image1 image1:tag\nkind2 image2 image2:tag\n'),  # configuration images
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image1 pull
@@ -302,7 +320,8 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['docker', 'tag', 'image2:tag', 'fabricio-temp-image:image2', '&&', 'docker', 'rmi', 'image2:tag']}, {'args': ['docker', 'pull', 'image2:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image2']},
                     {'args': ['docker', 'inspect', '--type', 'image', '--format', '{{index .RepoDigests 0}}', 'image1:tag', 'image2:tag']},
                     {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
-                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s', 'backup_parent_id;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
                     {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['docker', 'tag', 'image1:tag', 'fabricio-temp-image:image1', '&&', 'docker', 'rmi', 'image1:tag']}, {'args': ['docker', 'pull', 'image1:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image1']},
                     {'args': ['docker', 'tag', 'image2:tag', 'fabricio-temp-image:image2', '&&', 'docker', 'rmi', 'image2:tag']}, {'args': ['docker', 'pull', 'image2:tag']}, {'args': ['docker', 'rmi', 'fabricio-temp-image:image2']},
@@ -318,8 +337,8 @@ class StackTestCase(FabricioTestCase):
             with self.subTest(case):
                 fab.env.command = '{0}__{1}'.format(self, case)
                 with mock.patch.dict(fab.env, dict(all_hosts=data.get('all_hosts', ['host']))):
-                    kubernetes.open.return_value = six.BytesIO(b'k8s.yml')
-                    kubernetes.open.reset_mock()
+                    stack_module.open.return_value = six.BytesIO(b'k8s.yml')
+                    stack_module.open.reset_mock()
                     put.reset_mock()
                     configuration = kubernetes.Configuration(
                         name='k8s',
@@ -337,7 +356,7 @@ class StackTestCase(FabricioTestCase):
                     self.assertEqual(data['expected_result'], result)
                     expected_compose_file_name = data.get('expected_compose_file_name')
                     if expected_compose_file_name:
-                        kubernetes.open.assert_called_once_with(expected_compose_file_name, 'rb')
+                        stack_module.open.assert_called_once_with(expected_compose_file_name, 'rb')
                     if data.get('should_upload_compose_file', False):
                         put.assert_called_once()
                         filename.assert_called_once_with(b'k8s.yml')
@@ -369,13 +388,15 @@ class StackTestCase(FabricioTestCase):
                         },
                     }}])),  # image info
                     SucceededResult(),  # configuration deploy
+                    SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
                 expected_command_args=[
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
-                    {'args': ['kubectl', 'apply', '--filename=fabricio.kubernetes.k8s.yml']},
-                    {'args': ['docker', 'rmi', 'fabricio-current-kubernetes:k8s;', 'docker', 'tag', 'fabricio-backup-kubernetes:k8s', 'fabricio-current-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-current-kubernetes:k8s', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-kubernetes:k8s', 'fabricio-current-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-backup-kubernetes:k8s']},
                 ],
                 expected_compose_file=b'old-compose.yml',
             ),
@@ -392,19 +413,21 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # configuration deploy
                     SucceededResult('kind name image:tag\n'),  # configuration services
                     SucceededResult(),  # pod update
+                    SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
                 expected_command_args=[
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
-                    {'args': ['kubectl', 'apply', '--filename=fabricio.kubernetes.k8s.yml']},
-                    {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'fabricio.kubernetes.k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
+                    {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['kubectl', 'set', 'image', 'kind', 'name=digest']},
-                    {'args': ['docker', 'rmi', 'fabricio-current-kubernetes:k8s;', 'docker', 'tag', 'fabricio-backup-kubernetes:k8s', 'fabricio-current-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-current-kubernetes:k8s', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-kubernetes:k8s', 'fabricio-current-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-backup-kubernetes:k8s']},
                 ],
                 expected_compose_file=b'compose.yml',
             ),
-            reverted_with_pods_update=dict(
+            reverted_with_pods_updates=dict(
                 init_kwargs=dict(),
                 side_effect=[
                     SucceededResult(),  # manager status
@@ -418,16 +441,18 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('kind1 name1 image1:tag\nkind2 name2 image2:tag'),  # configuration services
                     SucceededResult(),  # pod update
                     SucceededResult(),  # pod update
+                    SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
                 expected_command_args=[
                     {'args': ['kubectl', 'config', 'current-context']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
-                    {'args': ['kubectl', 'apply', '--filename=fabricio.kubernetes.k8s.yml']},
-                    {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'fabricio.kubernetes.k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
+                    {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['kubectl', 'get', '--output', 'go-template', '--filename', 'k8s.yml', '--template', r'{{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
                     {'args': ['kubectl', 'set', 'image', 'kind1', 'name1=digest1']},
                     {'args': ['kubectl', 'set', 'image', 'kind2', 'name2=digest2']},
-                    {'args': ['docker', 'rmi', 'fabricio-current-kubernetes:k8s;', 'docker', 'tag', 'fabricio-backup-kubernetes:k8s', 'fabricio-current-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-current-kubernetes:k8s', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-kubernetes:k8s', 'fabricio-current-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-backup-kubernetes:k8s']},
                 ],
                 expected_compose_file=b'compose.yml',
             ),
@@ -483,3 +508,21 @@ class StackTestCase(FabricioTestCase):
             configuration = kubernetes.Configuration(name='k8s')
             configuration.revert()
             rotate_sentinel_images.assert_not_called()
+
+    @mock.patch.object(kubernetes.Configuration, 'is_manager', return_value=True)
+    @mock.patch.object(kubernetes.Configuration, 'upload_configuration')
+    @mock.patch.object(fabricio, 'run', return_value='[{"Parent": "parent_id", "Config": {"Labels": {"fabricio.configuration": "azhzLnltbA=="}}}]')
+    def test_destroy(self, run, upload, *_):
+        config = kubernetes.Configuration(name='name', options=dict(filename='config.yml'))
+        config.destroy()
+        self.assertListEqual(
+            [
+                mock.call('docker inspect --type image fabricio-current-kubernetes:name', abort_exception=docker.ImageNotFoundError),
+                mock.call('kubectl delete --filename=config.yml'),
+                mock.call('docker inspect --type image fabricio-current-kubernetes:name', abort_exception=docker.ImageNotFoundError),
+                mock.call('docker inspect --type image fabricio-backup-kubernetes:name', abort_exception=docker.ImageNotFoundError),
+                mock.call('docker rmi fabricio-current-kubernetes:name fabricio-backup-kubernetes:name parent_id parent_id', ignore_errors=True),
+            ],
+            run.mock_calls,
+        )
+        upload.assert_called_once_with(b'k8s.yml')

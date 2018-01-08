@@ -73,7 +73,7 @@ class PostgresqlBackupMixin(docker.BaseService):
         ])
         return 'pg_dump {options}'.format(options=options)
 
-    @utils.once_per_command
+    @fabricio.once_per_task
     def backup(self):
         if self.db_backup_dir is None:
             fab.abort('db_backup_dir not set, can\'t continue with backup')
@@ -98,7 +98,7 @@ class PostgresqlBackupMixin(docker.BaseService):
         ])
         return 'pg_restore {options}'.format(options=options)
 
-    @utils.once_per_command
+    @fabricio.once_per_task
     def restore(self, backup_name=None):
         """
         Before run this method you have somehow to disable incoming connections,
@@ -258,6 +258,16 @@ class PostgresqlContainer(docker.Container):
                 self.signal('HUP')
             else:
                 raise
+
+    def destroy(self, delete_data=False):
+        super(PostgresqlContainer, self).destroy()
+        if utils.strtobool(delete_data):
+            fabricio.remove_file(
+                self.pg_data,
+                sudo=self.sudo,
+                force=True,
+                recursive=True,
+            )
 
 
 class StreamingReplicatedPostgresqlContainer(PostgresqlContainer):

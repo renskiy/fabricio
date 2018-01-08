@@ -306,7 +306,7 @@ class Service(ManagedService):
             cmd=self.cmd,
         ))
 
-    @utils.once_per_command
+    @fabricio.once_per_task
     def _update(self, image, force=False):
         image = image.digest
         try:
@@ -344,7 +344,7 @@ class Service(ManagedService):
         result = self._update(self.image[registry:tag:account], force=force)
         return result is None or result
 
-    @utils.once_per_command
+    @fabricio.once_per_task
     def _revert(self):
         command = 'docker service rollback {service}'.format(service=self)
         fabricio.run(command)
@@ -381,3 +381,17 @@ class Service(ManagedService):
         for label, value in labels.items():
             service_labels.append("{0}={1}".format(label, value))
         self.label = service_labels
+
+    def destroy(self, **options):
+        """
+        any passed argument will be forwarded to 'docker service rm' as option
+        """
+        if self.is_manager():
+            self._destroy(**options)
+
+    @fabricio.once_per_task
+    def _destroy(self, **options):
+        fabricio.run('docker service rm {options} {name}'.format(
+            options=utils.Options(options),
+            name=self.name,
+        ))

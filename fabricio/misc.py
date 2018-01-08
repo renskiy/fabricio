@@ -83,7 +83,7 @@ class AvailableVagrantHosts(object):  # pragma: no cover
         return hosts
 
 
-def dangling_images_delete_command(os_name=None, repository=None):  # pragma: no cover
+def dangling_images_delete_command(os_name=None, repository=None):  # pragma: no cover  # noqa
     warnings.warn(
         'dangling_images_delete_command() is deprecated and will be removed in v0.6',  # noqa
         DeprecationWarning,

@@ -1,8 +1,5 @@
-import six
-
-from cached_property import cached_property
 from fabric import api as fab
-from six.moves import shlex_quote, urllib_parse, filter, reduce, map
+from six.moves import shlex_quote, filter, reduce, map
 
 import fabricio
 
@@ -10,8 +7,6 @@ from fabricio import docker, utils
 
 
 class Configuration(docker.Stack):
-
-    compose_file = None
 
     get_update_command = 'kubectl apply {options}'.format
 
@@ -23,35 +18,15 @@ class Configuration(docker.Stack):
     def backup_settings_tag(self):
         return 'fabricio-backup-kubernetes:{0}'.format(self.name)
 
-    @docker.Option
-    def filename(self):
-        raise docker.ServiceError('must provide filename with configuration')
+    @docker.Option(name='filename')
+    def config(self):
+        raise docker.ServiceError("must provide 'config' or 'filename' option")
 
-    @cached_property
-    def _options(self):
-        options = self._get_available_options()
-        options.pop('compose_file', None)
-        return options
-
-    def is_manager(self):
+    def _is_manager(self):
         return fabricio.run(
             'kubectl config current-context',
             ignore_errors=True,
-            use_cache=True,
         ).succeeded
-
-    def read_configuration(self):
-        return open(self.filename, 'rb').read()
-
-    def upload_configuration(self, configuration):
-        if not urllib_parse.urlparse(self.filename).scheme:
-            # upload 'filename' if it is not URL
-            fab.put(six.BytesIO(configuration), self.filename)
-
-    def _revert(self):
-        filename = 'fabricio.kubernetes.{name}.yml'.format(name=self.name)
-        with utils.patch(self, 'filename', filename):
-            super(Configuration, self)._revert()
 
     def _revert_images(self, digests):
         spec = self.__get_images_spec()
@@ -93,7 +68,7 @@ class Configuration(docker.Stack):
             ' --template {template}'
             ''.format(
                 template=shlex_quote(template),
-                filename=shlex_quote(self.filename),
+                filename=shlex_quote(self.config),
             )
         )
 
@@ -104,3 +79,24 @@ class Configuration(docker.Stack):
             result.setdefault(kind, dict())[name] = image
 
         return result
+
+    def destroy(self, **options):
+        """
+        any passed argument will be forwarded to 'kubectl delete' as option
+        """
+        super(Configuration, self).destroy(**options)
+
+    @fabricio.once_per_task(block=True)
+    def _destroy(self, **options):
+        configuration, _ = self.current_settings
+
+        if not configuration:
+            raise docker.ServiceError('current configuration not found')
+
+        with fab.cd(self.temp_dir):
+            self.upload_configuration(configuration)
+
+            options = utils.Options(options)
+            options.setdefault('filename', self.config)
+            fabricio.run('kubectl delete {options}'.format(options=options))
+        self._updated.set()

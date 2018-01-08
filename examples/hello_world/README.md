@@ -36,6 +36,14 @@ Whenever you start deploy using serial or parallel mode Fabricio will always che
 
     fab nginx:force=yes
 
+## Remove
+
+Use `destroy` command to completely remove existing service, including all its containers and images:
+
+    fab nginx.destroy
+
+*New in 0.5.2*
+
 ## Customization
 
 `DockerTasks` takes a few additional optional arguments which can be used to customize your deploy process.
