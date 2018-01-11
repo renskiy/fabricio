@@ -61,12 +61,12 @@ See also "Hello World" [Customization](../../hello_world/#customization) section
 
 ### Custom configuration
 
-Custom configuration can be provided using `filename` option:
+Custom configuration file can be provided using `filename` option:
 
 ```python
 from fabricio import kubernetes
 
-kubernetes.Configuration(
+k8s = kubernetes.Configuration(
     name='k8s',
     options={
         'filename': 'my-k8s.yml',
@@ -87,7 +87,7 @@ def filename(
     # (see 'Infrastructures and roles' example)
     return '%s-k8s.yml' % (fab.env.infrastructure or 'default')
 
-kubernetes.Configuration(
+k8s = kubernetes.Configuration(
     name='my-k8s',
     options={
         'filename': filename,
