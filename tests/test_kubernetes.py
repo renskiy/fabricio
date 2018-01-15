@@ -68,7 +68,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
                 ],
                 expected_result=False,
-                expected_compose_file='k8s.yml',
+                expected_config_filename='k8s.yml',
             ),
             forced=dict(
                 init_kwargs=dict(),
@@ -90,8 +90,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             created=dict(
                 init_kwargs=dict(),
@@ -115,8 +114,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             created_skip_sentinels_errors=dict(
                 init_kwargs=dict(),
@@ -140,8 +138,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             created_with_custom_image=dict(
                 init_kwargs=dict(image='image:tag'),
@@ -165,8 +162,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM image:tag\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file_name='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             created_with_custom_image_update_params=dict(
                 init_kwargs=dict(image='image:tag'),
@@ -190,8 +186,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM registry/account/image:new-tag\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file_name='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             created_from_empty_image_with_custom_image_update_params=dict(
                 init_kwargs=dict(),
@@ -215,8 +210,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM registry/account/image:tag\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file_name='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             updated_configuration_changed=dict(
                 init_kwargs=dict(),
@@ -249,8 +243,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             updated_image_changed=dict(
                 init_kwargs=dict(),
@@ -287,8 +280,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=eyJpbWFnZTp0YWciOiAibmV3LWRpZ2VzdCJ9\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
             updated_images_changed=dict(
                 init_kwargs=dict(),
@@ -329,8 +321,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=eyJpbWFnZTE6dGFnIjogIm5ldy1kaWdlc3QxIiwgImltYWdlMjp0YWciOiAibmV3LWRpZ2VzdDIifQ==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
                 ],
                 expected_result=True,
-                expected_compose_file='k8s.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='k8s.yml',
             ),
         )
         for case, data in cases.items():
@@ -354,14 +345,11 @@ class StackTestCase(FabricioTestCase):
                         with mock.patch('six.BytesIO') as filename:
                             result = configuration.update(**data.get('update_kwargs', {}))
                     self.assertEqual(data['expected_result'], result)
-                    expected_compose_file_name = data.get('expected_compose_file_name')
+                    expected_compose_file_name = data.get('expected_config_filename')
                     if expected_compose_file_name:
                         stack_module.open.assert_called_once_with(expected_compose_file_name, 'rb')
-                    if data.get('should_upload_compose_file', False):
                         put.assert_called_once()
                         filename.assert_called_once_with(b'k8s.yml')
-                    else:
-                        put.assert_not_called()
 
     @mock.patch.object(stack_module, 'dict', new=collections.OrderedDict)
     @mock.patch.object(kubernetes, 'dict', new=collections.OrderedDict)
@@ -497,15 +485,19 @@ class StackTestCase(FabricioTestCase):
             ],
         )
         with mock.patch.object(fabricio, 'run', side_effect=side_effect):
+            fab.env.command = 'test_k8s_revert_raises_error_when_backup_not_found'
             configuration = kubernetes.Configuration(name='k8s')
             with self.assertRaises(docker.ServiceError):
                 configuration.revert()
 
     @mock.patch.object(kubernetes.Configuration, 'is_manager', return_value=True)
-    @mock.patch.object(kubernetes.Configuration, '_revert')
+    @mock.patch.object(fabricio, 'run', side_effect=Exception())
     def test_revert_does_not_rollback_sentinels_on_error(self, *args):
         with mock.patch.object(kubernetes.Configuration, 'rotate_sentinel_images') as rotate_sentinel_images:
+            fab.env.command = 'test_k8s_revert_does_not_rollback_sentinels_on_error'
             configuration = kubernetes.Configuration(name='k8s')
+            with self.assertRaises(Exception):
+                configuration.revert()
             configuration.revert()
             rotate_sentinel_images.assert_not_called()
 

@@ -69,7 +69,7 @@ class StackTestCase(FabricioTestCase):
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                 ],
                 expected_result=False,
-                expected_compose_file='docker-compose.yml',
+                expected_config_filename='docker-compose.yml',
             ),
             forced=dict(
                 init_kwargs=dict(name='stack'),
@@ -103,8 +103,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             created=dict(
                 init_kwargs=dict(name='stack'),
@@ -138,8 +137,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             created_skip_sentinels_errors=dict(
                 init_kwargs=dict(name='stack'),
@@ -173,8 +171,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             created_with_custom_compose=dict(
                 init_kwargs=dict(name='stack', options=dict(config='compose.yml')),
@@ -208,8 +205,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='compose.yml',
             ),
             created_with_custom_compose2=dict(
                 init_kwargs=dict(name='stack', options={'compose-file': 'compose.yml'}),
@@ -243,8 +239,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='compose.yml',
             ),
             created_with_custom_image=dict(
                 init_kwargs=dict(name='stack', image='image:tag'),
@@ -278,8 +273,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file_name='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             created_with_custom_image_update_params=dict(
                 init_kwargs=dict(name='stack', image='image:tag'),
@@ -313,8 +307,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file_name='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             created_from_empty_image_with_custom_image_update_params=dict(
                 init_kwargs=dict(name='stack'),
@@ -348,8 +341,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file_name='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             updated_compose_changed=dict(
                 init_kwargs=dict(name='stack'),
@@ -394,8 +386,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             updated_image_changed=dict(
                 init_kwargs=dict(name='stack'),
@@ -446,8 +437,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
             updated_images_changed=dict(
                 init_kwargs=dict(name='stack'),
@@ -502,8 +492,7 @@ class StackTestCase(FabricioTestCase):
                     },
                 ],
                 expected_result=True,
-                expected_compose_file='docker-compose.yml',
-                should_upload_compose_file=True,
+                expected_config_filename='docker-compose.yml',
             ),
         )
         for case, data in cases.items():
@@ -523,14 +512,11 @@ class StackTestCase(FabricioTestCase):
                         with mock.patch('six.BytesIO') as compose_file:
                             result = stack.update(**data.get('update_kwargs', {}))
                     self.assertEqual(data['expected_result'], result)
-                    expected_compose_file_name = data.get('expected_compose_file_name')
+                    expected_compose_file_name = data.get('expected_config_filename')
                     if expected_compose_file_name:
                         stack_module.open.assert_called_once_with(expected_compose_file_name, 'rb')
-                    if data.get('should_upload_compose_file', False):
                         put.assert_called_once()
                         compose_file.assert_called_once_with(b'compose.yml')
-                    else:
-                        put.assert_not_called()
 
     @mock.patch.object(stack_module, 'dict', new=collections.OrderedDict)
     @mock.patch.object(fab, 'put')
@@ -697,15 +683,19 @@ class StackTestCase(FabricioTestCase):
             ],
         )
         with mock.patch.object(fabricio, 'run', side_effect=side_effect):
+            fab.env.command = 'test_stack_revert_raises_error_when_backup_not_found'
             stack = docker.Stack(name='stack')
             with self.assertRaises(docker.ServiceError):
                 stack.revert()
 
     @mock.patch.object(docker.Stack, 'is_manager', return_value=True)
-    @mock.patch.object(docker.Stack, '_revert')
+    @mock.patch.object(fabricio, 'run', side_effect=Exception())
     def test_revert_does_not_rollback_sentinels_on_error(self, *args):
         with mock.patch.object(docker.Stack, 'rotate_sentinel_images') as rotate_sentinel_images:
+            fab.env.command = 'test_stack_revert_does_not_rollback_sentinels_on_error'
             stack = docker.Stack(name='stack')
+            with self.assertRaises(Exception):
+                stack.revert()
             stack.revert()
             rotate_sentinel_images.assert_not_called()
 

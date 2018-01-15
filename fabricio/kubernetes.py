@@ -99,4 +99,3 @@ class Configuration(docker.Stack):
             options = utils.Options(options)
             options.setdefault('filename', self.config)
             fabricio.run('kubectl delete {options}'.format(options=options))
-        self._updated.set()

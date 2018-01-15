@@ -1,6 +1,5 @@
 import itertools
 import json
-import multiprocessing
 import sys
 import warnings
 
@@ -55,7 +54,6 @@ class Stack(ManagedService):
             options.setdefault('config', options['compose_file'])
 
         super(Stack, self).__init__(*args, **kwargs)
-        self._updated = multiprocessing.Event()
 
     @property
     def current_settings_tag(self):
@@ -72,22 +70,21 @@ class Stack(ManagedService):
         if not self.is_manager():
             return None
 
-        self.reset_update_status()
-
         configuration = open(self.config, 'rb').read()
         with fab.cd(self.temp_dir):
-            result = self._update(configuration, force=force)
+            self.upload_configuration(configuration)
+            updated = self._update(configuration, force=force)
 
-            if self._updated.is_set():
+            if updated:
                 self.save_new_settings(
                     configuration=configuration,
                     image=self.image[registry:tag:account],
                 )
 
-        return result is None or result
+        return updated
 
     @fabricio.once_per_task(block=True)
-    def _update(self, new_configuration, force=False, set_update_status=True):
+    def _update(self, new_configuration, force=False):
         if not force:
             configuration, digests = self.current_settings
             if configuration == new_configuration and digests is not None:
@@ -95,24 +92,18 @@ class Stack(ManagedService):
                 if digests == new_digests:
                     return False
 
-        self.upload_configuration(new_configuration)
-
         options = utils.Options(self.options)
         command = self.get_update_command(options=options, name=self.name)
         fabricio.run(command)
-
-        if set_update_status:
-            self._updated.set()
 
         return True
 
     def revert(self):
         if not self.is_manager():
             return
-        self.reset_update_status()
         with fab.cd(self.temp_dir):
             self._revert()
-        if self._updated.is_set():
+        if self._revert.has_result():
             self.rotate_sentinel_images(rollback=True)
 
     @fabricio.once_per_task(block=True)
@@ -122,13 +113,12 @@ class Stack(ManagedService):
         if configuration is None:
             raise ServiceError('backup configuration not found')
 
-        self._update(configuration, force=True, set_update_status=False)
+        self.upload_configuration(configuration)
+
+        self._update(configuration, force=True)
 
         if digests:
             self._revert_images(digests)
-
-        # set updated status if everything was OK
-        self._updated.set()
 
     def _revert_images(self, digests):
         images = self.__get_images()
@@ -137,10 +127,6 @@ class Stack(ManagedService):
             command = 'docker service update --image {digest} {service}'
             command = command.format(digest=digest, service=service)
             fabricio.run(command)
-
-    @fabricio.once_per_task(block=True)
-    def reset_update_status(self):
-        self._updated.clear()
 
     @property
     def current_settings(self):
@@ -250,9 +236,8 @@ class Stack(ManagedService):
         any passed argument will be forwarded to 'docker stack rm' as option
         """
         if self.is_manager():
-            self.reset_update_status()
             self._destroy(**options)
-            if self._updated.is_set():
+            if self._destroy.has_result():
                 self.remove_sentinel_images()
 
     def remove_sentinel_images(self):
@@ -271,4 +256,3 @@ class Stack(ManagedService):
             options=utils.Options(options),
             name=self.name,
         ))
-        self._updated.set()
