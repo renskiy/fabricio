@@ -20,7 +20,7 @@ install_requires = [
 
 setup(
     name='fabricio',
-    version='0.5.2',
+    version='0.5.3',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],
