@@ -4,7 +4,7 @@ Changelog
 Release 0.5.3
 -------------
 
-- Fix: ``kubernetes.Configuration``, ``docker.Stack``: fixed multi-master configurations
+- Fix: ``kubernetes.Configuration``: fixed multi-master configurations
 
 Release 0.5.2
 -------------
