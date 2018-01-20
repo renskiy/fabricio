@@ -1,5 +1,4 @@
-from fabric import api as fab
-from six.moves import shlex_quote, filter, reduce, map
+from six.moves import filter, reduce, map
 
 import fabricio
 
@@ -40,8 +39,10 @@ class Configuration(docker.Stack):
             fabricio.run(command)
 
     @property
+    @fabricio.once_per_task(block=True)
     def images(self):
-        spec = self.__get_images_spec()
+        with self.upload_configuration_file():
+            spec = self.__get_images_spec()
         return list(reduce(set.union, map(dict.values, spec.values()), set()))
 
     def __get_images_spec(self):
@@ -62,14 +63,11 @@ class Configuration(docker.Stack):
             '{{end}}'
         )
         command = (
-            'kubectl get'
-            ' --output go-template'
-            ' --filename {filename}'
-            ' --template {template}'
-            ''.format(
-                template=shlex_quote(template),
-                filename=shlex_quote(self.config),
-            )
+            'kubectl get {options}'.format(options=utils.Options([
+                ('output', 'go-template'),
+                ('filename', self.config),
+                ('template', template),
+            ]))
         )
 
         result = dict()
@@ -83,19 +81,18 @@ class Configuration(docker.Stack):
     def destroy(self, **options):
         """
         any passed argument will be forwarded to 'kubectl delete' as option
+
+        Note: make sure "managers" are listed before "workers" in your
+        Fabricio configuration before calling this method in serial mode
         """
-        super(Configuration, self).destroy(**options)
+        with self.upload_configuration_file():
+            super(Configuration, self).destroy(**options)
 
     @fabricio.once_per_task(block=True)
-    def _destroy(self, **options):
-        configuration, _ = self.current_settings
-
-        if not configuration:
-            raise docker.ServiceError('current configuration not found')
-
-        with fab.cd(self.temp_dir):
-            self.upload_configuration(configuration)
-
-            options = utils.Options(options)
-            options.setdefault('filename', self.config)
-            fabricio.run('kubectl delete {options}'.format(options=options))
+    def _destroy(
+        self,
+        options,  # type: utils.Options
+    ):
+        self.images  # get list of images before configuration remove
+        options.setdefault('filename', self.config)
+        fabricio.run('kubectl delete {options}'.format(options=options))

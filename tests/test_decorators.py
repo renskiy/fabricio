@@ -31,7 +31,7 @@ class DecoratorsTestCase(unittest.TestCase):
             fab.execute(task, host='host')
             mocked_task.assert_called_once()
 
-    def test_once_per_command(self):
+    def test_once_per_task(self):
         cases = dict(
             default=dict(
                 all_hosts=[],
@@ -69,3 +69,10 @@ class DecoratorsTestCase(unittest.TestCase):
                     method()
                     method()
                 self.assertEqual(1, real_method.call_count)
+
+    def test_once_per_task_reset(self):
+        method = fabricio.once_per_task(lambda x: x)
+        method.set('value')
+        method.reset()
+        self.assertFalse(method.has_result())
+        self.assertFalse(method.wait(0))

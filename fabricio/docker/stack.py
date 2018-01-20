@@ -15,7 +15,8 @@ import fabricio
 
 from fabricio import utils
 
-from .base import ManagedService, Option, Attribute, ServiceError
+from .base import ManagedService, Option, Attribute, ServiceError, \
+    ManagerNotFoundError
 from .image import Image, ImageNotFoundError
 
 
@@ -54,6 +55,7 @@ class Stack(ManagedService):
             options.setdefault('config', options['compose_file'])
 
         super(Stack, self).__init__(*args, **kwargs)
+        self._current_configuration = None
 
     @property
     def current_settings_tag(self):
@@ -63,16 +65,42 @@ class Stack(ManagedService):
     def backup_settings_tag(self):
         return 'fabricio-backup-stack:{0}'.format(self.name)
 
-    def upload_configuration(self, configuration):
+    @contextlib.contextmanager
+    def upload_configuration_file(self, configuration=None):
+        if self._current_configuration is not None or not self.is_manager():
+            yield self._current_configuration
+        else:
+            with fab.cd(self.temp_dir):
+                try:
+                    configuration = configuration or self.get_configuration()
+                    self._current_configuration = configuration
+                    fab.put(six.BytesIO(configuration), self.config)
+                    yield configuration
+                finally:
+                    fabricio.remove_file(self.config, ignore_errors=True)
+                    self._current_configuration = None
+
+    def upload_configuration(self, configuration):  # pragma: no cover
+        warnings.warn(
+            'this method is deprecated and will be removed in v0.6, '
+            'use upload_configuration_file context manager instead',
+            DeprecationWarning,
+        )
+        warnings.warn(
+            'upload_configuration is deprecated and will be removed in v0.6, '
+            'use upload_configuration_file context manager instead',
+            RuntimeWarning, stacklevel=2,
+        )
         fab.put(six.BytesIO(configuration), self.config)
+
+    def get_configuration(self):
+        return open(self.config, 'rb').read()
 
     def update(self, tag=None, registry=None, account=None, force=False):
         if not self.is_manager():
             return None
 
-        configuration = open(self.config, 'rb').read()
-        with fab.cd(self.temp_dir):
-            self.upload_configuration(configuration)
+        with self.upload_configuration_file() as configuration:
             updated = self._update(configuration, force=force)
 
             if updated:
@@ -101,8 +129,7 @@ class Stack(ManagedService):
     def revert(self):
         if not self.is_manager():
             return
-        with fab.cd(self.temp_dir):
-            self._revert()
+        self._revert()
         if self._revert.has_result():
             self.rotate_sentinel_images(rollback=True)
 
@@ -113,12 +140,11 @@ class Stack(ManagedService):
         if configuration is None:
             raise ServiceError('backup configuration not found')
 
-        self.upload_configuration(configuration)
+        with self.upload_configuration_file(configuration):
+            self._update(configuration, force=True)
 
-        self._update(configuration, force=True)
-
-        if digests:
-            self._revert_images(digests)
+            if digests:
+                self._revert_images(digests)
 
     def _revert_images(self, digests):
         images = self.__get_images()
@@ -203,6 +229,7 @@ class Stack(ManagedService):
             )
 
     @property
+    @fabricio.once_per_task(block=True)
     def images(self):
         images = self.__get_images()
         return list(set(images.values()))
@@ -234,25 +261,43 @@ class Stack(ManagedService):
     def destroy(self, **options):
         """
         any passed argument will be forwarded to 'docker stack rm' as option
-        """
-        if self.is_manager():
-            self._destroy(**options)
-            if self._destroy.has_result():
-                self.remove_sentinel_images()
 
-    def remove_sentinel_images(self):
+        Note: make sure "managers" are listed before "workers" in your
+        Fabricio configuration before calling this method in serial mode
+        """
+        self._destroy.reset(block=True)
+
+        try:
+            if self.is_manager():
+                self._destroy(utils.Options(options))
+        except ManagerNotFoundError:
+            self._destroy.set()
+            raise
+
+        timeout = None if fab.env.parallel else 0
+        self._destroy.wait(timeout)
+
+        if self._destroy.has_result():
+            self._remove_images()
+
+    @fabricio.once_per_task(block=True)
+    def _destroy(
+        self,
+        options,  # type: utils.Options
+    ):
+        self.images  # get list of images before stack remove
+        fabricio.run('docker stack rm {options} {name}'.format(
+            options=options,
+            name=self.name,
+        ))
+
+    def _remove_images(self):
         images = [self.current_settings_tag, self.backup_settings_tag]
         with contextlib.suppress(ImageNotFoundError):
             images.append(Image(self.current_settings_tag).info['Parent'])
             images.append(Image(self.backup_settings_tag).info['Parent'])
+        images.extend(self.images)
         fabricio.run(
             'docker rmi {images}'.format(images=' '.join(images)),
             ignore_errors=True,
         )
-
-    @fabricio.once_per_task(block=True)
-    def _destroy(self, **options):
-        fabricio.run('docker stack rm {options} {name}'.format(
-            options=utils.Options(options),
-            name=self.name,
-        ))

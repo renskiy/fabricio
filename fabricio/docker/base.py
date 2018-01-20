@@ -19,6 +19,10 @@ class ServiceError(fabricio.Error):
     pass
 
 
+class ManagerNotFoundError(ServiceError):
+    pass
+
+
 class Option(utils.default_property):
 
     def __init__(
@@ -237,7 +241,7 @@ class ManagedService(BaseService):
                 and not any(self.managers.values())
             ):
                 msg = 'service manager not found or it failed to pull image'
-                raise ServiceError(msg)
+                raise ManagerNotFoundError(msg)
         return is_manager
 
     def pull_image(self, *args, **kwargs):

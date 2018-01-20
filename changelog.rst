@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.5.4
+-------------
+
+- Enhancement: destroying of ``docker.Stack`` or ``kubernetes.Configuration`` also removes all its images
+
 Release 0.5.3
 -------------
 

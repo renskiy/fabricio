@@ -20,6 +20,8 @@ def as_ordereddict(result):
 
 class StackTestCase(FabricioTestCase):
 
+    maxDiff = None
+
     def setUp(self):
         stack_module.open = mock.MagicMock()
         self.cd = mock.patch.object(fab, 'cd')
@@ -61,12 +63,14 @@ class StackTestCase(FabricioTestCase):
                             'fabricio.digests': 'e30=',
                         },
                     }}])),  # image info
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
                         'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
                     },
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=False,
                 expected_config_filename='docker-compose.yml',
@@ -81,6 +85,7 @@ class StackTestCase(FabricioTestCase):
                     fabricio.Error(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -101,6 +106,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -116,6 +122,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -135,6 +142,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -150,6 +158,7 @@ class StackTestCase(FabricioTestCase):
                     fabricio.Error(),  # update sentinel images
                     fabricio.Error(),  # stack images
                     fabricio.Error(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -169,6 +178,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -184,6 +194,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -203,6 +214,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='compose.yml',
@@ -218,6 +230,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -237,6 +250,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='compose.yml',
@@ -252,6 +266,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -271,6 +286,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM image:tag\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -286,6 +302,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -305,6 +322,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM registry/account/image:new-tag\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -320,6 +338,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # update sentinel images
                     SucceededResult(),  # stack images
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -339,6 +358,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM registry/account/image:tag\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -361,6 +381,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -384,6 +405,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=eyJpbWFnZTp0YWciOiAiZGlnZXN0In0=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -408,6 +430,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image pull
                     SucceededResult('new-digest'),  # images digests
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -435,6 +458,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=eyJpbWFnZTp0YWciOiAibmV3LWRpZ2VzdCJ9\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -461,6 +485,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(), SucceededResult(), SucceededResult(),  # image2 pull
                     SucceededResult('new-digest1\nnew-digest2\n'),  # images digests
                     SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
                 ],
                 expected_command_args=[
                     {
@@ -490,6 +515,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=eyJpbWFnZTE6dGFnIjogIm5ldy1kaWdlc3QxIiwgImltYWdlMjp0YWciOiAibmV3LWRpZ2VzdDIifQ==\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
                     },
+                    {'args': ['rm', '-f', 'docker-compose.yml']},
                 ],
                 expected_result=True,
                 expected_config_filename='docker-compose.yml',
@@ -508,9 +534,10 @@ class StackTestCase(FabricioTestCase):
                         expected_args_set=data.get('expected_command_args', []),
                         side_effects=data.get('side_effect', []),
                     )
-                    with mock.patch.object(fabricio, 'run', side_effect=side_effect):
-                        with mock.patch('six.BytesIO') as compose_file:
-                            result = stack.update(**data.get('update_kwargs', {}))
+                    with mock.patch.object(fabricio, 'run', side_effect=side_effect) as run:
+                        with mock.patch('fabricio.operations.run', run):
+                            with mock.patch('six.BytesIO') as compose_file:
+                                result = stack.update(**data.get('update_kwargs', {}))
                     self.assertEqual(data['expected_result'], result)
                     expected_compose_file_name = data.get('expected_config_filename')
                     if expected_compose_file_name:
@@ -544,6 +571,7 @@ class StackTestCase(FabricioTestCase):
                         },
                     }}])),  # backup image info
                     SucceededResult(),  # stack deploy
+                    SucceededResult(),  # remove config file
                     SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
@@ -555,6 +583,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'stack', 'deploy', '--compose-file=docker-compose.yml', 'stack'],
                     },
+                    {'args': ['rm', '-f',  'docker-compose.yml']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-current-stack:stack', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
@@ -575,6 +604,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult(),  # stack deploy
                     SucceededResult('service image:tag\n'),  # stack services
                     SucceededResult(),  # service update
+                    SucceededResult(),  # remove config file
                     SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
@@ -594,6 +624,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'service', 'update', '--image', 'digest', 'service'],
                     },
+                    {'args': ['rm', '-f',  'docker-compose.yml']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-current-stack:stack', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
@@ -615,6 +646,7 @@ class StackTestCase(FabricioTestCase):
                     SucceededResult('service1 image1:tag\nservice2 image2:tag'),  # stack services
                     SucceededResult(),  # service update
                     SucceededResult(),  # service update
+                    SucceededResult(),  # remove config file
                     SucceededResult('[{"Parent": "current_parent_id"}]'),  # current image info
                     SucceededResult(),  # update sentinel images
                 ],
@@ -637,6 +669,7 @@ class StackTestCase(FabricioTestCase):
                     {
                         'args': ['docker', 'service', 'update', '--image', 'digest2', 'service2'],
                     },
+                    {'args': ['rm', '-f',  'docker-compose.yml']},
                     {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
                     {
                         'args': ['docker', 'rmi', 'fabricio-current-stack:stack', 'current_parent_id;', 'docker', 'tag', 'fabricio-backup-stack:stack', 'fabricio-current-stack:stack;', 'docker', 'rmi', 'fabricio-backup-stack:stack'],
@@ -658,8 +691,9 @@ class StackTestCase(FabricioTestCase):
                         side_effects=side_effects,
                     )
                     with mock.patch.object(fabricio, 'run', side_effect=side_effect) as run:
-                        with mock.patch('six.BytesIO') as compose_file:
-                            stack.revert()
+                        with mock.patch('fabricio.operations.run', run):
+                            with mock.patch('six.BytesIO') as compose_file:
+                                stack.revert()
                     self.assertEqual(run.call_count, len(side_effects))
                     expected_compose_file = data.get('expected_compose_file')
                     if expected_compose_file:
@@ -700,16 +734,18 @@ class StackTestCase(FabricioTestCase):
             rotate_sentinel_images.assert_not_called()
 
     @mock.patch.object(docker.ManagedService, 'is_manager', return_value=True)
-    @mock.patch.object(fabricio, 'run', return_value='[{"Parent": "parent_id"}]')
+    @mock.patch.object(fabricio, 'run')
     def test_destroy(self, run, *_):
+        run.side_effect = [SucceededResult('service image')] + [SucceededResult('[{"Parent": "parent_id"}]')] * 4
         stack = docker.Stack(name='name')
         stack.destroy()
         self.assertListEqual(
             [
+                mock.call('docker stack services --format "{{.Name}} {{.Image}}" name'),
                 mock.call('docker stack rm  name'),
                 mock.call('docker inspect --type image fabricio-current-stack:name', abort_exception=docker.ImageNotFoundError),
                 mock.call('docker inspect --type image fabricio-backup-stack:name', abort_exception=docker.ImageNotFoundError),
-                mock.call('docker rmi fabricio-current-stack:name fabricio-backup-stack:name parent_id parent_id', ignore_errors=True),
+                mock.call('docker rmi fabricio-current-stack:name fabricio-backup-stack:name parent_id parent_id image', ignore_errors=True),
             ],
             run.mock_calls,
         )
