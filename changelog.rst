@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.5.6
+-------------
+
+- Fix: ``DockerTasks``: fixed remote_tunnel() apply which was broken in 0.5.5
+- Fix: fixed terminal colors for Windows OS
+
 Release 0.5.5
 -------------
 

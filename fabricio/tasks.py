@@ -454,12 +454,12 @@ class DockerTasks(Tasks):
 
     @contextlib.contextmanager
     def remote_tunnel(self):
-        output = contextlib.closing(open(os.devnull, 'w'))
+        devnull = open(os.devnull, 'w')
         stack = self.ssh_tunnel and [
-            output,
+            contextlib.closing(devnull),
             # forward sys.stdout to os.devnull to prevent
             # printing debug messages by fab.remote_tunnel
-            utils.patch(sys, 'stdout', output),
+            utils.patch(sys, 'stdout', devnull),
             fab.remote_tunnel(
                 remote_bind_address=self.ssh_tunnel.bind_address,
                 remote_port=self.ssh_tunnel.port,

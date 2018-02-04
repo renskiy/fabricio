@@ -3,10 +3,14 @@ from __future__ import print_function
 import hashlib
 import sys
 
+import colorama
+
 from fabric import colors, api as fab
 from fabric.exceptions import CommandTimeout, NetworkError
 
 from fabricio import utils
+
+colorama.init()
 
 
 class Error(RuntimeError):
