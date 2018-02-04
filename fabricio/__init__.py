@@ -3,6 +3,6 @@ from fabricio.operations import Error, host_errors
 from fabricio.decorators import skip_unknown_host, once_per_task
 from fabricio.tasks import infrastructure
 
-VERSION = (0, 5, 4)
+VERSION = (0, 5, 5)
 
 __version__ = '.'.join(map(str, VERSION))
