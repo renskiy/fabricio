@@ -1,13 +1,14 @@
+import contextlib
 import functools
 import os
 import sys
 import types
 import warnings
 
-import contextlib2 as contextlib
 import six
 
 from fabric import api as fab, colors, state
+from fabric.context_managers import nested, shell_env
 from fabric.contrib import console
 from fabric.main import is_task_object
 from fabric.tasks import Task, WrappedCallableTask, get_task_details
@@ -235,6 +236,7 @@ class DockerTasks(Tasks):
         update_command=False,
         revert_command=False,
         destroy_command=False,
+        env=None,
         **kwargs
     ):
         self.destroy = self.DestroyTask(tasks=self)
@@ -297,6 +299,8 @@ class DockerTasks(Tasks):
         self.push.use_task_objects = custom_registry_mode
         self.upgrade.use_task_objects = custom_registry_mode
 
+        self.env = env or {}
+
     def _set_registry(self, registry):
         self.__dict__['registry'] = docker.Registry(registry)
 
@@ -331,7 +335,7 @@ class DockerTasks(Tasks):
         """
         revert service container(s) to a previous version
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             self.service.revert()
 
     @fab.task
@@ -340,7 +344,7 @@ class DockerTasks(Tasks):
         """
         apply new migrations
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             self.service.migrate(
                 tag=tag,
                 registry=self.host_registry,
@@ -353,7 +357,7 @@ class DockerTasks(Tasks):
         """
         remove previously applied migrations if any
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             self.service.migrate_back()
 
     @fab.task
@@ -362,7 +366,7 @@ class DockerTasks(Tasks):
         """
         backup service data
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             self.service.backup()
 
     @fab.task
@@ -371,7 +375,7 @@ class DockerTasks(Tasks):
         """
         restore service data
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             self.service.restore(backup_name=backup_name)
 
     @fab.task
@@ -450,18 +454,25 @@ class DockerTasks(Tasks):
 
     @contextlib.contextmanager
     def remote_tunnel(self):
-        with contextlib.ExitStack() as stack:
-            if self.ssh_tunnel:
-                output = stack.enter_context(contextlib.closing(open(os.devnull, 'w')))  # noqa
-                # forward sys.stdout to os.devnull to prevent
-                # printing debug messages by fab.remote_tunnel
-                stack.enter_context(utils.patch(sys, 'stdout', output))
-                stack.enter_context(fab.remote_tunnel(
-                    remote_bind_address=self.ssh_tunnel.bind_address,
-                    remote_port=self.ssh_tunnel.port,
-                    local_host=self.ssh_tunnel.host,
-                    local_port=self.ssh_tunnel.host_port,
-                ))
+        output = contextlib.closing(open(os.devnull, 'w'))
+        stack = self.ssh_tunnel and [
+            output,
+            # forward sys.stdout to os.devnull to prevent
+            # printing debug messages by fab.remote_tunnel
+            utils.patch(sys, 'stdout', output),
+            fab.remote_tunnel(
+                remote_bind_address=self.ssh_tunnel.bind_address,
+                remote_port=self.ssh_tunnel.port,
+                local_host=self.ssh_tunnel.host,
+                local_port=self.ssh_tunnel.host_port,
+            ),
+        ] or []
+        with nested(*stack):
+            yield
+
+    @contextlib.contextmanager
+    def remote_host(self):
+        with nested(self.remote_tunnel(), shell_env(**self.env)):
             yield
 
     @fab.task
@@ -470,7 +481,7 @@ class DockerTasks(Tasks):
         """
         pull Docker image from the registry
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             self.pull_image(tag=tag)
 
     @fab.task
@@ -479,7 +490,7 @@ class DockerTasks(Tasks):
         """
         update service to a new version
         """
-        with self.remote_tunnel():
+        with self.remote_host():
             updated = self.service.update(
                 tag=tag,
                 registry=self.host_registry,
@@ -574,7 +585,7 @@ class DockerTasks(Tasks):
 
         @fab.task(name='destroy')
         def run(self, *args, **kwargs):
-            with self.tasks.remote_tunnel():
+            with self.tasks.remote_host():
                 return self.tasks.service.destroy(*args, **kwargs)
 
         def __details__(self):
@@ -605,8 +616,10 @@ class ImageBuildDockerTasks(DockerTasks):
         build Docker image (see 'docker build --help' for available options)
         """
         for key, value in kwargs.items():
-            with contextlib.suppress(ValueError):
+            try:
                 kwargs[key] = utils.strtobool(value)
+            except ValueError:
+                pass
         options = utils.Options(kwargs)
         image = self.image[self.registry:tag:self.account]  # type: docker.Image
         image.build(

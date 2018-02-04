@@ -15,7 +15,6 @@ install_requires = [
     'docker-py>=1.8.1,<2.0',
     'six>=1.10.0',
     'dpath>=1.4.0',
-    'contextlib2>=0.5.5',
 ]
 
 setup(

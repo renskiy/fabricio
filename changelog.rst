@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Release 0.5.5
+-------------
+
+- Enhancement: ``DockerTasks``: added ``env`` parameter which can be used to provide set of environment variables for all commands executed on the remote host
+
 Release 0.5.4
 -------------
 

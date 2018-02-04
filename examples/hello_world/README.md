@@ -48,6 +48,19 @@ Use `destroy` command to completely remove existing service, including all its c
 
 `DockerTasks` takes a few additional optional arguments which can be used to customize your deploy process.
 
+### Environment variables
+
+`env` parameter can be used to provide set of environment variables for all commands executed on the remote host:
+
+    env={
+        FOO='FOO',
+        BAR=env.BAR,
+    }
+
+In the example above `BAR` takes its value from Fabric env vars which in turn can be set via `--set` command line option. See [Fabric documentation](http://docs.fabfile.org/en/1.14/usage/env.html#full-list-of-env-vars) for more details.
+
+*New in 0.5.5*
+
 ### Intermediate (proxy) registry
 
 This option usually used when remote host has not direct access to the image registry (e.g. hub.docker.com). If so, you can provide address and port of custom registry which will be used as an intermediate (or proxy, in other words) Docker image registry for you remote host:

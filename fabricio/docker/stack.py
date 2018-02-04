@@ -1,3 +1,4 @@
+import contextlib
 import itertools
 import json
 import sys
@@ -5,7 +6,6 @@ import warnings
 
 from base64 import b64encode, b64decode
 
-import contextlib2 as contextlib
 import six
 
 from fabric import colors, api as fab
@@ -180,10 +180,12 @@ class Stack(ManagedService):
             backup_tag, current_tag = current_tag, backup_tag
 
         backup_images = [backup_tag]
-        with contextlib.suppress(ImageNotFoundError):
+        try:
             backup_images.append(Image(backup_tag).info['Parent'])
+        except ImageNotFoundError:
+            pass
 
-        with contextlib.suppress(fabricio.host_errors):
+        try:
             # TODO make separate call for each docker command
             fabricio.run(
                 (
@@ -196,16 +198,20 @@ class Stack(ManagedService):
                     backup_tag=backup_tag,
                 ),
             )
+        except fabricio.host_errors:
+            pass
 
     def save_new_settings(self, configuration, image):
         self.rotate_sentinel_images()
 
         labels = [(self.configuration_label, b64encode(configuration).decode())]
-        with contextlib.suppress(fabricio.host_errors):
+        try:
             digests = self._get_digests(self.images)
             digests_bucket = json.dumps(digests, sort_keys=True)
             digests_bucket = b64encode(digests_bucket.encode()).decode()
             labels.append((self.digests_label, digests_bucket))
+        except fabricio.host_errors:
+            pass
 
         dockerfile = (
             'FROM {image}\n'
@@ -293,9 +299,11 @@ class Stack(ManagedService):
 
     def _remove_images(self):
         images = [self.current_settings_tag, self.backup_settings_tag]
-        with contextlib.suppress(ImageNotFoundError):
+        try:
             images.append(Image(self.current_settings_tag).info['Parent'])
             images.append(Image(self.backup_settings_tag).info['Parent'])
+        except ImageNotFoundError:
+            pass
         images.extend(self.images)
         fabricio.run(
             'docker rmi {images}'.format(images=' '.join(images)),
