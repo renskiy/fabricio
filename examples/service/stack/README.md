@@ -92,3 +92,25 @@ docker.Stack(
     },
 )
 ```
+
+### Orchestrator select
+
+Since Docker 17.12.0-CE (for Mac/Windows) it is possible to choose orchestrator for cluster by setting `DOCKER_ORCHESTRATOR` environment variable. In the example below Docker forced to use `kubernetes` orchestrator instead of default one:
+
+```python
+from fabricio import docker, tasks
+
+k8s_stack = tasks.DockerTasks(
+    service=docker.Stack(
+        name='k8s-stack',
+        options={
+            'compose-file': 'docker-compose.yml',
+        },
+    ),
+    env={
+        'DOCKER_ORCHESTRATOR': 'kubernetes',
+    },
+)
+```
+
+*Note: `env` parameter available since Fabricio 0.5.5*
