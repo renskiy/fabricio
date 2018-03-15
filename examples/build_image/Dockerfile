@@ -1,3 +1,3 @@
 FROM nginx:stable-alpine
 
-RUN echo "Hello"
+RUN echo "Hello" > hello
