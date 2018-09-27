@@ -114,6 +114,25 @@ and then:
 
 .. _Homebrew: https://brew.sh
 
+Contribute
+==========
+
+All proposals and improvements are welcomed through a pull request. Just make sure all tests are running fine.
+
+Install test dependencies
+-------------------------
+
+.. code:: bash
+
+    pip install .[test]
+
+Running tests
+-------------
+
+.. code:: bash
+
+    python -m unittest2 discover tests --verbose
+
 Roles and infrastructures
 =========================
 
