@@ -535,7 +535,7 @@ class ConfigurationTestCase(FabricioTestCase):
     @mock.patch.object(fab, 'put')
     @mock.patch.object(fabricio, 'run')
     def test_destroy(self, run, put, *_):
-        run.side_effect = [SucceededResult('kind/name image-name image')] + [SucceededResult('[{"Parent": "parent_id"}]')] * 4
+        run.side_effect = [SucceededResult('kind/name image-name image')] + [SucceededResult('[{"Parent": "parent_id"}]')] * 5
         with mock.patch('fabricio.operations.run', run):
             config = kubernetes.Configuration(name='name', options=dict(filename='config.yml'))
             config.destroy()
