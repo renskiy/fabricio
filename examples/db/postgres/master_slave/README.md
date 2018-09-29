@@ -25,7 +25,7 @@ Run `vagrant up` and wait until VMs will be created.
 
 ## Deploy
 
-`--parallel` option must be specified in all cases or deploy will not start. This mode is used to automatically determine current master location.
+`--parallel` option is mandatory for `deploy` command. Without this option Fabricio can not automatically detect master node.
 
 ### From scratch
 

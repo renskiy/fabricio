@@ -24,9 +24,9 @@ Run `vagrant up` and wait until VM will be created.
 
 To deploy to a particular infrastructure you need to provide its name before any other command:
 
-    fab vagrant nginx
+    fab vagrant app
     
-This command will start deploy of `nginx` container to the `vagrant` infrastructure.
+This command will start deploy to the `vagrant` infrastructure.
 
 Also you can use `vagrant.confirm` command to skip confirmation dialog and start tasks execution immediately.
 
@@ -36,11 +36,11 @@ If no infrastructure selected then Fabricio will use default roles definition (i
 
 Same configuration can be deployed to localhost:
 
-    fab localhost nginx
+    fab localhost app
 
 even without SSH daemon enabled:
 
-    fab localhost:force_local=yes nginx
+    fab localhost:force_local=yes app
     
 The latter is possible due to special "force_local" parameter passed to `localhost` infrastructure definition. See [fabfile.py](fabfile.py) for details.
 
@@ -48,7 +48,7 @@ The latter is possible due to special "force_local" parameter passed to `localho
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel vagrant nginx
+    fab --parallel vagrant app
     
 ## Customization
 

@@ -12,7 +12,7 @@ This example shows how to deploy [Django](https://www.djangoproject.com) configu
 
 ## Files
 
-* __project/__, folder with Django application
+* __project__, Django project
 * __Dockerfile__, used for building image
 * __fabfile.py__, Fabricio configuration
 * __README.md__, this file
@@ -78,7 +78,6 @@ django = tasks.ImageBuildDockerTasks(
             ),
         },
     ),
-    # ...
 )
 ```
 
@@ -95,12 +94,10 @@ django = tasks.ImageBuildDockerTasks(
         name='django',
         image='django',
         options={
-            'publish': '8000:8000',
             'stop-signal': 'INT',
             'env': 'DJANGO_SETTINGS_MODULE=settings',
         },
     ),
-    # ...
 )
 ```
 
@@ -128,7 +125,6 @@ django = tasks.ImageBuildDockerTasks(
             'env': 'DJANGO_SETTINGS_MODULE=settings',
         },
     ),
-    # ...
 )
 ```
 
@@ -156,7 +152,6 @@ django = tasks.ImageBuildDockerTasks(
             'env': 'DJANGO_SETTINGS_MODULE=settings',
         },
     ),
-    # ...
 )
 ```
 

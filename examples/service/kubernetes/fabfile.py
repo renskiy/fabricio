@@ -1,3 +1,7 @@
+"""
+https://github.com/renskiy/fabricio/blob/master/examples/service/kubernetes
+"""
+
 import fabricio
 
 from fabric import api as fab
@@ -7,15 +11,34 @@ from six.moves import filter
 
 hosts = AvailableVagrantHosts(guest_network_interface='eth1')
 
+service = tasks.DockerTasks(
+    service=kubernetes.Configuration(
+        name='my-service',
+        options={
+            # `kubectl apply` options
+            'filename': 'configuration.yml',
+        },
+    ),
+    hosts=hosts,
 
-@fab.task(name='kubernetes-init')
+    rollback_command=True,  # show `rollback` command in the list
+    # migrate_commands=True,  # show `migrate` and `migrate-back` commands in the list
+    # backup_commands=True,  # show `backup` and `restore` commands in the list
+    # pull_command=True,  # show `pull` command in the list
+    # update_command=True,  # show `update` command in the list
+    # revert_command=True,  # show `revert` command in the list
+    # destroy_command=True,  # show `destroy` command in the list
+)
+
+
+@fab.task(name='k8s-init')
 @fab.serial
-def kubernetes_init():
+def k8s_init():
     """
     create Kubernetes cluster
     """
-    def _kubernetes_init():
-        if not getattr(kubernetes_init, 'join_command', None):
+    def init():
+        if not init.join_command:
             initialization = list(filter(None, fabricio.run(
                 'kubeadm init '
                 '--apiserver-advertise-address {0} '
@@ -24,7 +47,7 @@ def kubernetes_init():
                 sudo=True,
                 quiet=False,
             ).splitlines()))
-            kubernetes_init.join_command = initialization[-1].strip()
+            init.join_command = initialization[-1].strip()
 
             # master setup
             fabricio.run('mkdir -p $HOME/.kube')
@@ -34,20 +57,24 @@ def kubernetes_init():
             # install Kubernetes network plugin
             fabricio.run(
                 'kubectl apply --filename /vagrant/kube-rbac.yml '
-                '&& kubectl apply --filename /vagrant/kube-canal.yml',
+                '&& kubectl apply --filename /vagrant/kube-canal.yml --validate=false',
                 quiet=False,
             )
         else:
-            fabricio.run(kubernetes_init.join_command, quiet=False, sudo=True)
+            fabricio.run(init.join_command, quiet=False, sudo=True)
+
+    init.join_command = None
     with fab.settings(hosts=hosts):
-        fab.execute(_kubernetes_init)
+        fab.execute(init)
 
 
-k8s = tasks.DockerTasks(
-    service=kubernetes.Configuration(
-        name='k8s',
-        options={'filename': 'k8s.yml'},
-    ),
-    hosts=hosts,
-    destroy_command=True,
-)
+@fab.task(name='k8s-reset')
+def k8s_reset():
+    """
+    reset Kubernetes cluster
+    """
+    def reset():
+        fabricio.run('kubeadm reset --force', sudo=True, quiet=False)
+
+    with fab.settings(hosts=hosts):
+        fab.execute(reset)

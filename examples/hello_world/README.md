@@ -22,25 +22,25 @@ Run `vagrant up` and wait until VM will be created.
 
 ## Deploy
 
-    fab nginx
+    fab app
     
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel nginx
+    fab --parallel app
     
 ## Deploy idempotency
 
 Whenever you start deploy using serial or parallel mode Fabricio will always check if deploy is really necessary (usually by comparing new image id and image id of current container). Thus, deploy will be skipped if there is nothing to update. However, deploy may be forced using `force` parameter:
 
-    fab nginx:force=yes
+    fab app:force=yes
 
 ## Remove
 
 Use `destroy` command to completely remove existing service, including all its containers and images:
 
-    fab nginx.destroy
+    fab app.destroy
 
 *New in 0.5.2*
 

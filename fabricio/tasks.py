@@ -236,23 +236,16 @@ class DockerTasks(Tasks):
         update_command=False,
         revert_command=False,
         destroy_command=False,
+        rollback_command=False,
+        prepare_command=False,
+        push_command=False,
+        upgrade_command=False,
         env=None,
         **kwargs
     ):
         self.destroy = self.DestroyTask(tasks=self)
 
         super(DockerTasks, self).__init__(**kwargs)
-
-        # We need to be sure that `deploy()` will be at first place
-        # every time when vars(self) is being invoked.
-        # This is necessary to exclude `deploy` from the list of task
-        # because of it's already there as default task.
-        # See `fabric.main.extract_tasks()` for details
-        self.__dict__ = utils.PriorityDict(self.__dict__, priority=['deploy'])
-
-        # reassign is_default property which is being lost
-        # after applying @fab.hosts/@fab.roles decorators
-        self.deploy.is_default = True
 
         self.service = service
         self.registry = registry
@@ -284,20 +277,22 @@ class DockerTasks(Tasks):
         self.pull.use_task_objects = task_mode or pull_command
         self.update.use_task_objects = task_mode or update_command
         self.destroy.use_task_objects = not task_mode
+        self.rollback.use_task_objects = task_mode or rollback_command
 
         # hide 'destroy' task in the tasks list by removing it from instance
         if not (destroy_command or task_mode):
             del self.destroy
 
-        # set original name for `deploy` method to allow explicit invocation
+        # make `deploy` command default in task execution mode
         if task_mode:
-            self.deploy.name = 'deploy'
+            self.deploy.is_default = True
 
         # enable following commands only if used custom registry or account
-        custom_registry_mode = task_mode or bool(registry or account)
-        self.prepare.use_task_objects = custom_registry_mode
-        self.push.use_task_objects = custom_registry_mode
-        self.upgrade.use_task_objects = custom_registry_mode
+        if not task_mode:
+            custom_registry = bool(registry or account)
+            self.prepare.use_task_objects = custom_registry and prepare_command
+            self.push.use_task_objects = custom_registry and push_command
+            self.upgrade.use_task_objects = custom_registry and upgrade_command
 
         self.env = env or {}
 
@@ -381,7 +376,7 @@ class DockerTasks(Tasks):
     @fab.task
     def rollback(self, migrate_back=True):
         """
-        rollback service to a previous version (migrate-back -> revert)
+        rollback service to a previous state (migrate-back -> revert)
         """
         if utils.strtobool(migrate_back):
             self.migrate_back()
@@ -514,14 +509,10 @@ class DockerTasks(Tasks):
 
     @fab.hosts()
     @fab.roles()
-    @fab.task(
-        default=True,
-        # mock another task name to exclude this task from the tasks list
-        name='rollback',
-    )
+    @fab.task
     def deploy(self, tag=None, force=False, backup=False, migrate=True):
         """
-        full service deploy (prepare -> push -> upgrade)
+        deploy service (prepare -> push -> backup -> pull -> migrate -> update)
         """
         self.prepare(tag=tag)
         self.push(tag=tag)
@@ -601,12 +592,26 @@ class ImageBuildDockerTasks(DockerTasks):
 
     _warnings_stacklevel = 3
 
-    def __init__(self, service=None, build_path='.', **kwargs):
+    def __init__(
+        self,
+        service=None,
+        build_path='.',
+        prepare_command=False,
+        push_command=False,
+        upgrade_command=False,
+        **kwargs
+    ):
+        kwargs.update(
+            prepare_command=prepare_command,
+            push_command=push_command,
+            upgrade_command=upgrade_command,
+        )
         super(ImageBuildDockerTasks, self).__init__(service, **kwargs)
         self.build_path = build_path
-        self.prepare.use_task_objects = True
-        self.push.use_task_objects = True
-        self.upgrade.use_task_objects = True
+        if not is_task_mode():
+            self.prepare.use_task_objects = prepare_command
+            self.push.use_task_objects = push_command
+            self.upgrade.use_task_objects = upgrade_command
 
     @fab.hosts()
     @fab.roles()

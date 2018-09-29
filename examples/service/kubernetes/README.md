@@ -9,7 +9,7 @@ This example shows how to deploy Kubernetes configuration consisting of two [Dep
 
 ## Files
 * __fabfile.py__, Fabricio configuration
-* __k8s.yml__, Kubernetes configuration file
+* __configuration.yml__, Kubernetes configuration file
 * __kube-canal.yml__, networking configuration for Kubernetes
 * __kube-rbac.yml__, RBAC configuration for Kubernetes
 * __README.md__, this file
@@ -25,35 +25,37 @@ Run `vagrant up` and wait until VMs will be created.
 
 ## Deploy
 
-Before proceed you must initialize Kubernetes cluster first by running following command:
+Before proceed you have to initialize Kubernetes cluster first by running following command:
 
-    fab kubernetes-init
+    fab k8s-init
+    
+*Note: use `fab k8s-reset` to reset cluster*
     
 After cluster has been successfully initialized everything is ready to work with Kubernetes configurations:
 
-    fab k8s
+    fab service
     
 ## Deploy idempotency
 
 Fabricio tries to deploy Kubernetes configuration either if content of provided configuration file was changed or any image of the configuration has newer version since last successful deploy attempt. However configuration deploy can be forced by using `force` flag:
 
-    fab k8s:force=yes
+    fab service:force=yes
     
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel k8s
+    fab --parallel service
     
 ## Rollback
 
-Try to update configuration file (`k8s.yml`) and run deploy again:
+Try to update configuration file (`configuration.yml`) and run deploy again:
 
-    fab k8s
+    fab service
     
 This will update Kubernetes configuration using new configuration file. After that you can return Kubernetes configuration to previous state by running 'rollback' command:
 
-    fab k8s.rollback
+    fab service.rollback
     
 ## Customization
 
@@ -64,13 +66,15 @@ See also "Hello World" [Customization](../../hello_world/#customization) section
 Custom configuration file can be provided using `filename` option:
 
 ```python
-from fabricio import kubernetes
+from fabricio import kubernetes, tasks
 
-k8s = kubernetes.Configuration(
-    name='k8s',
-    options={
-        'filename': 'my-k8s.yml',
-    },
+service = tasks.DockerTasks(
+    service=kubernetes.Configuration(
+        name='my-service',
+        options={
+            'filename': 'custom-configuration.yml',
+        },
+    ),
 )
 ```
 
@@ -78,19 +82,21 @@ k8s = kubernetes.Configuration(
 
 ```python
 from fabric import api as fab
-from fabricio import kubernetes
+from fabricio import kubernetes, tasks
 
 def filename(
     configuration,  # type: kubernetes.Configuration
 ):
     # select configuration depending on infrastructure name
     # (see 'Infrastructures and roles' example)
-    return '%s-k8s.yml' % (fab.env.infrastructure or 'default')
+    return '%s-configuration.yml' % (fab.env.infrastructure or 'default')
 
-k8s = kubernetes.Configuration(
-    name='my-k8s',
-    options={
-        'filename': filename,
-    },
+service = tasks.DockerTasks(
+    service=kubernetes.Configuration(
+        name='my-service',
+        options={
+            'filename': filename,
+        },
+    ),
 )
 ```

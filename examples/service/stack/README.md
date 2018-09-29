@@ -23,9 +23,11 @@ Run `vagrant up` and wait until VMs will be created.
 
 ## Deploy
 
-Before proceed you must initialize Docker swarm cluster first by running following command:
+Before proceed you have to initialize Docker swarm cluster by running following command:
 
     fab swarm-init
+    
+*Note: use `fab swarm-reset` to reset cluster*
     
 After cluster has been successfully initialized everything is ready to work with stacks:
 
@@ -62,13 +64,15 @@ See also "Hello World" [Customization](../../hello_world/#customization) section
 Custom `docker-compose.yml` can be provided using `compose-file` option:
 
 ```python
-from fabricio import docker
+from fabricio import docker, tasks
 
-docker.Stack(
-    name='my-stack', 
-    options={
-        'compose-file': 'my-compose.yml',
-    },
+stack = tasks.DockerTasks(
+    service=docker.Stack(
+        name='my-stack',
+        options={
+            'compose-file': 'custom-docker-compose.yml',
+        },
+    ),
 )
 ```
 
@@ -76,7 +80,7 @@ docker.Stack(
 
 ```python
 from fabric import api as fab
-from fabricio import docker
+from fabricio import docker, tasks
 
 def compose_file(
     stack,  # type: docker.Stack
@@ -85,11 +89,13 @@ def compose_file(
     # (see 'Infrastructures and roles' example)
     return '%s-compose.yml' % (fab.env.infrastructure or 'default')
 
-docker.Stack(
-    name='my-stack', 
-    options={
-        'compose-file': compose_file,
-    },
+stack = tasks.DockerTasks(
+    service=docker.Stack(
+        name='my-stack',
+        options={
+            'compose-file': compose_file,
+        },
+    ),
 )
 ```
 
@@ -100,7 +106,7 @@ Since Docker 17.12.0-CE (for Mac/Windows) it is possible to choose orchestrator 
 ```python
 from fabricio import docker, tasks
 
-k8s_stack = tasks.DockerTasks(
+stack = tasks.DockerTasks(
     service=docker.Stack(
         name='k8s-stack',
         options={
@@ -113,4 +119,4 @@ k8s_stack = tasks.DockerTasks(
 )
 ```
 
-*Note: `env` parameter available since Fabricio 0.5.5*
+*Note: `env` parameter became available from Fabricio 0.5.5*

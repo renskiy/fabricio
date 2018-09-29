@@ -25,13 +25,13 @@ Run `vagrant up` and wait until VM will be created.
 
 ## Deploy
 
-    fab my_nginx
+    fab app
     
 ## Parallel execution
 
 Any Fabricio command can be executed in parallel mode. This mode provides advantages when you have more then one host to deploy to. Use `--parallel` option if you want to run command on all hosts simultaneously:
 
-    fab --parallel my_nginx
+    fab --parallel app
 
 ## Customization
 
@@ -44,7 +44,7 @@ You can provide custom folder with `Dockerfile` by passing `build_path` paramete
 ```python
 from fabricio import tasks
 
-my_nginx = tasks.ImageBuildDockerTasks(
+nginx = tasks.ImageBuildDockerTasks(
     # ...
     build_path='path/to/folder/with/dockerfile',
 )
@@ -52,20 +52,20 @@ my_nginx = tasks.ImageBuildDockerTasks(
     
 ### Custom build params
 
-Any `docker build` option can be passed directly to `my_nginx.prepare`*:
+Any `docker build` option can be passed directly to `prepare` command*:
 
-    fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes
+    fab app.prepare:tag,file=my-Dockerfile,squash=yes
     
 *\* Fabricio uses `--pull` and `--force-rm` options by default. However, these can be revoked: `prepare:pull=no,force-rm=no`.*
 
-After that you should manually call `push` and `upgrade` commands to finish deploy:
+If you wish use custom `docker build` options then you have to call `push` and `upgrade` commands manually to finish deploy:
 
-    fab my_nginx.push:tag
-    fab my_nginx.upgrade:tag
+    fab app.push:tag
+    fab app.upgrade:tag
 
 Or, all in one line:
 
-    fab my_nginx.prepare:tag,file=my-Dockerfile,squash=yes my_nginx.push:tag my_nginx.upgrade:tag
+    fab app.prepare:tag,file=my-Dockerfile,squash=yes app.push:tag app.upgrade:tag
 
 *See also how's Fabric work with [per-task arguments](http://docs.fabfile.org/en/1.14/usage/fab.html#per-task-arguments).*
 

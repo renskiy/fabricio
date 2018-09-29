@@ -34,16 +34,16 @@ See changelog_ for detailed info.
 Basic example
 =============
 
-The most basic :code:`fabfile.py` you can use with the Fabricio is something like this:
+The most basic :code:`fabfile.py` you can use with the Fabricio may look something like this:
 
 .. code:: python
 
     from fabricio import docker, tasks
     
-    nginx = tasks.DockerTasks(
+    app = tasks.DockerTasks(
         service=docker.Container(
-            name='nginx',
-            image='nginx:stable',
+            name='app',
+            image='nginx:stable-alpine',
             options={
                 'publish': '80:80',
             },
@@ -57,14 +57,13 @@ Type :code:`fab --list` in your terminal to see available Fabric commands:
 
     Available commands:
 
-        nginx           full service deploy (prepare -> push -> upgrade)
-        nginx.rollback  rollback service to a previous version (migrate-back -> revert)
+        app.deploy  deploy service (prepare -> push -> backup -> pull -> migrate -> update)
 
 Finally, to deploy such configuration you simply have to execute following bash command:
 
 .. code:: bash
 
-    fab nginx
+    fab app.deploy
 
 See also Fabricio `examples and recipes`_.
 
@@ -76,10 +75,10 @@ Requirements
 Local
 -----
 
-- Python 2.7 or Python 3.4+*
+- Python 2.7, 3.4*, 3.5*, 3.6*, 3.7*
 - (optional) Docker 1.9+ for building Docker images
 
-\* `Fabric3`_ is used for compatibility with Python 3
+\* `Fabric3`_ is used for compatibility with Python 3.x
 
 .. _Fabric3: https://github.com/mathiasertl/fabric/
 
@@ -117,7 +116,10 @@ and then:
 Contribute
 ==========
 
-All proposals and improvements are welcomed through a pull request. Just make sure all tests are running fine.
+All proposals and improvements are welcomed through a `pull request`_ or issue_. Just make sure all tests are running fine.
+
+.. _pull request: https://github.com/renskiy/fabricio/pulls
+.. _issue: https://github.com/renskiy/fabricio/issues
 
 Install test dependencies
 -------------------------
@@ -144,41 +146,40 @@ You can define as many roles and infrastructures as you need. The following exam
     from fabricio import docker, tasks, infrastructure
 
     @infrastructure
-    def test():
+    def testing():
         fab.env.roledefs.update(
-            balancer=['user@test.example.com'],
-            web=['user@test.example.com'],
+            api=['user@testing.example.com'],
+            web=['user@testing.example.com'],
         )
 
     @infrastructure(color=colors.red)
     def production():
         fab.env.roledefs.update(
-            balancer=['user@balancer.example.com'],
-            web=['user@web1.example.com', 'user@web2.example.com'],
+            api=['user@api1.example.com', 'user@api2.example.com'],
+            web=['user@web.example.com'],
         )
-
-    balancer = tasks.DockerTasks(
-        service=docker.Container(
-            name='balancer',
-            image='registry.example.com/nginx:balancer',
-            options={
-                'publish': ['80:80', '443:443'],
-                'volume': '/etc/cert:/etc/cert:ro',
-            },
-        ),
-        roles=['balancer'],
-    )
 
     web = tasks.DockerTasks(
         service=docker.Container(
             name='web',
-            image='registry.example.com/nginx:web',
+            image='registry.example.com/web:latest',
             options={
-                'publish': '80:80',
+                'publish': ['80:80', '443:443'],
                 'volume': '/media:/media',
             },
         ),
         roles=['web'],
+    )
+
+    api = tasks.DockerTasks(
+        service=docker.Container(
+            name='api',
+            image='registry.example.com/api:latest',
+            options={
+                'publish': '80:80',
+            },
+        ),
+        roles=['api'],
     )
 
 Here is the list of available commands:
@@ -187,18 +188,16 @@ Here is the list of available commands:
 
     Available commands:
 
-        production          select production infrastructure, 'production.confirm' skips confirmation dialog
-        test                select test infrastructure, 'test.confirm' skips confirmation dialog
-        balancer            full service deploy (prepare -> push -> upgrade)
-        balancer.rollback   rollback service to a previous version (migrate-back -> revert)
-        web                 full service deploy (prepare -> push -> upgrade)
-        web.rollback        rollback service to a previous version (migrate-back -> revert)
+        production  select production infrastructure, 'production.confirm' skips confirmation dialog
+        testing     select testing infrastructure, 'testing.confirm' skips confirmation dialog
+        api.deploy  deploy service (prepare -> push -> backup -> pull -> migrate -> update)
+        web.deploy  deploy service (prepare -> push -> backup -> pull -> migrate -> update)
 
-'production' and 'test' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command. For example:
+'production' and 'testing' are available infrastructures here. To deploy to a particular infrastructure just provide it before any other Fabric command(s). For example:
 
 .. code:: bash
 
-    fab test balancer web
+    fab testing api.deploy web.deploy
 
 See `Infrastructures and roles`_ example for more details.
 
@@ -211,7 +210,7 @@ Almost every Fabricio command takes optional argument 'tag' which means Docker i
 
 .. code:: bash
 
-    fab app:release-42
+    fab app.deploy:release-42
 
 By default, value for tag is taken from Container/Service Image.
 
@@ -219,13 +218,17 @@ Also it is possible to completely (and partially) replace registry/account/name/
 
 .. code:: bash
 
-    fab app:registry.example.com/registry-account/app-image:release-42
-    fab app:nginx@sha256:36b0181554913b471ae33546a9c19cc80e97f44ce5e7234995e307f14da57268
+    fab app.deploy:registry.example.com/registry-account/app-image:release-42
+    fab app.deploy:nginx@sha256:36b0181554913b471ae33546a9c19cc80e97f44ce5e7234995e307f14da57268
 
 Rollback
 ========
 
-To return container or service to a previous version execute command :code:`fab app.rollback`.
+To return container or service to a previous state execute this command:
+
+.. code:: bash
+
+    fab app.rollback
 
 Idempotency
 ===========
@@ -251,9 +254,9 @@ When your local Docker registry is up and run you can provide custom ``registry`
 
     from fabricio import docker, tasks
 
-    nginx = tasks.DockerTasks(
+    app = tasks.DockerTasks(
         service=docker.Container(
-            name='nginx',
+            name='app',
             image='nginx:stable-alpine',
             options={
                 'publish': '80:80',
@@ -263,14 +266,6 @@ When your local Docker registry is up and run you can provide custom ``registry`
         ssh_tunnel='5000:5000',
         hosts=['user@example.com'],
     )
-
-List of commands in this case updated with additional commands which were hidden before:
-
-::
-
-    nginx.prepare   download Docker image from the original registry
-    nginx.push      push downloaded Docker image to intermediate registry
-    nginx.upgrade   upgrade service to a new version (backup -> pull -> migrate -> update)
 
 See `Hello World`_ example for more details.
 
@@ -294,7 +289,7 @@ Using Fabricio you can also build Docker images from local sources and deploy th
         build_path='.',
     )
 
-Commands list for :code:`ImageBuildDockerTasks` is same as for :code:`DockerTasks` with provided custom registry. The only difference is that 'prepare' builds image instead of pulling it from image's registry.
+By executing command ``app.deploy`` Fabricio will try to build image using ``Dockerfile`` from the folder provided by ``build_path`` parameter. After that image will be pushed to the registry (registry.example.com in the example above). And deploy itself will start on the last step.
 
 See `Building Docker images`_ example for more details.
 
@@ -309,9 +304,9 @@ Fabricio can deploy Docker services:
 
     from fabricio import docker, tasks
 
-    nginx = tasks.DockerTasks(
+    service = tasks.DockerTasks(
         service=docker.Service(
-            name='nginx',
+            name='my-service',
             image='nginx:stable',
             options={
                 'publish': '8080:80',
@@ -334,9 +329,9 @@ Docker stacks are also supported (available since Docker 1.13):
 
     from fabricio import docker, tasks
 
-    nginx = tasks.DockerTasks(
+    stack = tasks.DockerTasks(
         service=docker.Stack(
-            name='my-web-app',
+            name='my-docker-stack',
             options={
                 'compose-file': 'my-docker-compose.yml',
             },
@@ -357,9 +352,9 @@ Kubernetes configuration can be deployed using following settings:
 
     from fabricio import kubernetes, tasks
 
-    nginx = tasks.DockerTasks(
+    k8s = tasks.DockerTasks(
         service=kubernetes.Configuration(
-            name='my-k8s',
+            name='my-k8s-configuration',
             options={
                 'filename': 'configuration.yml',
             },

@@ -1,14 +1,26 @@
+"""
+https://github.com/renskiy/fabricio/blob/master/examples/hello_world
+"""
+
 from fabricio import tasks, docker
 from fabricio.misc import AvailableVagrantHosts
 
-nginx = tasks.DockerTasks(
+app = tasks.DockerTasks(
     service=docker.Container(
-        name='nginx',
+        name='app',
         image='nginx:stable-alpine',
-        options=dict(
-            publish='80:80',
-        ),
+        options={
+            # `docker run` options
+            'env': 'FOO=42',
+        },
     ),
     hosts=AvailableVagrantHosts(),
-    destroy_command=True,
+
+    rollback_command=True,  # show `rollback` command in the list
+    # migrate_commands=True,  # show `migrate` and `migrate-back` commands in the list
+    # backup_commands=True,  # show `backup` and `restore` commands in the list
+    # pull_command=True,  # show `pull` command in the list
+    # update_command=True,  # show `update` command in the list
+    # revert_command=True,  # show `revert` command in the list
+    # destroy_command=True,  # show `destroy` command in the list
 )

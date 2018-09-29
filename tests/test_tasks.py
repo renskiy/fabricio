@@ -215,43 +215,43 @@ class DockerTasksTestCase(unittest.TestCase):
         cases = dict(
             default=dict(
                 init_kwargs=dict(service='service'),
-                expected_commands={'rollback'},
+                expected_commands={'deploy'},
             ),
             prepare_tasks=dict(
-                init_kwargs=dict(service='service', registry='registry'),
-                expected_commands={'rollback', 'prepare', 'push', 'upgrade'},
+                init_kwargs=dict(service='service', registry='registry', prepare_command=True, push_command=True, upgrade_command=True),
+                expected_commands={'deploy', 'prepare', 'push', 'upgrade'},
             ),
             migrate_tasks=dict(
                 init_kwargs=dict(service='service', migrate_commands=True),
-                expected_commands={'rollback', 'migrate', 'migrate-back'},
+                expected_commands={'deploy', 'migrate', 'migrate-back'},
             ),
             backup_tasks=dict(
                 init_kwargs=dict(service='service', backup_commands=True),
-                expected_commands={'rollback', 'backup', 'restore'},
+                expected_commands={'deploy', 'backup', 'restore'},
             ),
             revert_task=dict(
                 init_kwargs=dict(service='service', revert_command=True),
-                expected_commands={'rollback', 'revert'},
+                expected_commands={'deploy', 'revert'},
             ),
             pull_task=dict(
                 init_kwargs=dict(service='service', pull_command=True),
-                expected_commands={'rollback', 'pull'},
+                expected_commands={'deploy', 'pull'},
             ),
             update_task=dict(
                 init_kwargs=dict(service='service', update_command=True),
-                expected_commands={'rollback', 'update'},
+                expected_commands={'deploy', 'update'},
             ),
             destroy_task=dict(
                 init_kwargs=dict(service='service', destroy_command=True),
-                expected_commands={'rollback', 'destroy'},
+                expected_commands={'deploy', 'destroy'},
             ),
             complex=dict(
                 init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True, destroy_command=True),
-                expected_commands={'pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'destroy'},
+                expected_commands={'pull', 'deploy', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'revert', 'destroy'},
             ),
             task_mode=dict(
                 init_kwargs=dict(service='service', backup_commands=True, migrate_commands=True, registry='registry', revert_command=True, update_command=True, pull_command=True),
-                expected_commands={'pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'deploy', 'destroy'},
+                expected_commands={'pull', 'rollback', 'update', 'backup', 'restore', 'migrate', 'migrate-back', 'prepare', 'push', 'revert', 'upgrade', 'deploy', 'destroy', 'deploy'},
                 env=dict(tasks='task'),
             ),
         )
@@ -1090,14 +1090,6 @@ class ImageBuildDockerTasksTestCase(unittest.TestCase):
                     )
                     fab.execute(tasks_list.prepare, **data['kwargs'])
                     self.assertListEqual(local.mock_calls, expected_calls)
-
-    def test_prepare_and_push_are_in_the_commands_list_by_default(self):
-        init_kwargs = dict(service='service')
-        expected_commands_list = ['prepare', 'push']
-        tasks_list = tasks.ImageBuildDockerTasks(**init_kwargs)
-        docstring, new_style, classic, default = load_tasks_from_module(tasks_list)
-        for expected_command in expected_commands_list:
-            self.assertIn(expected_command, new_style)
 
 
 class SshTunnelTestCase(unittest.TestCase):
