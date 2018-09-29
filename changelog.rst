@@ -1,6 +1,17 @@
 Changelog
 =========
 
+Release 0.5.7
+-------------
+
+- Enhancement: show explicit 'deploy' command in the list
+- Enhancement: added Python 3.7 support
+- Enhancement: added `contribution`_ info
+- Enhancement: added ability to provide absolute or relative path to configuration file for ``docker.Stack`` and ``kubernetes.Configuration`` (`#183`_)
+
+.. _#183: https://github.com/renskiy/fabricio/issues/100
+.. _contribution: https://github.com/renskiy/fabricio#contribute
+
 Release 0.5.6
 -------------
 
