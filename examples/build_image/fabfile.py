@@ -18,7 +18,7 @@ app = tasks.ImageBuildDockerTasks(
     ssh_tunnel='5000:5000',
     hosts=AvailableVagrantHosts(),
 
-    rollback_command=True,  # show `rollback` command in the list
+    # rollback_command=True,  # show `rollback` command in the list
     # migrate_commands=True,  # show `migrate` and `migrate-back` commands in the list
     # backup_commands=True,  # show `backup` and `restore` commands in the list
     # pull_command=True,  # show `pull` command in the list
