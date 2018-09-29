@@ -1,6 +1,7 @@
 import contextlib
 import itertools
 import json
+import os
 import sys
 import warnings
 
@@ -70,14 +71,15 @@ class Stack(ManagedService):
         if self._current_configuration is not None or not self.is_manager():
             yield self._current_configuration
         else:
+            config_file = os.path.basename(self.config)
             with fab.cd(self.temp_dir):
                 try:
                     configuration = configuration or self.get_configuration()
                     self._current_configuration = configuration
-                    fab.put(six.BytesIO(configuration), self.config)
+                    fab.put(six.BytesIO(configuration), config_file)
                     yield configuration
                 finally:
-                    fabricio.remove_file(self.config, ignore_errors=True)
+                    fabricio.remove_file(config_file, ignore_errors=True)
                     self._current_configuration = None
 
     def upload_configuration(self, configuration):  # pragma: no cover
@@ -91,7 +93,7 @@ class Stack(ManagedService):
             'use upload_configuration_file context manager instead',
             RuntimeWarning, stacklevel=2,
         )
-        fab.put(six.BytesIO(configuration), self.config)
+        fab.put(six.BytesIO(configuration), os.path.basename(self.config))
 
     def get_configuration(self):
         return open(self.config, 'rb').read()
@@ -309,3 +311,8 @@ class Stack(ManagedService):
             'docker rmi {images}'.format(images=' '.join(images)),
             ignore_errors=True,
         )
+
+    @property
+    def options(self):
+        with utils.patch(self, 'config', os.path.basename(self.config)):
+            return super(Stack, self).options

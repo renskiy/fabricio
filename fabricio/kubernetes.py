@@ -1,3 +1,5 @@
+import os
+
 from six.moves import filter, reduce, map
 
 import fabricio
@@ -65,7 +67,7 @@ class Configuration(docker.Stack):
         command = (
             'kubectl get {options}'.format(options=utils.Options([
                 ('output', 'go-template'),
-                ('filename', self.config),
+                ('filename', os.path.basename(self.config)),
                 ('template', template),
             ]))
         )
@@ -94,5 +96,5 @@ class Configuration(docker.Stack):
         options,  # type: utils.Options
     ):
         self.images  # get list of images before configuration remove
-        options.setdefault('filename', self.config)
+        options.setdefault('filename', os.path.basename(self.config))
         fabricio.run('kubectl delete {options}'.format(options=options))

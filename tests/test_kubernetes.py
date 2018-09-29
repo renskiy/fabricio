@@ -122,6 +122,32 @@ class ConfigurationTestCase(FabricioTestCase):
                 expected_result=True,
                 expected_config_filename='k8s.yml',
             ),
+            created_with_custom_config=dict(
+                init_kwargs=dict(options={'filename': '/custom/k8s.yml'}),
+                update_kwargs=dict(),
+                side_effect=[
+                    SucceededResult(),  # manager status
+                    docker.ImageNotFoundError(),  # image info
+                    SucceededResult(),  # configuration deploy
+                    docker.ImageNotFoundError(),  # image info
+                    SucceededResult(),  # update sentinel images
+                    SucceededResult(),  # configuration images
+                    SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
+                ],
+                expected_command_args=[
+                    {'args': ['kubectl', 'config', 'current-context']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['kubectl', 'apply', '--filename=k8s.yml']},
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-kubernetes:k8s']},
+                    {'args': ['docker', 'rmi', 'fabricio-backup-kubernetes:k8s;', 'docker', 'tag', 'fabricio-current-kubernetes:k8s', 'fabricio-backup-kubernetes:k8s;', 'docker', 'rmi', 'fabricio-current-kubernetes:k8s']},
+                    {'args': ['kubectl', 'get', '--output=go-template', '--filename=k8s.yml', r'--template={{define "images"}}{{$kind := .kind}}{{$name := .metadata.name}}{{with .spec.template.spec.containers}}{{range .}}{{$kind}}/{{$name}} {{.name}} {{.image}}{{"\n"}}{{end}}{{end}}{{end}}{{if eq .kind "List"}}{{range .items}}{{template "images" .}}{{end}}{{else}}{{template "images" .}}{{end}}']},
+                    {'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=azhzLnltbA== fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-kubernetes:k8s', '-']},
+                    {'args': ['rm', '-f', 'k8s.yml']},
+                ],
+                expected_result=True,
+                expected_config_filename='/custom/k8s.yml',
+            ),
             created_skip_sentinels_errors=dict(
                 init_kwargs=dict(),
                 update_kwargs=dict(),
@@ -351,11 +377,10 @@ class ConfigurationTestCase(FabricioTestCase):
                     stack_module.open.return_value = six.BytesIO(b'k8s.yml')
                     stack_module.open.reset_mock()
                     put.reset_mock()
-                    configuration = kubernetes.Configuration(
-                        name='k8s',
-                        options={'filename': 'k8s.yml'},
-                        **data.get('init_kwargs', {})
-                    )
+                    kwargs = data.get('init_kwargs', {})
+                    kwargs.setdefault('options', {'filename': 'k8s.yml'})
+                    kwargs.setdefault('name', 'k8s')
+                    configuration = kubernetes.Configuration(**kwargs)
                     side_effect = self.command_checker(
                         args_parsers=args_parser,
                         expected_args_set=data.get('expected_command_args', []),

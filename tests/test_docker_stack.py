@@ -255,6 +255,42 @@ class StackTestCase(FabricioTestCase):
                 expected_result=True,
                 expected_config_filename='compose.yml',
             ),
+            created_with_custom_compose3=dict(
+                init_kwargs=dict(name='stack', options={'compose-file': '/custom/compose.yml'}),
+                update_kwargs=dict(),
+                side_effect=[
+                    SucceededResult('  Is Manager: true'),  # manager status
+                    docker.ImageNotFoundError(),  # image info
+                    SucceededResult(),  # stack deploy
+                    docker.ImageNotFoundError(),  # image info
+                    SucceededResult(),  # update sentinel images
+                    SucceededResult(),  # stack images
+                    SucceededResult(),  # build new sentinel image
+                    SucceededResult(),  # remove config file
+                ],
+                expected_command_args=[
+                    {
+                        'args': ['docker', 'info', '2>&1', '|', 'grep', 'Is Manager:'],
+                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-current-stack:stack']},
+                    {
+                        'args': ['docker', 'stack', 'deploy', '--compose-file=compose.yml', 'stack'],
+                    },
+                    {'args': ['docker', 'inspect', '--type', 'image', 'fabricio-backup-stack:stack']},
+                    {
+                        'args': ['docker', 'rmi', 'fabricio-backup-stack:stack;', 'docker', 'tag', 'fabricio-current-stack:stack', 'fabricio-backup-stack:stack;', 'docker', 'rmi', 'fabricio-current-stack:stack'],
+                    },
+                    {
+                        'args': ['docker', 'stack', 'services', '--format', '{{.Name}} {{.Image}}', 'stack'],
+                    },
+                    {
+                        'args': ['echo', 'FROM scratch\nLABEL fabricio.configuration=Y29tcG9zZS55bWw= fabricio.digests=e30=\n', '|', 'docker', 'build', '--tag', 'fabricio-current-stack:stack', '-'],
+                    },
+                    {'args': ['rm', '-f', 'compose.yml']},
+                ],
+                expected_result=True,
+                expected_config_filename='/custom/compose.yml',
+            ),
             created_with_custom_image=dict(
                 init_kwargs=dict(name='stack', image='image:tag'),
                 update_kwargs=dict(),
