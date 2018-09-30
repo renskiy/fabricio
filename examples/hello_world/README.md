@@ -63,7 +63,7 @@ In the example above `BAR` takes its value from Fabric env vars which in turn ca
 
 ### Intermediate (proxy) registry
 
-This option usually used when remote host has not direct access to the image registry (e.g. hub.docker.com). If so, you can provide address and port of custom registry which will be used as an intermediate (or proxy, in other words) Docker image registry for you remote host:
+This option usually used when remote host has not direct access to the Docker registry to pull images from. If so, you can provide address and port of custom registry which will be used as an intermediate (or proxy, in other words) image registry for you remote host:
 
     registry='private-registry:5000'
 
@@ -71,7 +71,7 @@ If such parameter as above was provided then Fabricio will always try to pull im
 
 ### Registry account
 
-This option let you to provide custom Docker registry account to use with custom or default registry:
+This option let you to provide custom Docker registry account to use with the registry:
 
     account='my-account'
 
@@ -83,9 +83,9 @@ There is also ability to set up reverse SSH tunnel from remote host to your loca
     
 Providing such parameter as above will open port 7000 on the remote host for period of deployment and all packets sent to this port will be forwarded to `example.com:5000`.
 
-#### Using proxy
+#### Using proxy over SSH tunnel
 
-While [Docker can work with proxy](https://docs.docker.com/engine/admin/systemd/#httphttps-proxy) you can run HTTP/HTTPS/SOCKS5 proxy and provide remote hosts access to this proxy by setting up SSH tunnel:
+While [Docker can work with proxy](https://docs.docker.com/engine/admin/systemd/#httphttps-proxy) you can run HTTP/HTTPS/SOCKS5 proxy and provide remote hosts access to this proxy over SSH tunnel using such parameter value:
 
     ssh_tunnel='33128:proxy-host:3128'
     
