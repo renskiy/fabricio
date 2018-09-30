@@ -93,14 +93,14 @@ Where `3128` is port which used by proxy running on `proxy-host`, and `33128` is
 
 *New in 0.4.6*
     
-### Local registry access over SSH tunnel
+#### Local registry access over SSH tunnel
 
 Suppose you have your own [private registry](https://hub.docker.com/_/registry/) running on localhost and listening on 5000 port. Then you can provide access to this registry for remote hosts by filling out following parameters:
 
     registry='localhost:5000',
     ssh_tunnel='5000:5000',
     
-To set another port (and host) on remote side you can use `host_registry` option:
+To set different port (and host) on remote side you can use `host_registry`:
 
     registry='localhost:5000',
     ssh_tunnel='7000:5000',
