@@ -21,6 +21,7 @@ Features
 - Fabric's parallel execution mode compatibility
 - rollback containers or services to previous version
 - public and private Docker registries support
+- deploy over SSH tunnel (e.g. access to image registry, proxy, etc.)
 - migrations apply and rollback
 - data backup and restore
 - Docker services (Swarm mode)
