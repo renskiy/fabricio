@@ -100,17 +100,11 @@ Install
 Note for macOS users
 --------------------
 
-Because of Python 2 on macOS marked as system component you can't upgrade its modules which are trying to be upgraded during the Fabricio install (e.g. ``six`` and ``setuptools``). Instead, you can try to install last version of Python 2 using `Homebrew`_:
+Just use latest version of Python instead of one installed by default. The easiest way to install fresh version of Python is using `Homebrew`_:
 
 .. code:: bash
 
-    brew install python2
-
-and then:
-
-.. code:: bash
-
-    pip2 install fabricio
+    brew install python
 
 .. _Homebrew: https://brew.sh
 
