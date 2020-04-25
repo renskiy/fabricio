@@ -13,14 +13,14 @@ install_requires = [
     'frozendict>=1.2,<2.0',
     'cached-property>=1.3',
     'docker-py>=1.8.1,<2.0',
-    'six>=1.10.0',
-    'dpath>=1.4.0',
+    'six>=1.13.0',
+    'dpath<2',
     'colorama<0.4',
 ]
 
 setup(
     name='fabricio',
-    version='0.5.7',
+    version='0.5.8',
     author='Rinat Khabibiev',
     author_email='srenskiy@gmail.com',
     packages=list(map('fabricio.'.__add__, find_packages('fabricio'))) + ['fabricio'],

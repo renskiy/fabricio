@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Release 0.5.8
+-------------
+
+- Fix: fixed `dpath` and `six` required versions
+- Enhancement: added Python 3.8 support
+
 Release 0.5.7
 -------------
 

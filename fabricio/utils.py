@@ -6,7 +6,7 @@ from distutils import util as distutils
 
 import six
 
-from six.moves import shlex_quote
+from six.moves import shlex_quote, collections_abc
 
 import fabricio
 
@@ -61,7 +61,7 @@ class Options(collections.OrderedDict):
                     yield self.make_option(option)
             elif isinstance(value, six.string_types):
                 yield self.make_option(option, value)
-            elif isinstance(value, collections.Iterable):
+            elif isinstance(value, collections_abc.Iterable):
                 for single_value in value:
                     yield self.make_option(option, single_value)
             else:
