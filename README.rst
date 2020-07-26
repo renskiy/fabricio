@@ -121,7 +121,7 @@ Install test dependencies
 
 .. code:: bash
 
-    pip install .[test]
+    pip install ".[test]"
 
 Running tests
 -------------
